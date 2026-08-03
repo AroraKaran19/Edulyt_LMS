@@ -21,6 +21,7 @@
   </style>
 </head>
 <body style="margin:0; padding:0; background-color:#FFF6EF;">
+  <!-- Preheader: inbox preview text, hidden in body -->
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
     {{referredName}} used your referral code, here's your reward.
   </div>
@@ -63,7 +64,10 @@
 
                     <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">Hi {{name}},</p>
 
-                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Great news, <strong style="color:#2B1508;">{{referredName}}</strong> just joined Airkrit India using your referral code. Thanks for spreading the word, here's your reward:</p>
+                    <!-- "bought" rather than "joined": commission is recorded only against a
+                         paid order, so a signup that used the code earns nothing and this
+                         email never fires for one. -->
+                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Great news, <strong style="color:#2B1508;">{{referredName}}</strong> just bought a programme using your referral code. Thanks for spreading the word, here's your reward:</p>
 
                     <!-- Reward card -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F6CDA6; border-radius:14px; background-color:#FFF7F1;">
@@ -110,6 +114,9 @@
               </table>
               <p style="margin:0 0 6px 0; font-size:12px; line-height:18px; color:#9A8B84;">Need help? Reach us at <a href="mailto:support@airkrit.com" style="color:#D2540E; text-decoration:none; font-weight:600;">support@airkrit.com</a></p>
               <p style="margin:0; font-size:12px; line-height:18px; color:#B3A79F;">&copy; {{year}} Airkrit India. All rights reserved.</p>
+              <!-- Opt-out. Only on emails a learner can live without: never on
+                   verification codes, password resets, receipts or certificates. -->
+              <p style="margin:8px 0 0 0; font-size:12px; line-height:18px; color:#B3A79F;">You are receiving this because someone used your referral code. <a href="{{unsubscribeUrl}}" style="color:#9A8B84; text-decoration:underline;">Unsubscribe</a></p>
             </td>
           </tr>
 

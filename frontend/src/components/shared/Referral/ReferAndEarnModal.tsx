@@ -35,6 +35,15 @@ import { cn } from "@/lib/utils";
 
 type Tab = "overview" | "withdrawals" | "transactions";
 
+/**
+ * Deep-link switch: `/dashboard?refer=1` opens this modal on load.
+ *
+ * Declared here rather than at the reader so the backend's emailed CTA and the
+ * dashboard that consumes it are describing the same contract. `DashboardBanner`
+ * strips the param once it has acted on it.
+ */
+export const REFER_MODAL_QUERY_PARAM = "refer";
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;

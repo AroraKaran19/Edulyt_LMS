@@ -19,6 +19,8 @@ import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import EmailPreferencesCard from "@/components/account/EmailPreferencesCard";
+import { formatIstDate } from "@/lib/ist";
 import {
   validatePassword,
   getPasswordRequirementsText,
@@ -89,7 +91,7 @@ const timeAgo = (iso: string): string => {
   if (hours < 24) return `Active ${hours} hour${hours === 1 ? "" : "s"} ago`;
   const days = Math.floor(hours / 24);
   if (days < 30) return `Active ${days} day${days === 1 ? "" : "s"} ago`;
-  return `Active on ${new Date(iso).toLocaleDateString()}`;
+  return `Active on ${formatIstDate(iso)}`;
 };
 
 const SettingsPage = () => {
@@ -639,6 +641,9 @@ const SettingsPage = () => {
             </div>
           )}
         </div>
+
+        {/* Email Preferences Card */}
+        <EmailPreferencesCard />
       </div>
     </div>
   );

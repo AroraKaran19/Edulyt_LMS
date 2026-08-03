@@ -21,8 +21,10 @@
   </style>
 </head>
 <body style="margin:0; padding:0; background-color:#FFF6EF;">
+  <!-- Preheader. "Received", not "posted": every one of these arrives
+       pending_approval and is not visible to anyone yet. -->
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
-    Thanks for reviewing {{itemName}}, your feedback is now posted.
+    We have your story. It goes live once our team has read it through.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6EF;">
@@ -47,8 +49,8 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
                         <td valign="middle">
-                          <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FFE3CC;">Review Posted</p>
-                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">Thanks for your review!</h1>
+                          <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FFE3CC;">Story Received</p>
+                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">Thanks for sharing</h1>
                         </td>
                         <td class="hero-motif" valign="middle" align="right" width="88" style="width:88px;">
                           <img src="https://img.icons8.com/ios-filled/100/FFC48F/star.png" width="72" height="72" alt="" style="display:block; border:0; outline:none;" />
@@ -63,56 +65,36 @@
 
                     <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">Hi {{name}},</p>
 
-                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Thanks for reviewing <strong style="color:#2B1508;">{{itemName}}</strong>! Your honest feedback helps other learners choose with confidence.</p>
+                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Thank you for writing for the Airkrit community. Our team reads every story before it goes up, so yours is with us now and will appear on the community page once it is approved.</p>
 
-                    <!-- Review card -->
+                    <!-- Their submission, played back. reviewTitle, reviewTag and reviewText are
+                         all author-written and arrive HTML-escaped from lib/reviewPostedMail.ts:
+                         MSG91 substitutes verbatim, so a stray tag here would rewrite the email
+                         around it. -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F3E1D4; border-radius:12px; background-color:#FFF7F1;">
                       <tr>
                         <td style="padding:20px 22px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                            <tr>
-                              <td valign="middle" style="padding-right:8px;">
-                                <img src="https://img.icons8.com/ios-filled/50/F7B500/star.png" width="20" height="20" alt="Rating" style="display:block; border:0; outline:none;" />
-                              </td>
-                              <td valign="middle">
-                                <span style="font-size:16px; line-height:20px; font-weight:800; color:#2B1508;">{{rating}}</span><span style="font-size:13px; line-height:20px; font-weight:600; color:#8A7A72;"> / 5</span>
-                              </td>
-                            </tr>
-                          </table>
+                          <span style="display:inline-block; margin-bottom:10px; background-color:#FDE7D6; color:#D2540E; font-size:11px; line-height:14px; font-weight:700; letter-spacing:1px; text-transform:uppercase; padding:5px 11px; border-radius:20px;">{{reviewTag}}</span>
+                          <p style="margin:0; font-size:16px; line-height:22px; font-weight:800; color:#2B1508;">{{reviewTitle}}</p>
                           <p style="margin:14px 0 0 0; padding-left:14px; border-left:3px solid #F77124; font-size:15px; line-height:23px; color:#5C4A42;">&ldquo;{{reviewText}}&rdquo;</p>
                         </td>
                       </tr>
                     </table>
 
-                    <!-- successPoints:start  (remove this block if no points were awarded) -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px; border:1px solid #F6CDA6; border-radius:12px; background-color:#FFF3EA;">
-                      <tr>
-                        <td align="center" style="padding:13px 18px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-                            <tr>
-                              <td valign="middle" width="28" style="padding-right:10px;">
-                                <img src="https://img.icons8.com/ios-filled/50/F77124/coins.png" width="22" height="22" alt="" style="display:block; border:0; outline:none;" />
-                              </td>
-                              <td valign="middle" style="font-size:14px; line-height:20px; color:#5C4A42;">
-                                You earned <strong style="color:#D2540E; font-size:15px;">{{successPoints}}</strong> Success Points
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                    <!-- successPoints:end -->
+                    <!-- pointsBlock: the Success Points card, or "". Empty when an admin has set
+                         the community review reward to zero. -->
+                    {{pointsBlock}}
 
                     <!-- CTA -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:28px auto 0 auto;">
                       <tr>
                         <td align="center" bgcolor="#F77124" style="border-radius:12px; background-color:#F77124; background-image:linear-gradient(135deg, #F77124 0%, #FF8A3C 100%);">
-                          <a href="{{ctaUrl}}" target="_blank" class="cta-link" style="display:inline-block; padding:15px 44px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:16px; line-height:20px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:12px;">View your review</a>
+                          <a href="{{ctaUrl}}" target="_blank" class="cta-link" style="display:inline-block; padding:15px 44px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:16px; line-height:20px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:12px;">Visit the community</a>
                         </td>
                       </tr>
                     </table>
 
-                    <p style="margin:30px 0 0 0; padding-top:22px; border-top:1px solid #F0E3DA; font-size:13px; line-height:20px; color:#9A8B84;">Need to make a change? Reach us at <a href="mailto:support@airkrit.com" style="color:#D2540E; text-decoration:none; font-weight:600;">support@airkrit.com</a>.</p>
+                    <p style="margin:30px 0 0 0; padding-top:22px; border-top:1px solid #F0E3DA; font-size:13px; line-height:20px; color:#9A8B84;">Want to change something before it goes live? Reach us at <a href="mailto:support@airkrit.com" style="color:#D2540E; text-decoration:none; font-weight:600;">support@airkrit.com</a>.</p>
 
                   </td>
                 </tr>
@@ -135,6 +117,9 @@
               </table>
               <p style="margin:0 0 6px 0; font-size:12px; line-height:18px; color:#9A8B84;">Need help? Reach us at <a href="mailto:support@airkrit.com" style="color:#D2540E; text-decoration:none; font-weight:600;">support@airkrit.com</a></p>
               <p style="margin:0; font-size:12px; line-height:18px; color:#B3A79F;">&copy; {{year}} Airkrit India. All rights reserved.</p>
+              <!-- Opt-out. Only on emails a learner can live without: never on
+                   verification codes, password resets, receipts or certificates. -->
+              <p style="margin:8px 0 0 0; font-size:12px; line-height:18px; color:#B3A79F;">You are receiving this because you posted to the community. <a href="{{unsubscribeUrl}}" style="color:#9A8B84; text-decoration:underline;">Unsubscribe</a></p>
             </td>
           </tr>
 

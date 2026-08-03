@@ -209,8 +209,18 @@ export interface User {
   profilePicture?: string;
   email: string;
   phone?: string;
+  /** Set when `phone` was proven by an MSG91 OTP. See user.schema.ts. */
+  phoneVerifiedAt?: Date;
   whatsappNumber?: string;
   password: string;
+  /**
+   * Last time this credential changed, which starts the 7-day cooldown on
+   * changing it again. Absent means "never changed", not "changed long ago".
+   * Every password write stamps it, including a reset: exempting one route
+   * would just make that route the way around the limit.
+   */
+  passwordChangedAt?: Date;
+  emailChangedAt?: Date;
   userType:
     | "student"
     | "instructor"
@@ -250,6 +260,17 @@ export interface User {
     idleExpiresAt: Date;
     absoluteExpiresAt: Date;
   }[];
+
+  /**
+   * Opt-outs for non-essential email. Undefined means subscribed: only an
+   * explicit `false` suppresses a send, so accounts created before this field
+   * existed keep receiving mail without a backfill.
+   */
+  emailPreferences?: {
+    reviews?: boolean;
+    referrals?: boolean;
+    promotions?: boolean;
+  };
 
   createdAt?: Date;
   updatedAt?: Date;

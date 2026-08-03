@@ -14,9 +14,44 @@ import {
 import type { CourseDiscount, Discount } from "../types";
 import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import { parseIstDateOnly, parseIstDatetimeLocal } from "../utils/ist";
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Admin batch dates are IST wall-clock, never UTC.
+ *
+ * A bare "YYYY-MM-DD" (or a zone-less "YYYY-MM-DDTHH:mm") reaching Mongoose is
+ * cast by `new Date()` as UTC, so a cohort dated 03 Aug started at 05:30 IST
+ * instead of midnight. Parse those two shapes as IST explicitly; anything that
+ * already carries a zone (the ISO string the admin UI sends) is a real instant
+ * and passes through untouched.
+ */
+function coerceIstBatchInstant(v: unknown): Date | null {
+  if (v == null || v === "") return null;
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  if (typeof v === "string") {
+    const s = v.trim();
+    const istDay = parseIstDateOnly(s);
+    if (istDay) return istDay;
+    const istLocal = parseIstDatetimeLocal(s);
+    if (istLocal) return istLocal;
+  }
+  const d = new Date(v as string | number);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Re-read an inbound batch payload's cohort start as an IST instant. Applied on
+ * both create and update so the stored instant matches the IST wall-clock the
+ * admin picked (defaulting to 00:00 IST when only a date was sent).
+ */
+function withIstBatchDates<T extends Record<string, unknown>>(batch: T): T {
+  const start = coerceIstBatchInstant(batch.internshipStartDate);
+  if (!start) return batch;
+  return { ...batch, internshipStartDate: start };
+}
 
 function coerceDocumentationDate(v: unknown): Date | null {
   if (v == null || v === "") return null;
@@ -237,9 +272,9 @@ const withBatchCreatedBy = (
 ): Internship["batches"] => {
   const list = Array.isArray(batches) ? batches : [];
   return list.map((b) => ({
-    ...b,
+    ...withIstBatchDates(b as unknown as Record<string, unknown>),
     createdBy: userId,
-  })) as Internship["batches"];
+  })) as unknown as Internship["batches"];
 };
 
 export interface ListInternshipsResult {
@@ -917,21 +952,19 @@ export const updateInternshipService = async (
   if (Array.isArray(data.batches)) {
     // The documentation window is required on every batch in the payload.
     assertBatchDocumentationWindows(data.batches);
-    if (actingUserId) {
-      const prev = existingSnap.batches ?? [];
-      payload = {
-        ...data,
-        batches: data.batches.map((b, i) => {
-          const prior = prev[i] as { createdBy?: unknown } | undefined;
-          const existingId =
-            prior?.createdBy != null ? String(prior.createdBy) : undefined;
-          return {
-            ...b,
-            createdBy: existingId ?? actingUserId,
-          };
-        }) as Internship["batches"],
-      };
-    }
+    const prev = existingSnap.batches ?? [];
+    payload = {
+      ...data,
+      batches: data.batches.map((b, i) => {
+        // Cohort start is IST wall-clock regardless of who is saving.
+        const row = withIstBatchDates(b as unknown as Record<string, unknown>);
+        if (!actingUserId) return row;
+        const prior = prev[i] as { createdBy?: unknown } | undefined;
+        const existingId =
+          prior?.createdBy != null ? String(prior.createdBy) : undefined;
+        return { ...row, createdBy: existingId ?? actingUserId };
+      }) as unknown as Internship["batches"],
+    };
   }
 
   const doc = await InternshipModel.findByIdAndUpdate(id, payload, {

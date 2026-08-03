@@ -8,11 +8,19 @@
 
 import { connectDB, disconnectDB } from "./config/database";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
+import {
+  installWorkerCrashAlerts,
+  reportWorkerStartupFailure,
+} from "./lib/workerProcessGuards";
 import dotenv from "dotenv";
 
 dotenv.config();
 
+const PROCESS_NAME = "token cleanup worker";
+
 const start = async () => {
+  installWorkerCrashAlerts(PROCESS_NAME);
+
   try {
     await connectDB();
 
@@ -27,7 +35,7 @@ const start = async () => {
       process.exit(0);
     });
   } catch (error) {
-    console.error("❌ Failed to start token cleanup worker:", error);
+    await reportWorkerStartupFailure(PROCESS_NAME, error);
     process.exit(1);
   }
 };

@@ -7,12 +7,14 @@ import errorHandler, { notFoundHandler } from "./middlewares/error.middleware";
 import cookieParser from "cookie-parser";
 import {
   authRoutes,
+  emailPreferencesRoutes,
   courseRoutes,
   orderRoutes,
   faqRoutes,
   testimonialRoutes,
   categoryRoutes,
   qnaRoutes,
+  notesRoutes,
   enrollmentRoutes,
   userRoutes,
   adminRoutes,
@@ -87,11 +89,13 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/email-preferences", emailPreferencesRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/qna", qnaRoutes);
+app.use("/api/notes", notesRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/enrollments", enrollmentRoutes);
 app.use("/api/users", userRoutes);

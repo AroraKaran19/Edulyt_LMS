@@ -18,6 +18,9 @@ function formatDate(d: Date | string | undefined): string {
     day: "numeric",
     month: "short",
     year: "numeric",
+    // Cohort starts are IST instants; without this a viewer outside IST sees
+    // the previous day for a batch beginning at midnight.
+    timeZone: "Asia/Kolkata",
   });
 }
 

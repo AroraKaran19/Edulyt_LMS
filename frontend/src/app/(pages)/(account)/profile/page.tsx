@@ -5,6 +5,8 @@ import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import DateSelector from "@/components/ui/inputs/DateSelector";
 import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
+import PhoneVerificationField from "@/components/shared/PhoneVerificationField";
+import ChangeEmailModal from "@/components/account/ChangeEmailModal";
 import { useUpload } from "@/hooks/useUpload";
 import {
   Camera,
@@ -77,15 +79,8 @@ const ProfilePage = () => {
   });
   const [updatingPassword, setUpdatingPassword] = useState(false);
 
-  // Email change states
+  // Email change lives in ChangeEmailModal, which owns its own two-step state.
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailData, setEmailData] = useState({
-    currentPassword: "",
-    newEmail: "",
-  });
-  const [emailErrors, setEmailErrors] = useState<Record<string, string>>({});
-  const [showEmailPassword, setShowEmailPassword] = useState(false);
-  const [updatingEmail, setUpdatingEmail] = useState(false);
   const [unlinkingGoogle, setUnlinkingGoogle] = useState(false);
   const [unlinkingLinkedIn, setUnlinkingLinkedIn] = useState(false);
   const [showSetPasswordModal, setShowSetPasswordModal] = useState(false);
@@ -678,103 +673,14 @@ const ProfilePage = () => {
     }
   };
 
-  const handleEmailChange = (field: string, value: string) => {
-    setEmailData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-
-    // Clear error for this field when user starts typing
-    if (emailErrors[field]) {
-      setEmailErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors[field];
-        return newErrors;
-      });
-    }
-  };
-
-  const validateEmailForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!emailData.currentPassword) {
-      newErrors.currentPassword = "Current password is required";
-    }
-
-    if (!emailData.newEmail) {
-      newErrors.newEmail = "New email is required";
-    } else if (!validateEmail(emailData.newEmail)) {
-      newErrors.newEmail = "Please enter a valid email address";
-    } else if (
-      emailData.newEmail.toLowerCase() === formData.email?.toLowerCase()
-    ) {
-      newErrors.newEmail = "New email must be different from current email";
-    }
-
-    setEmailErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateEmailForm()) {
-      return;
-    }
-
-    setUpdatingEmail(true);
-
-    try {
-      const response = await apiClient.put("/users/change-email", {
-        currentPassword: emailData.currentPassword,
-        newEmail: emailData.newEmail,
-      });
-
-      if (response.data) {
-        toast.success(
-          "Email updated successfully! Please check your new email for verification."
-        );
-        setShowEmailModal(false);
-        setEmailData({
-          currentPassword: "",
-          newEmail: "",
-        });
-        setEmailErrors({});
-
-        // Update form data and session
-        setFormData((prev) => ({
-          ...prev,
-          email: emailData.newEmail,
-        }));
-
-        // Refresh profile to get updated data
-        await fetchProfile();
-        await updateSession();
-      }
-    } catch (error: any) {
-      console.error("Error updating email:", error);
-
-      if (error.response?.data?.error?.message) {
-        toast.error(error.response.data.error.message);
-        if (error.response.data.error.message.includes("password")) {
-          setEmailErrors({
-            currentPassword: "Current password is incorrect",
-          });
-        } else if (
-          error.response.data.error.message.includes("already in use")
-        ) {
-          setEmailErrors({
-            newEmail: "Email already in use by another account",
-          });
-        }
-      } else if (error.response?.data?.message) {
-        toast.error(error.response.data.message);
-      } else {
-        toast.error("Failed to update email. Please try again.");
-      }
-    } finally {
-      setUpdatingEmail(false);
-    }
+  /**
+   * Runs only after the new address has been verified, so the displayed email
+   * and the session are never ahead of what the account actually holds.
+   */
+  const handleEmailChanged = async (newEmail: string) => {
+    setFormData((prev) => ({ ...prev, email: newEmail }));
+    await fetchProfile();
+    await updateSession();
   };
 
   const handleUnlinkGoogle = () => {
@@ -1170,6 +1076,11 @@ const ProfilePage = () => {
     try {
       // Prepare data for API
       const updateData = { ...formData };
+
+      // `phone` is owned by the OTP endpoint — /users/me rejects any change to
+      // it — so it never travels with a profile save.
+      delete (updateData as Record<string, unknown>).phone;
+      delete (updateData as Record<string, unknown>).phoneVerifiedAt;
 
       // Convert date to ISO string if it exists
       if (updateData.dob && updateData.dob instanceof Date) {
@@ -1701,41 +1612,22 @@ const ProfilePage = () => {
                     )}
                   </div>
                 </div>
-                <div>
-                  <Input
-                    label="Phone Number"
-                    type="tel"
-                    placeholder="+91XXXXXXXXXX"
-                    value={formData.phone || ""}
-                    onChange={(e) => handleInputChange("phone", e.target.value)}
-                    error={errors.phone}
-                    maxLength={15}
-                    onKeyPress={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                      // Only allow digits and + symbol
-                      if (
-                        !/[\d+]/.test(e.key) &&
-                        ![
-                          "Backspace",
-                          "Delete",
-                          "Tab",
-                          "Escape",
-                          "Enter",
-                          "ArrowLeft",
-                          "ArrowRight",
-                          "ArrowUp",
-                          "ArrowDown",
-                        ].includes(e.key)
-                      ) {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                  {!errors.phone && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Format: +91 followed by 10-12 digits (e.g., +919876543210)
-                    </p>
-                  )}
-                </div>
+                {/* Changing the number goes through OTP verification, which
+                    saves it on its own — Save Changes never carries `phone`. */}
+                <PhoneVerificationField
+                  savedPhone={formData.phone || ""}
+                  error={errors.phone}
+                  onVerified={(verifiedPhone) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      phone: verifiedPhone,
+                      ...(whatsappSameAsPhone
+                        ? { whatsappNumber: verifiedPhone }
+                        : {}),
+                    }));
+                    setErrors((prev) => ({ ...prev, phone: "" }));
+                  }}
+                />
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium text-black">
@@ -2089,98 +1981,12 @@ const ProfilePage = () => {
         </form>
       </Modal>
 
-      {/* Email Change Modal */}
-      <Modal
+      <ChangeEmailModal
         isOpen={showEmailModal}
-        onClose={() => {
-          setShowEmailModal(false);
-          setEmailData({
-            currentPassword: "",
-            newEmail: "",
-          });
-          setEmailErrors({});
-        }}
-        title="Change Email"
-        className="max-w-md"
-      >
-        <form onSubmit={handleEmailSubmit} className="space-y-4">
-          {/* Current Password */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Current Password
-            </label>
-            <div className="relative">
-              <input
-                type={showEmailPassword ? "text" : "password"}
-                value={emailData.currentPassword}
-                onChange={(e) =>
-                  handleEmailChange("currentPassword", e.target.value)
-                }
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md"
-                placeholder="Enter your current password"
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setShowEmailPassword(!showEmailPassword);
-                }}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
-                {showEmailPassword ? (
-                  <EyeOff className="w-5 h-5" />
-                ) : (
-                  <Eye className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-            {emailErrors.currentPassword && (
-              <p className="mt-1 text-sm text-red-500">
-                {emailErrors.currentPassword}
-              </p>
-            )}
-          </div>
-
-          {/* New Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              New Email
-            </label>
-            <input
-              type="email"
-              value={emailData.newEmail}
-              onChange={(e) =>
-                handleEmailChange("newEmail", e.target.value.toLowerCase())
-              }
-              autoCapitalize="none"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 hover:border-orange-400 transition-all duration-200 ease-in-out outline-none shadow-sm hover:shadow-md"
-              placeholder="Enter your new email address"
-            />
-            {emailErrors.newEmail && (
-              <p className="mt-1 text-sm text-red-500">
-                {emailErrors.newEmail}
-              </p>
-            )}
-            <p className="mt-1 text-xs text-gray-500">
-              A verification email will be sent to your new email address.
-            </p>
-          </div>
-
-          {/* Submit Button */}
-          <div className="pt-4">
-            <button
-              type="submit"
-              disabled={updatingEmail}
-              className="w-full px-4 py-3 bg-orange-600 text-white font-medium rounded-xl hover:bg-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {updatingEmail && (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              )}
-              {updatingEmail ? "Updating Email..." : "Update Email"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClose={() => setShowEmailModal(false)}
+        currentEmail={formData.email}
+        onChanged={handleEmailChanged}
+      />
 
       {/* Unlink Account Confirmation Modal */}
       <Modal

@@ -354,6 +354,9 @@ const Screen14 = () => {
                         {new Date(
                           batch.internshipStartDate,
                         ).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}
+                        {batch.internshipStartTime
+                          ? `, ${batch.internshipStartTime} IST`
+                          : ""}
                       </p>
                     </div>
                   </div>

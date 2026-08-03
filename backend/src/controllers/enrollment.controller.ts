@@ -199,7 +199,14 @@ export const getEnrollment = asyncHandler(
 export const getUserEnrollments = asyncHandler(
   async (req: Request, res: Response) => {
     const { userId } = req.params;
-    const { status, page = 1, limit = 10, search, sortBy } = req.query;
+    const {
+      status,
+      page = 1,
+      limit = 10,
+      search,
+      sortBy,
+      courseActive,
+    } = req.query;
     const currentUser = req.user;
     const isAdmin =
       currentUser?.userType === "admin" || currentUser?.userType === "super-admin";
@@ -232,7 +239,8 @@ export const getUserEnrollments = asyncHandler(
       Number(page),
       Number(limit),
       search as string,
-      sortBy as string
+      sortBy as string,
+      courseActive === "true"
     );
 
     sendSuccessResponse(

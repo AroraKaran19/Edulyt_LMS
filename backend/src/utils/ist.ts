@@ -74,6 +74,31 @@ export function istEndOfDayUtc(value: DateInput): Date | null {
   return istWallClockToUtc(y, m, d, 23, 59, 59, 999);
 }
 
+/**
+ * Current wall-clock parts in IST. The server has no TZ set (so `getHours()` and
+ * friends read UTC); anything comparing against an IST time-of-day must go
+ * through here. Mirrors the frontend helper of the same name so both sides of a
+ * time-window rule agree.
+ */
+export function istNowParts(): {
+  y: number;
+  m: number;
+  d: number;
+  hh: number;
+  mm: number;
+  ss: number;
+} {
+  const ist = new Date(Date.now() + IST_OFFSET_MS);
+  return {
+    y: ist.getUTCFullYear(),
+    m: ist.getUTCMonth() + 1,
+    d: ist.getUTCDate(),
+    hh: ist.getUTCHours(),
+    mm: ist.getUTCMinutes(),
+    ss: ist.getUTCSeconds(),
+  };
+}
+
 /** Format an instant in IST for display (default: "20 Jun 2025, 11:00 am"). */
 export function formatIst(
   value: DateInput,

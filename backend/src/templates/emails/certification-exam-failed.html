@@ -23,7 +23,7 @@
 <body style="margin:0; padding:0; background-color:#FFF6EF;">
   <!-- Preheader -->
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
-    Your {{internshipName}} certification result, and how we can help from here.
+    Here's where things stand, and how we can help from here.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6EF;">
@@ -48,11 +48,11 @@
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
                         <td valign="middle">
-                          <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FFE3CC;">Certification Result</p>
-                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">Your certification result</h1>
+                          <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FFE3CC;">Internship Complete</p>
+                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">Where things stand</h1>
                         </td>
                         <td class="hero-motif" valign="middle" align="right" width="88" style="width:88px;">
-                          <img src="https://img.icons8.com/ios-filled/100/FFC48F/customer-support.png" width="72" height="72" alt="" style="display:block; border:0; outline:none;" />
+                          <img src="https://img.icons8.com/ios-filled/100/FFC48F/certificate.png" width="72" height="72" alt="" style="display:block; border:0; outline:none;" />
                         </td>
                       </tr>
                     </table>
@@ -64,20 +64,23 @@
 
                     <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">Hi {{name}},</p>
 
-                    <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">You've completed the certification exam for <strong style="color:#2B1508;">{{internshipName}}</strong>, but didn't reach the passing score this time.</p>
+                    <!-- reasonLine: why no certificate was issued. Built server side because it
+                         differs by exam failed / points shortfall / no exam configured. -->
+                    <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">{{reasonLine}}</p>
 
-                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">This isn't the end of the road, our team is here to help you figure out the best next step.</p>
+                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Your programme is now complete. Our team can advise you on the options available from here.</p>
 
                     <!-- Help card -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F3E1D4; border-radius:14px; background-color:#FFF7F1;">
                       <tr>
                         <td align="center" style="padding:26px 24px 28px 24px;">
                           <p style="margin:0 0 8px 0; font-size:17px; line-height:24px; font-weight:800; color:#2B1508;">Talk to our team</p>
-                          <p style="margin:0 0 20px 0; font-size:14px; line-height:22px; color:#5C4A42;">Reach out to an admin for guidance on your options, including whether a retake is possible for your batch.</p>
+                          <!-- helpText: a retake is only on the table when an exam exists. -->
+                          <p style="margin:0 0 20px 0; font-size:14px; line-height:22px; color:#5C4A42;">{{helpText}}</p>
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
                             <tr>
                               <td align="center" bgcolor="#F77124" style="border-radius:12px; background-color:#F77124; background-image:linear-gradient(135deg, #F77124 0%, #FF8A3C 100%);">
-                                <a href="{{contactUrl}}" target="_blank" class="cta-link" style="display:inline-block; padding:15px 42px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:15px; line-height:20px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:12px;">Contact admin</a>
+                                <a href="tel:{{contactPhone}}" class="cta-link" style="display:inline-block; padding:15px 42px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:15px; line-height:20px; font-weight:700; color:#FFFFFF; text-decoration:none; border-radius:12px;">Call {{contactPhone}}</a>
                               </td>
                             </tr>
                           </table>

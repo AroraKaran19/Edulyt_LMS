@@ -1,6 +1,8 @@
 "use client";
 
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import apiClient from "@/configs/apiConfig";
+import { ENDPOINTS } from "@/constants/endpoints";
 import { Mail, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import React, { useState } from "react";
@@ -21,16 +23,24 @@ const ForgotPasswordPage = () => {
     try {
       setLoading(true);
 
-      // TODO: Replace with actual API call to backend
-      // const response = await apiClient.post("/auth/forgot-password", { email });
+      const response = await apiClient.post(
+        ENDPOINTS.auth.generateResetPasswordToken,
+        { email },
+      );
 
-      // Simulate API call for now
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast.success("Password reset link has been sent to your email!");
+      // The backend's wording is deliberately non-committal about whether the
+      // address has an account. Echoing it keeps that property: a confident
+      // "sent!" here would undo it for anyone reading the screen.
+      toast.success(
+        response.data?.message ||
+          "If an account exists for that address, a reset link is on its way.",
+      );
       setEmail("");
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.error?.message ||
+          "Something went wrong. Please try again.",
+      );
     } finally {
       setLoading(false);
     }

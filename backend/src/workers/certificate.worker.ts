@@ -8,6 +8,9 @@ import {
   createCertificateService,
   createInternshipCertificateService,
 } from "../services/certificate.services";
+import { sendCourseCertificateEmail } from "../services/courseCertificateMail.services";
+import { sendInternshipClosureEmail } from "../services/internshipClosureMail.services";
+import { sendOpsAlert } from "../services/opsAlert.services";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { UserModel } from "../models/user.schema";
 import { CourseModel } from "../models/course.schema";
@@ -75,6 +78,15 @@ async function processInternshipCertificateJob(job: any): Promise<void> {
     });
 
     console.log(`[Certificate Worker] Internship job ${jobId} completed. Certificate: ${result.certificateId}`);
+
+    // The learner's email is sent here rather than at verdict time because both
+    // the download URL and the LinkedIn share link need a certificate that
+    // exists. Sends at most once per enrollment, guarded on the enrollment.
+    await sendInternshipClosureEmail(enrollmentId, {
+      kind: "issued",
+      certificateUrl: result.fileUrl,
+      verificationUrl: result.verificationUrl,
+    });
   } catch (error: any) {
     console.error(`[Certificate Worker] Error processing internship job ${jobId}:`, error);
     const currentRetryCount = job.retryCount || 0;
@@ -84,12 +96,35 @@ async function processInternshipCertificateJob(job: any): Promise<void> {
         status: "pending",
         error: `Retry ${currentRetryCount + 1}/${MAX_RETRIES}: ${error.message}`,
       });
-    } else {
-      await updateCertificateJobStatusService(jobId, {
-        status: "failed",
-        error: error.message || "Internship certificate generation failed",
-      });
+      return;
     }
+
+    await updateCertificateJobStatusService(jobId, {
+      status: "failed",
+      error: error.message || "Internship certificate generation failed",
+    });
+
+    // Out of retries. The learner has earned this certificate, so they are told
+    // they are certified and that the document is coming, without being promised
+    // an attachment that does not exist. This notice keeps its own marker, so the
+    // real certificate email still goes out once the job is repaired.
+    await sendInternshipClosureEmail(enrollmentId, { kind: "pending" });
+
+    // Nothing else surfaces this: the job row goes quiet and the learner has been
+    // told to expect a certificate that no longer has a process behind it.
+    await sendOpsAlert({
+      key: "certificate-generation-failed",
+      title: "Internship certificate generation failed",
+      body: [
+        `enrollment: ${enrollmentId}`,
+        `job:        ${jobId}`,
+        `retries:    ${currentRetryCount}/${MAX_RETRIES}`,
+        `error:      ${error?.message || String(error)}`,
+        "",
+        "The learner has been told their certificate is being prepared.",
+        "Re-queue the job once fixed and they will receive it automatically.",
+      ].join("\n"),
+    });
   }
 }
 
@@ -186,6 +221,15 @@ async function processCertificateJob(job: any): Promise<void> {
     console.log(
       `[Certificate Worker] Job ${jobId} completed successfully. Certificate ID: ${certificate.certificateId}`
     );
+
+    // Sent from here rather than at course completion because the download URL
+    // and the LinkedIn share link both need a certificate that exists. Sends at
+    // most once per enrollment, guarded on the enrollment.
+    await sendCourseCertificateEmail(enrollmentId.toString(), {
+      kind: "issued",
+      certificateUrl: certificate.fileUrl || "",
+      verificationUrl: certificate.verificationUrl || "",
+    });
   } catch (error: any) {
     console.error(`[Certificate Worker] Error processing job ${jobId}:`, error);
 
@@ -201,14 +245,39 @@ async function processCertificateJob(job: any): Promise<void> {
       console.log(
         `[Certificate Worker] Job ${jobId} will be retried (${currentRetryCount + 1}/${MAX_RETRIES})`
       );
-    } else {
-      // Mark as failed after max retries
-      await updateCertificateJobStatusService(jobId, {
-        status: "failed",
-        error: error.message || "Certificate generation failed",
-      });
-      console.log(`[Certificate Worker] Job ${jobId} failed after ${MAX_RETRIES} retries`);
+      return;
     }
+
+    // Mark as failed after max retries
+    await updateCertificateJobStatusService(jobId, {
+      status: "failed",
+      error: error.message || "Certificate generation failed",
+    });
+    console.log(`[Certificate Worker] Job ${jobId} failed after ${MAX_RETRIES} retries`);
+
+    // The learner completed the course, so they are told the certificate is
+    // coming without being promised an attachment that does not exist. This
+    // notice keeps its own marker, so the real email still goes out once the job
+    // is repaired.
+    await sendCourseCertificateEmail(enrollmentId.toString(), {
+      kind: "pending",
+    });
+
+    // Nothing else surfaces this: the job row goes quiet and the learner has been
+    // told to expect a certificate that no longer has a process behind it.
+    await sendOpsAlert({
+      key: "course-certificate-generation-failed",
+      title: "Course certificate generation failed",
+      body: [
+        `enrollment: ${enrollmentId}`,
+        `job:        ${jobId}`,
+        `retries:    ${currentRetryCount}/${MAX_RETRIES}`,
+        `error:      ${error?.message || String(error)}`,
+        "",
+        "The learner has been told their certificate is being prepared.",
+        "Re-queue the job once fixed and they will receive it automatically.",
+      ].join("\n"),
+    });
   }
 }
 
@@ -254,6 +323,19 @@ export function startCertificateWorker(): void {
       }
     } catch (error) {
       console.error("[Certificate Worker] Error in job processing loop:", error);
+      // A throw out here means the tick itself broke, not one job, so no job row
+      // records it. Throttled by kind, so a persistently broken loop pages once
+      // per window instead of once per poll.
+      void sendOpsAlert({
+        key: "certificate-worker-tick",
+        title: "Certificate worker tick failed",
+        body: [
+          "The certificate worker's job loop threw. The loop continues, but jobs",
+          "may not be draining.",
+          "",
+          `error: ${error instanceof Error ? error.stack || error.message : String(error)}`,
+        ].join("\n"),
+      });
     } finally {
       tickRunning = false;
     }

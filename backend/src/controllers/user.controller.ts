@@ -15,7 +15,6 @@ import {
   getCurrentUserProfileService,
   getCurrentUserDashboardCountsService,
   changeUserPasswordService,
-  changeUserEmailService,
   setUserPasswordService,
   unlinkGoogleAccountService,
   unlinkLinkedInAccountService,
@@ -31,6 +30,12 @@ import {
   type CsvColumn,
 } from "../utils/lib/csv";
 import { parseDateRange, rangeEcho } from "../utils/lib/dateRange";
+import { UserModel } from "../models";
+import { normalizePhone } from "../services/phoneVerification.services";
+import {
+  PHONE_ERROR_CODES,
+  PHONE_MESSAGES,
+} from "../constants/phoneVerification";
 
 export const getUsers = asyncHandler(async (req: Request, res: Response) => {
   const {
@@ -305,6 +310,23 @@ export const updateUserProfile = asyncHandler(
       delete updateData.userType;
     }
 
+    // `phone` is an OTP-verified field: only /me/phone/verify may change it,
+    // and `phoneVerifiedAt` is that endpoint's to write. A form that re-submits
+    // the number it was given is fine and is dropped rather than refused, so
+    // saving an untouched profile never fails.
+    delete updateData.phoneVerifiedAt;
+    if ("phone" in updateData) {
+      const current = await UserModel.findById(userId).select("phone").lean();
+      if (normalizePhone(updateData.phone) !== normalizePhone(current?.phone)) {
+        throw new AppError(
+          PHONE_MESSAGES.PHONE_NOT_VERIFIED,
+          400,
+          PHONE_ERROR_CODES.PHONE_NOT_VERIFIED,
+        );
+      }
+      delete updateData.phone;
+    }
+
     const updatedUser = await updateUserProfileService(userId, updateData);
     if (!updatedUser) {
       throw new AppError("User not found", 404);
@@ -345,29 +367,10 @@ export const changeUserPassword = asyncHandler(
   }
 );
 
-export const changeUserEmail = asyncHandler(
-  async (req: Request, res: Response) => {
-    const userId = req.user?._id;
-    const { currentPassword, newEmail } = req.body;
-
-    if (!userId) {
-      throw new AppError("User ID not found", 400);
-    }
-
-    if (!currentPassword || !newEmail) {
-      throw new AppError("Current password and new email are required", 400);
-    }
-
-    const updatedUser = await changeUserEmailService(userId, currentPassword, newEmail);
-    
-    sendSuccessResponse(
-      res,
-      updatedUser,
-      "Email updated successfully. Please check your new email for verification.",
-      200
-    );
-  }
-);
+// Changing an email now takes three steps and lives in
+// `emailChange.controller.ts`. The single-call version that used to sit here
+// swapped the address on a password check alone, with nobody proving they
+// could read mail at the destination.
 
 export const setUserPassword = asyncHandler(
   async (req: Request, res: Response) => {

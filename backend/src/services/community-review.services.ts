@@ -10,6 +10,7 @@ import {
 import { AppError } from "../middlewares/error.middleware";
 import { getPointsSettings } from "./pointsSettings.services";
 import { awardWalletSuccessPoints } from "./successPoints.services";
+import { sendCommunityReviewPostedEmail } from "./reviewPostedMail.services";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -66,8 +67,10 @@ export async function createCommunityReviewService(
   // Reward only identified authors. The 1/user lock above is the idempotency
   // guard — a second submit throws before reaching here.
   if (isIdentified) {
+    let awardedPoints = 0;
     try {
       const { communityReviewSuccessPoints } = await getPointsSettings();
+      awardedPoints = communityReviewSuccessPoints;
       await awardWalletSuccessPoints(
         String(input.userId),
         communityReviewSuccessPoints,
@@ -77,7 +80,19 @@ export async function createCommunityReviewService(
       // The review is the primary artifact — never fail the post over a
       // reward credit. Logged for manual reconciliation.
       console.error("Community review reward failed:", e);
+      // The email must not claim points that were not credited.
+      awardedPoints = 0;
     }
+
+    // Anonymous posts get no email: there is nobody to write to. Same guard as
+    // the reward, so the two can never disagree about who authored this.
+    await sendCommunityReviewPostedEmail({
+      userId: String(input.userId),
+      title,
+      review,
+      tag,
+      successPoints: awardedPoints,
+    });
   }
 
   return doc.toObject();

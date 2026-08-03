@@ -66,7 +66,11 @@
 
                     <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Great news, you've cleared the entrance exam for <strong style="color:#2B1508;">{{internshipName}}</strong>! Here's what's left to get you started:</p>
 
-                    <!-- Progress steps -->
+                    <!-- Progress steps.
+                         Every marker is 28x28 with a bgcolor and border-radius:14px, exactly half
+                         the box and no border. That combination is the only one email clients round
+                         reliably: a border on a <td> gets drawn square even when the background is
+                         rounded, so the upcoming steps are filled grey rather than outlined. -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F3E1D4; border-radius:12px;">
                       <tr>
                         <td style="padding:24px 24px 8px 24px;">
@@ -108,7 +112,7 @@
                             <tr>
                               <td width="36" align="center" valign="top" style="padding:0;">
                                 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                                  <td width="24" height="24" align="center" valign="middle" bgcolor="#FFFFFF" style="background-color:#FFFFFF; border:2px solid #E7DDD5; border-radius:14px;">&nbsp;</td>
+                                  <td width="28" height="28" align="center" valign="middle" bgcolor="#E7DDD5" style="background-color:#E7DDD5; border-radius:14px;">&nbsp;</td>
                                 </tr></table>
                                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center"><tr>
                                   <td width="2" height="30" bgcolor="#E7DDD5" style="font-size:0; line-height:0;">&nbsp;</td>
@@ -124,7 +128,7 @@
                             <tr>
                               <td width="36" align="center" valign="top" style="padding:0;">
                                 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-                                  <td width="24" height="24" align="center" valign="middle" bgcolor="#FFFFFF" style="background-color:#FFFFFF; border:2px solid #E7DDD5; border-radius:14px;">&nbsp;</td>
+                                  <td width="28" height="28" align="center" valign="middle" bgcolor="#E7DDD5" style="background-color:#E7DDD5; border-radius:14px;">&nbsp;</td>
                                 </tr></table>
                               </td>
                               <td valign="top" style="padding:2px 0 0 14px;">

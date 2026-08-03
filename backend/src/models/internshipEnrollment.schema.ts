@@ -162,6 +162,46 @@ const internshipEnrollmentSchema = new mongoose.Schema(
     },
 
     /**
+     * When the learner was told the outcome of their entrance exam application,
+     * selected or not.
+     *
+     * One field covers both emails because only one can ever fire: the selected
+     * email is sent when they leave a pre-selection status for a selected one, and
+     * the rejection email only when they are rejected *from* a pre-selection
+     * status. A learner rejected after being selected gets neither, because
+     * "you were not selected for this batch" would be false.
+     *
+     * Claimed atomically before the send. Admins double-click and move statuses
+     * back and forth, so without this a candidate could be congratulated twice.
+     */
+    entranceResultEmailSentAt: { type: Date, default: undefined },
+
+    /**
+     * When the learner was told how their internship closed, certificate or not.
+     *
+     * Separate from {@link certificateEvaluation} on purpose: "has been judged"
+     * and "has been told" are different facts. `reset-premature-internship-verdicts`
+     * clears the verdict so learners can be re-judged, and it must NOT clear this,
+     * or the next sweep emails everyone a second time.
+     *
+     * Claimed atomically before the send, so a failed send leaves a learner
+     * un-mailed rather than risking a duplicate. Under-sending is fixable by hand;
+     * a second "you are certified" email is not.
+     */
+    closureEmailSentAt: { type: Date, default: undefined },
+
+    /**
+     * When the learner was told their certificate is still being prepared, sent
+     * when they passed but generation failed permanently.
+     *
+     * Tracked apart from {@link closureEmailSentAt} because it is an interim
+     * notice, not the final word. Once ops repair and re-queue the job, the
+     * learner still needs the real certificate email, so this one deliberately
+     * does not consume the terminal slot.
+     */
+    closurePendingEmailSentAt: { type: Date, default: undefined },
+
+    /**
      * Program length chosen at registration (`internshipDuration` in applicationAnswers), in months.
      * Required — it anchors `endDate`, which drives the certification exam day
      * AND the certificate verdict. A missing value would leave the enrollment

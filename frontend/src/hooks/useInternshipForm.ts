@@ -7,6 +7,7 @@ import {
   createDefaultInternshipBatchPlan,
   createDefaultInternshipDiscount,
   createDefaultInternshipAnalytics,
+  DEFAULT_BATCH_START_TIME,
 } from "@/types/internshipForm";
 import { toast } from "react-toastify";
 import type {
@@ -18,7 +19,11 @@ import type {
 import type { CourseDiscount, InternshipAnalytics } from "@/types";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import { utcToIstDateValue } from "@/lib/ist";
+import {
+  istDateAndTimeToUtcIso,
+  utcToIstDateValue,
+  utcToIstTimeValue,
+} from "@/lib/ist";
 import {
   getInternshipScreenTriggerFields,
 } from "@/lib/internshipScreenValidation";
@@ -86,6 +91,7 @@ const getInitialFormData = (
             name: "",
             applicationLastDate: "",
             internshipStartDate: "",
+            internshipStartTime: DEFAULT_BATCH_START_TIME,
             status: "active",
             isActive: true,
             plan: createDefaultInternshipBatchPlan(),
@@ -283,6 +289,8 @@ function ensureBatchPlans(
   return (batches ?? []).map((row) => ({
     ...row,
     plan: row.plan ?? createDefaultInternshipBatchPlan(),
+    // Drafts saved before the start-time field existed have no value.
+    internshipStartTime: row.internshipStartTime || DEFAULT_BATCH_START_TIME,
     entranceExamTemplateId: row.entranceExamTemplateId ?? null,
     entranceExamStartAt: row.entranceExamStartAt ?? "",
     entranceExamEndAt: row.entranceExamEndAt ?? "",
@@ -336,10 +344,22 @@ const transformFormDataToInternship = (
     discount: formData.discount,
     analytics: formData.analytics,
     batches: formData.batches.map((b): InternshipBatchApiPayload => {
+      // The admin picks an IST date + wall-clock time; store the exact instant.
+      // Without this the bare "YYYY-MM-DD" is read as UTC and the cohort starts
+      // at 05:30 IST instead of the chosen time (default midnight).
+      const startIso = istDateAndTimeToUtcIso(
+        b.internshipStartDate,
+        b.internshipStartTime,
+      );
+      if (!startIso) {
+        throw new Error(
+          `Batch "${b.name.trim() || "Untitled"}" needs a valid internship start date`,
+        );
+      }
       const row: InternshipBatchApiPayload = {
         name: b.name.trim(),
         applicationLastDate: new Date(b.applicationLastDate),
-        internshipStartDate: new Date(b.internshipStartDate),
+        internshipStartDate: new Date(startIso),
         status: b.status,
         isActive: b.isActive,
         plan: b.plan,
@@ -463,6 +483,11 @@ const transformInternshipToFormData = (
         internshipStartDate: b.internshipStartDate
           ? utcToIstDateValue(b.internshipStartDate)
           : "",
+        // Legacy batches were stored as UTC midnight, so this shows 05:30 until
+        // the admin (or the backfill script) moves them to IST midnight.
+        internshipStartTime: b.internshipStartDate
+          ? utcToIstTimeValue(b.internshipStartDate) || DEFAULT_BATCH_START_TIME
+          : DEFAULT_BATCH_START_TIME,
         status: b.status,
         isActive: b.isActive,
         reviews: b.reviews?.map((id) => String(id)),

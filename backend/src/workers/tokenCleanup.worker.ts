@@ -1,3 +1,4 @@
+import { sendOpsAlert } from "../services/opsAlert.services";
 import { cleanupExpiredTokens } from "../services/auth.services";
 
 /**
@@ -28,6 +29,20 @@ export const startTokenCleanupWorker = () => {
       await cleanupExpiredTokens();
     } catch (error) {
       console.error("[Token Cleanup Worker] Tick error:", error);
+      // Lowest stakes of the set: nothing is owed to a learner, expired tokens
+      // simply accumulate. Alerted anyway because a loop that throws every tick
+      // usually means the database is unreachable, which is not a small problem.
+      void sendOpsAlert({
+        key: "token-cleanup-worker-tick",
+        title: "Token cleanup worker tick failed",
+        body: [
+          "Expired refresh tokens are not being pruned. Harmless in isolation, but",
+          "a persistent failure here usually points at the database rather than at",
+          "this worker.",
+          "",
+          `error: ${error instanceof Error ? error.stack || error.message : String(error)}`,
+        ].join("\n"),
+      });
     } finally {
       tickRunning = false;
     }

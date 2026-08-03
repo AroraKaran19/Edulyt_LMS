@@ -1,10 +1,12 @@
 import authRoutes from "./auth.routes";
+import emailPreferencesRoutes from "./emailPreferences.routes";
 import courseRoutes from "./course.routes";
 import orderRoutes from "./order.routes";
 import faqRoutes from "./faq.routes";
 import testimonialRoutes from "./testimonial.route";
 import categoryRoutes from "./category.route";
 import qnaRoutes from "./qna.route";
+import notesRoutes from "./notes.routes";
 import enrollmentRoutes from "./enrollment.routes";
 import userRoutes from "./user.routes";
 import adminRoutes from "./admin.routes";
@@ -45,12 +47,14 @@ import reportRoutes from "./report.routes";
 
 export {
   authRoutes,
+  emailPreferencesRoutes,
   courseRoutes,
   orderRoutes,
   faqRoutes,
   testimonialRoutes,
   categoryRoutes,
   qnaRoutes,
+  notesRoutes,
   enrollmentRoutes,
   userRoutes,
   adminRoutes,

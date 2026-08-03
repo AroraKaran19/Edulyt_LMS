@@ -38,7 +38,13 @@ function safeRelativeAppPath(
 
 /** Paths that mean "no explicit deep link" — role-based home is used instead. */
 function isGenericStudentHome(path: string): boolean {
-  const p = path.split("?")[0] || "";
+  const [p = "", query = ""] = path.split("?");
+
+  // A query string is an explicit destination even when the path is the plain
+  // home: `/dashboard?refer=1` opens the Refer & Earn modal, and collapsing it
+  // to `/dashboard` would silently drop what the learner clicked for.
+  if (query) return false;
+
   if (p === "" || p === "/") return true;
   if (p === STUDENT_HOME) return true;
   if (p === "/login" || p === "/register" || p === "/forgot-password") {

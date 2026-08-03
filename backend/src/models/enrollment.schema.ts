@@ -237,6 +237,27 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       default: false,
     },
 
+    /**
+     * When the learner was emailed their course certificate.
+     *
+     * Claimed atomically before the send, so a retried or re-queued certificate
+     * job cannot mail the same learner twice. Distinct from
+     * `certificateIssuedAt`, which records when the document was minted rather
+     * than whether anyone was told.
+     */
+    certificateEmailSentAt: { type: Date, default: undefined },
+
+    /**
+     * When the learner was told their certificate is still being prepared, sent
+     * when generation failed permanently.
+     *
+     * Tracked apart from {@link certificateEmailSentAt} because it is an interim
+     * notice, not the final word. Once ops repair and re-queue the job the
+     * learner still needs the real certificate, so this one deliberately does not
+     * consume the terminal slot.
+     */
+    certificatePendingEmailSentAt: { type: Date, default: undefined },
+
     // Analytics
     totalTimeSpent: {
       type: Number,

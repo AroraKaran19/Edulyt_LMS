@@ -22,7 +22,7 @@
 </head>
 <body style="margin:0; padding:0; background-color:#FFF6EF;">
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
-    You completed {{courseName}}! Your certificate is attached below.
+    Your {{courseName}} certificate is attached below.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6EF;">
@@ -48,7 +48,7 @@
                       <tr>
                         <td valign="middle">
                           <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FFE3CC;">Course Completed</p>
-                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">You did it!</h1>
+                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">Your certificate is ready</h1>
                         </td>
                         <td class="hero-motif" valign="middle" align="right" width="88" style="width:88px;">
                           <img src="https://img.icons8.com/ios-filled/100/FFC48F/graduation-cap.png" width="72" height="72" alt="" style="display:block; border:0; outline:none;" />
@@ -63,7 +63,10 @@
 
                     <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">Hi {{name}},</p>
 
-                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Congratulations on completing <strong style="color:#2B1508;">{{courseName}}</strong>! Your certificate is ready, and it's a great addition to your resume and LinkedIn.</p>
+                    <!-- reasonLine: names the Success Points only when the course awarded any.
+                         Built server side because `completionSuccessPoints` can be zero or
+                         unset, and MSG91 cannot hide a block on a condition. -->
+                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">{{reasonLine}}</p>
 
                     <!-- Certificate attachment note -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F6CDA6; border-radius:14px; background-color:#FFF3EA;">
@@ -84,25 +87,6 @@
                       </tr>
                     </table>
 
-                    <!-- successPoints:start  (remove this block if no points were awarded) -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px; border:1px solid #F6CDA6; border-radius:12px; background-color:#FFF3EA;">
-                      <tr>
-                        <td align="center" style="padding:13px 18px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-                            <tr>
-                              <td valign="middle" width="28" style="padding-right:10px;">
-                                <img src="https://img.icons8.com/ios-filled/50/F77124/coins.png" width="22" height="22" alt="" style="display:block; border:0; outline:none;" />
-                              </td>
-                              <td valign="middle" style="font-size:14px; line-height:20px; color:#5C4A42;">
-                                You earned <strong style="color:#D2540E; font-size:15px;">{{successPoints}}</strong> Success Points
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                    <!-- successPoints:end -->
-
                     <!-- CTA -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:28px auto 0 auto;">
                       <tr>
@@ -112,7 +96,9 @@
                       </tr>
                     </table>
 
-                    <p style="margin:24px 0 0 0; font-size:14px; line-height:22px; color:#5C4A42; text-align:center;">Proud of your achievement? Share it on <a href="https://www.linkedin.com/company/edulytindia/" target="_blank" style="color:#D2540E; text-decoration:none; font-weight:600;">LinkedIn</a> and tag us.</p>
+                    <!-- linkedInUrl: LinkedIn share link, built server side so the certificate
+                         verification URL is encoded once rather than escaped inside this href. -->
+                    <p style="margin:24px 0 0 0; font-size:14px; line-height:22px; color:#5C4A42; text-align:center;">You can share this certificate on <a href="{{linkedInUrl}}" target="_blank" style="color:#D2540E; text-decoration:none; font-weight:600;">LinkedIn</a>.</p>
 
                     <p style="margin:28px 0 0 0; padding-top:22px; border-top:1px solid #F0E3DA; font-size:13px; line-height:20px; color:#9A8B84;">Questions about your certificate? Reach us at <a href="mailto:support@airkrit.com" style="color:#D2540E; text-decoration:none; font-weight:600;">support@airkrit.com</a>.</p>
 

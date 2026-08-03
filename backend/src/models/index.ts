@@ -34,6 +34,10 @@ import { CollaborationJobModel } from "./collaborationJob.schema";
 import { CollaborationWhitelistModel } from "./collaborationWhitelist.schema";
 import { PartnershipImportConfigModel } from "./partnershipImportConfig.schema";
 import { CollegeModel } from "./college.schema";
+import { PendingSignupModel } from "./pendingSignup.schema";
+import { PendingEmailChangeModel } from "./pendingEmailChange.schema";
+import { PasswordResetRequestModel } from "./passwordResetRequest.schema";
+import { PhoneVerificationModel } from "./phoneVerification.schema";
 
 export {
   UserModel,
@@ -70,4 +74,8 @@ export {
   CollaborationWhitelistModel,
   PartnershipImportConfigModel,
   CollegeModel,
+  PendingSignupModel,
+  PendingEmailChangeModel,
+  PasswordResetRequestModel,
+  PhoneVerificationModel,
 };

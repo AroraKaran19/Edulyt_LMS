@@ -5,6 +5,7 @@ import { InternshipExamModel } from "../models/internshipExam.schema";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
 import { OrderModel } from "../models/order.schema";
 import { UserModel } from "../models/user.schema";
+import { CertificateModel } from "../models/certificate.schema";
 import { AppError } from "../middlewares/error.middleware";
 import {
   isApplicationWindowOpenIst,
@@ -24,6 +25,9 @@ import {
   resolveProgramEndDate,
 } from "../lib/internshipProgramWindow";
 import { computeTaskWindow } from "../lib/internshipTaskWindow";
+import { sendEntranceExamResultEmail } from "./entranceExamMail.services";
+import { sendInternshipBatchChangedEmail } from "./internshipBatchChangedMail.services";
+import { queueInternshipApplicationReceivedEmail } from "./internshipApplicationMail.services";
 import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
 
 function escapeRegex(s: string): string {
@@ -197,6 +201,16 @@ export type InternshipEnrollmentListRow = {
     requiredPoints: number;
     evaluatedAt: string;
   };
+
+  /**
+   * `_id` of the issued certificate, when one exists for this enrollment.
+   *
+   * Only ever set on a pass: the evaluator enqueues a certificate job for
+   * `verdict: "pass"` and writes nothing on a fail, so `undefined` means either
+   * "no certificate was issued" or "the job hasn't finished yet" — the two are
+   * told apart by the verdict/override the learner already has.
+   */
+  certificateId?: string;
 };
 
 /**
@@ -962,12 +976,23 @@ export async function registerForExam(
         : {}),
     });
 
+    let awardedPoints = 0;
     try {
-      await tryAwardInternshipRegistrationPoints(String(enrollment._id));
+      awardedPoints = await tryAwardInternshipRegistrationPoints(
+        String(enrollment._id),
+      );
     } catch (e) {
       // A reward failure must never break registration.
       console.error("Internship registration reward failed:", e);
     }
+
+    // Awaited above so the email can state the points actually credited rather
+    // than what the setting says.
+    queueInternshipApplicationReceivedEmail(
+      String(enrollment._id),
+      "merit",
+      awardedPoints,
+    );
 
     return { enrollmentId: String(enrollment._id) };
   } catch (err: unknown) {
@@ -1234,6 +1259,14 @@ export async function registerForPaidSeat(
           }
         : {}),
     });
+
+    // No points argument: the registration reward is credited after payment
+    // succeeds (see payments/fulfillment.ts), so there is nothing to claim yet.
+    // Payment itself gets its own email.
+    queueInternshipApplicationReceivedEmail(
+      String(enrollment._id),
+      "paid_seat",
+    );
 
     return { enrollmentId: String(enrollment._id) };
   } catch (err: unknown) {
@@ -1733,6 +1766,35 @@ export async function listMyInternshipEnrollments(
     }
   }
 
+  // Issued certificates for this page, so a finished card can link straight to
+  // the certificate instead of making the learner hunt for it in the list.
+  //
+  // One indexed query for the whole page (`{ enrollmentId: 1, isLatest: 1 }`),
+  // never one per row. Not narrowed by verdict on purpose: cohorts with a
+  // certification exam issue on finalize-grading and can have a certificate
+  // with no `certificateEvaluation` snapshot at all.
+  const certificateIdByEnrollmentId = new Map<string, string>();
+  const certLookupIds = (raw as Record<string, unknown>[])
+    .map((d) => String(d._id))
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  if (certLookupIds.length > 0) {
+    const certDocs = await CertificateModel.find({
+      enrollmentId: { $in: certLookupIds },
+      enrollmentModel: "InternshipEnrollment",
+      isLatest: true,
+      isActive: true,
+    })
+      .select("_id enrollmentId")
+      .lean();
+
+    for (const c of certDocs) {
+      const eid = String((c as { enrollmentId: unknown }).enrollmentId);
+      certificateIdByEnrollmentId.set(eid, String((c as { _id: unknown })._id));
+    }
+  }
+
   const enrollments: InternshipEnrollmentListRow[] = (
     raw as Record<string, unknown>[]
   ).map((doc) => {
@@ -1892,6 +1954,9 @@ export async function listMyInternshipEnrollments(
           },
         };
       })(),
+      ...(certificateIdByEnrollmentId.has(id)
+        ? { certificateId: certificateIdByEnrollmentId.get(id)! }
+        : {}),
     };
   });
 
@@ -2185,6 +2250,10 @@ export async function adminUpdateEnrollmentStatus(
     );
   }
 
+  // Captured before the write: whether the candidate should hear about this
+  // depends on where they came from, not only on where they land.
+  const previousStatus = String(doc.status ?? "");
+
   doc.status = newStatus as typeof doc.status;
   doc.adminActionBy = adminUserId;
   doc.adminActionAt = new Date();
@@ -2236,6 +2305,16 @@ export async function adminUpdateEnrollmentStatus(
       );
     }
   }
+
+  // Entrance outcome mail. Decides for itself whether this transition warrants
+  // one: a fast-forward from `in_merit_pool` to `enrolled` is a selection, while
+  // landing in `in_merit_pool` is not, and a rejection is only announced when it
+  // comes from a pre-selection status. Guarded so repeated admin clicks send once.
+  await sendEntranceExamResultEmail(
+    String(doc._id),
+    previousStatus,
+    String(newStatus),
+  );
 
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }
@@ -2316,6 +2395,12 @@ export async function adminChangeEnrollmentBatch(
     );
   }
 
+  // Read before the overwrite: the email tells the learner what they moved from,
+  // and a moment later that name is gone.
+  const previousBatchName = String(
+    (doc.batchSnapshot as { name?: string } | undefined)?.name ?? "",
+  );
+
   doc.batchSnapshot = {
     batchId: String(batch._id),
     name: batch.name,
@@ -2339,6 +2424,16 @@ export async function adminChangeEnrollmentBatch(
     }
     throw e;
   }
+
+  // A cohort move shifts their start date and everything anchored to it, so the
+  // learner is told. Only reached on a real change: an unchanged batch returns
+  // above, and a conflict throws.
+  await sendInternshipBatchChangedEmail({
+    enrollmentId: String(doc._id),
+    oldBatchName: previousBatchName,
+    newBatchName: batch.name,
+    newBatchStartDate: batch.internshipStartDate,
+  });
 
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }
@@ -2525,6 +2620,13 @@ export async function adminApproveMeritToEnrolled(
   const months = parseProgramDurationMonthsFromAnswers(ans ?? null);
   if (months != null) doc.programDurationMonths = months;
   await doc.save();
+
+  // This is the real selection moment, and the one the "you're in" email belongs
+  // to: the candidate can now act on the documentation step the email asks for.
+  // The early return above means an already-selected row never reaches here, and
+  // the claim guard covers the bulk path retrying the same id.
+  await sendEntranceExamResultEmail(String(doc._id), s, String(nextStatus));
+
   return getInternshipEnrollmentByIdAdmin(enrollmentId);
 }
 

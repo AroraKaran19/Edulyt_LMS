@@ -8,6 +8,7 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
   changeUserPassword,
+  createVerifiedUser,
   listUserSessions,
   loginUser,
   registerUser,
@@ -16,16 +17,28 @@ import {
   revokeOtherRefreshTokenFamilies,
   revokeRefreshTokenFamily,
 } from "../services/auth.services";
+import {
+  resendSignupOtp,
+  startSignupVerification,
+  verifySignupOtp,
+} from "../services/signupVerification.services";
+import { validatePassword } from "../utils/passwordValidation";
 import { createRefreshToken, rotateRefreshToken } from "../utils/refreshToken";
 import { ACCESS_TOKEN_TTL, REFRESH_GRACE_MS } from "../constants/tokens";
 import {
   ACCOUNT_DISABLED_MESSAGE,
   PARTNER_USE_PORTAL_LOGIN_MESSAGE,
 } from "../constants/authMessages";
+import { SIGNUP_MESSAGES } from "../constants/signupVerificationMessages";
 import { enqueueCollaborationAllotmentAfterRegister } from "../services/collaborationAllotment.services";
 import { tryPartnershipImportWhitelistAfterRegister } from "../services/collaborationWhitelist.services";
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import { tryAwardRegistrationBonus } from "../services/successPoints.services";
+import {
+  RESET_REQUESTED_MESSAGE,
+  RESET_TOKEN_TTL_MINUTES,
+  requestPasswordReset,
+} from "../services/passwordReset.services";
 import bcrypt from "bcryptjs";
 import { DeviceInfo, Student, User } from "../types";
 
@@ -132,45 +145,91 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Passwords do not match", 400);
   }
 
-  const existingUser = await UserModel.findOne({ email });
-  if (existingUser) {
-    throw new AppError("User already exists!", 400);
-  }
+  // Password rules are enforced here too, so a doomed signup fails before we
+  // email a code rather than after the learner has typed it in.
+  validatePassword(password);
 
-  const newUser = await registerUser({
+  const started = await startSignupVerification({
     email,
     password,
     userType,
     provider,
-    firstName: firstName.trim(),
-    lastName: lastName?.trim() || "",
-    ...restData, // Spread any additional fields (phone, address, bio, etc.)
+    firstName,
+    lastName,
+    extra: restData, // Any additional fields (phone, address, bio, etc.)
   });
-  if (!newUser) {
-    throw new AppError("Failed to register user", 500);
-  }
 
-  void enqueueCollaborationAllotmentAfterRegister(newUser._id, email, userType);
-  void tryPartnershipImportWhitelistAfterRegister(newUser._id, email, userType);
-
-  const protectedNewUser = protectedUser(newUser);
-
-  const accessToken = await generateAccessToken(newUser._id);
-  // One-time welcome bonus is granted at registration (never on login).
-  try {
-    await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
-  } catch (e) {
-    // A bonus failure must never block account creation.
-    console.error("Registration bonus failed:", e);
-  }
-
-  sendSuccessResponse(
-    res,
-    { user: protectedNewUser, accessToken },
-    "User registered successfully",
-    201,
-  );
+  sendSuccessResponse(res, started, SIGNUP_MESSAGES.CODE_SENT, 200);
 });
+
+/**
+ * Second half of registration: confirms the emailed code and creates the
+ * account. Everything that used to hang off `register` now happens here,
+ * because until this point no user exists.
+ */
+export const verifyRegistrationOtp = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { pendingId, otp } = req.body;
+
+    if (!pendingId || !otp) {
+      throw new AppError(SIGNUP_MESSAGES.OTP_REQUIRED, 400);
+    }
+
+    const verified = await verifySignupOtp(String(pendingId), String(otp));
+
+    const newUser = await createVerifiedUser({
+      email: verified.email,
+      password: verified.passwordHash, // already hashed - do not re-hash
+      userType: verified.userType as User["userType"],
+      provider: verified.provider as User["provider"],
+      firstName: verified.firstName,
+      lastName: verified.lastName,
+      ...verified.extra,
+    });
+
+    void enqueueCollaborationAllotmentAfterRegister(
+      newUser._id,
+      verified.email,
+      verified.userType,
+    );
+    void tryPartnershipImportWhitelistAfterRegister(
+      newUser._id,
+      verified.email,
+      verified.userType,
+    );
+
+    const accessToken = await generateAccessToken(newUser._id);
+    // One-time welcome bonus is granted at registration (never on login).
+    try {
+      await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
+    } catch (e) {
+      // A bonus failure must never block account creation.
+      console.error("Registration bonus failed:", e);
+    }
+
+    sendSuccessResponse(
+      res,
+      { user: protectedUser(newUser), accessToken },
+      SIGNUP_MESSAGES.REGISTERED,
+      201,
+    );
+  },
+);
+
+/** Issues a fresh code for a signup still awaiting verification. */
+export const resendRegistrationOtp = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { pendingId } = req.body;
+
+    if (!pendingId) {
+      throw new AppError(SIGNUP_MESSAGES.PENDING_ID_REQUIRED, 400);
+    }
+
+    const started = await resendSignupOtp(String(pendingId));
+
+    sendSuccessResponse(res, started, SIGNUP_MESSAGES.CODE_RESENT, 200);
+  },
+);
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -221,7 +280,11 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
   }
 
-  let user = await UserModel.findOne({ email });
+  // Normalized: accounts are stored lowercased, so a provider returning
+  // different casing must not create a second account for the same person.
+  const normalizedEmail = String(email).trim().toLowerCase();
+
+  let user = await UserModel.findOne({ email: normalizedEmail });
   if (!user) {
     // create a new user
     const originalImageUrl =
@@ -265,7 +328,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
     const newUser = await registerUser({
-      email,
+      email: normalizedEmail,
       firstName: providerDetails?.name?.split(" ")[0] || "",
       lastName: providerDetails?.name?.split(" ")[1] || "",
       password: hashedPassword,
@@ -505,33 +568,27 @@ export const generateAccessToken = async (userId: string, family?: string) => {
   }
 };
 
+/**
+ * Emails a password reset link.
+ *
+ * The response carries no token and no hint about whether the address is
+ * registered. Both of those were true here before: the link came back in the
+ * response body, so naming an address was enough to take over the account, and
+ * the two branches returned different payloads.
+ */
 export const generateResetPasswordToken = asyncHandler(
   async (req: Request, res: Response) => {
-    const { email } = req.body;
-
-    if (!email) {
-      throw new AppError("Email is required", 400);
-    }
-
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      // If user not found, still send the fake confirmation
-      sendSuccessResponse(res, null, "Reset password link");
-      return;
-    }
-
-    const resetPasswordToken = generateResetUserPasswordToken(user._id, email);
     if (!process.env.FRONTEND_URL) {
       throw new AppError("FRONTEND_URL is not set", 500);
     }
+    const frontendUrl = process.env.FRONTEND_URL.replace(/\/+$/, "");
 
-    sendSuccessResponse(
-      res,
-      {
-        link: `${process.env.FRONTEND_URL}/reset-password?token=${resetPasswordToken}`,
-      },
-      "Reset password link",
-    );
+    await requestPasswordReset(req.body?.email, (userId, email) => {
+      const token = generateResetUserPasswordToken(userId, email);
+      return `${frontendUrl}/reset-password?token=${token}`;
+    });
+
+    sendSuccessResponse(res, null, RESET_REQUESTED_MESSAGE);
   },
 );
 
@@ -555,10 +612,12 @@ export const generateResetUserPasswordToken = (
   if (!process.env.JWT_SECRET) {
     throw new AppError("JWT_SECRET is not set", 500);
   }
+  // Shares one constant with the email's "expires in N minutes" line, so the
+  // copy cannot drift from the token it describes.
   const resetPasswordToken = jwt.sign(
     { userId, email },
     process.env.JWT_SECRET,
-    { expiresIn: "10m" }, // 10 minutes
+    { expiresIn: `${RESET_TOKEN_TTL_MINUTES}m` },
   );
   return resetPasswordToken;
 };

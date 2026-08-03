@@ -20,6 +20,14 @@ import { awaitClientSessionAfterSignIn } from "@/lib/awaitClientSession";
 import { signInWithOAuthProvider } from "@/lib/oauthSignInClient";
 import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 import type { User } from "@/types/user";
+import VerifyEmailStep from "@/components/auth/VerifyEmailStep";
+
+/** A signup awaiting its email code. No account exists until it is verified. */
+interface PendingSignup {
+  pendingId: string;
+  email: string;
+  expiryMinutes: number;
+}
 
 const RegisterPage = () => {
   const [email, setEmail] = useState("");
@@ -28,6 +36,7 @@ const RegisterPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -148,6 +157,40 @@ const RegisterPage = () => {
     }
   };
 
+  /**
+   * Runs after the OTP creates the account. The credentials are still in state
+   * from the form, so the learner never has to type them a second time.
+   */
+  const handleVerified = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const result = await signIn("credentials", {
+      email: normalizedEmail,
+      password,
+      redirect: false, // Don't redirect automatically
+      callbackUrl: callbackUrl || "/dashboard",
+    });
+
+    if (result?.error) {
+      toast.error(
+        "Account created but login failed. Please try logging in manually."
+      );
+      router.push("/login");
+      return;
+    }
+
+    if (result?.ok) {
+      toast.success("Welcome to Airkrit!");
+      const session = await awaitClientSessionAfterSignIn();
+      if (session?.user) {
+        const dest = getPostLoginRedirectPath(session.user as User, callbackUrl);
+        router.push(dest);
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -184,7 +227,8 @@ const RegisterPage = () => {
       
       const normalizedEmail = email.trim().toLowerCase();
 
-      // First, try to register with the backend
+      // Registering only stores a pending signup and emails a code. The account
+      // is created by VerifyEmailStep once that code is confirmed.
       try {
         const response = await apiClient.post("/auth/register", {
           email: normalizedEmail,
@@ -196,34 +240,14 @@ const RegisterPage = () => {
           provider: "credentials",
         });
 
-        if (response.status === 201) {
-          toast.success("Registration successful!");
-
-          // If registration succeeds, proceed with NextAuth signIn
-          const result = await signIn("credentials", {
-            email: normalizedEmail,
-            password,
-            redirect: false, // Don't redirect automatically
-            callbackUrl: callbackUrl || "/dashboard",
+        const data = (response.data as any)?.data;
+        if (response.status === 200 && data?.pendingId) {
+          setPendingSignup({
+            pendingId: data.pendingId,
+            email: data.email || normalizedEmail,
+            expiryMinutes: data.expiryMinutes ?? 10,
           });
-
-          if (result?.error) {
-            toast.error(
-              "Registration successful but login failed. Please try logging in manually."
-            );
-          } else if (result?.ok) {
-            toast.success("Welcome to Airkrit!");
-            const session = await awaitClientSessionAfterSignIn();
-            if (session?.user) {
-              const dest = getPostLoginRedirectPath(
-                session.user as User,
-                callbackUrl
-              );
-              router.push(dest);
-            } else {
-              router.push("/dashboard");
-            }
-          }
+          toast.success("We emailed you a verification code");
         } else {
           toast.error(
             (response.data as any)?.error?.message ||
@@ -257,6 +281,22 @@ const RegisterPage = () => {
           </p>
         </div>
       </div>
+    );
+  }
+
+  // Second step: the form is done, we're waiting on the emailed code.
+  if (pendingSignup) {
+    return (
+      <VerifyEmailStep
+        pendingId={pendingSignup.pendingId}
+        email={pendingSignup.email}
+        expiryMinutes={pendingSignup.expiryMinutes}
+        onVerified={handleVerified}
+        onChangeEmail={() => setPendingSignup(null)}
+        // Form state survives the step change, so the email, name and password
+        // they already typed are still filled in and they can just resubmit.
+        onExpired={() => setPendingSignup(null)}
+      />
     );
   }
 

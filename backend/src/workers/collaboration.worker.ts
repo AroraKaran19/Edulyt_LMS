@@ -1,3 +1,4 @@
+import { sendOpsAlert } from "../services/opsAlert.services";
 import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
 import {
@@ -230,6 +231,21 @@ async function processCollaborationAllotmentJob(job: {
         error: message,
       });
       await syncCollaborationWhitelistWithJobStatus(jobId, "failed", message);
+
+      // Out of retries. A partner-college learner is on a whitelist expecting
+      // access that will now never be granted, and only the job row records it.
+      await sendOpsAlert({
+        key: "collaboration-allotment-failed",
+        title: "Collaboration allotment failed",
+        body: [
+          `job:     ${jobId}`,
+          `retries: ${currentRetry}/${MAX_RETRIES}`,
+          `error:   ${message}`,
+          "",
+          "The whitelist entry has been marked failed. Re-queue the job once the",
+          "cause is fixed so the learner receives their access.",
+        ].join("\n"),
+      });
     }
   }
 }
@@ -289,6 +305,16 @@ export function startCollaborationWorker(): void {
       }
     } catch (e) {
       console.error("[Collaboration Worker] Tick error:", e);
+      void sendOpsAlert({
+        key: "collaboration-worker-tick",
+        title: "Collaboration worker tick failed",
+        body: [
+          "The collaboration loop threw. The loop continues, but allotments may",
+          "not be draining.",
+          "",
+          `error: ${e instanceof Error ? e.stack || e.message : String(e)}`,
+        ].join("\n"),
+      });
     } finally {
       tickRunning = false;
     }

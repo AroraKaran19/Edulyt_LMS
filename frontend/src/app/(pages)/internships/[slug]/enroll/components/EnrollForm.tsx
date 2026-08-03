@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { InternshipEnrollPreview } from "@/types";
 import apiClient from "@/configs/apiConfig";
 import { isApplicationWindowOpenIst } from "@/lib/applicationWindow";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
 import Input from "@/components/ui/inputs/Input";
 import Select, { SelectOption } from "@/components/ui/inputs/Select";
@@ -395,6 +395,7 @@ function formatBatchLabel(
 const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const isSeatFlow = searchParams.get("flow") === "seat";
   const voucherCode = (searchParams.get("voucher") ?? "").trim().toUpperCase();
   const isVoucherFlow = isSeatFlow && voucherCode.length > 0;
@@ -410,9 +411,24 @@ const EnrollForm = ({ preview }: { preview: InternshipEnrollPreview }) => {
   // of writing a stale link.
   const [collegeId, setCollegeId] = useState<string>("");
 
-  const { update: updateSession } = useSession();
+  const { update: updateSession, status: sessionStatus } = useSession();
 
   const sessionHydratedRef = useRef(false);
+
+  /**
+   * Send a signed-out visitor to log in, then straight back here.
+   *
+   * This page is reachable from an inbox: the registration email's paid-seat
+   * link points at it with `?flow=seat&batchId=...`. Without this the form
+   * rendered for a signed-out reader, prefilled nothing, and failed on submit.
+   * `pathname + search` is preserved so the flow and cohort survive the detour.
+   */
+  useEffect(() => {
+    if (sessionStatus !== "unauthenticated") return;
+    const query = searchParams.toString();
+    const returnTo = `${pathname}${query ? `?${query}` : ""}`;
+    router.replace(`/login?callbackUrl=${encodeURIComponent(returnTo)}`);
+  }, [sessionStatus, pathname, searchParams, router]);
 
   const openBatches = useMemo(
     () =>

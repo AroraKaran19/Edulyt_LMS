@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   ArrowLeftRight,
   ArrowUpRight,
+  Award,
   BookOpen,
   Calendar,
   Clock,
@@ -475,6 +476,32 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
   const hideDashboardProgramLink =
     ENROLLED_STATUSES.has(row.status) && (cohortNotStartedYet || programEnded);
 
+  // ── Certificate outcome, shown once the program window has closed ────────
+  // An admin override always beats the frozen evaluation snapshot, so a
+  // rescued learner is never told they missed out (and vice versa).
+  const certificateWithheld =
+    row.certificateOverride === "fail" ||
+    (row.certificateEvaluation?.verdict === "fail" &&
+      row.certificateOverride !== "pass");
+  const certificateEarned =
+    row.certificateOverride === "pass" ||
+    (row.certificateEvaluation?.verdict === "pass" &&
+      row.certificateOverride !== "fail");
+
+  /**
+   * `ready` needs an actual certificate document — generation is a queued job,
+   * so a learner can be certified for a while before the file exists. Until it
+   * lands we say it's on the way rather than linking to a page that 404s.
+   */
+  const certificateOutcome: "ready" | "preparing" | "withheld" | "pending" =
+    row.certificateId
+      ? "ready"
+      : certificateEarned
+        ? "preparing"
+        : certificateWithheld
+          ? "withheld"
+          : "pending";
+
   const pendingCtx = row.paymentPendingContext;
   const paymentPendingBlocked = Boolean(
     pendingCtx &&
@@ -612,10 +639,10 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                 role="status"
               >
                 <p className="text-xs font-bold text-rose-800">
-                  Certificate not awarded
+                  Certificate not issued this time
                 </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-rose-950/80">
-                  You earned{" "}
+                  You finished with{" "}
                   <span className="font-semibold">
                     {row.certificateEvaluation!.earned}
                   </span>{" "}
@@ -625,19 +652,18 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                   </span>{" "}
                   success points needed (
                   {row.certificateEvaluation!.thresholdPct}% of{" "}
-                  {row.certificateEvaluation!.totalAchievable} achievable) before
-                  your program ended.
+                  {row.certificateEvaluation!.totalAchievable} achievable) by the
+                  time your program ended.
                 </p>
                 <p className="mt-2 text-[10px] leading-snug text-rose-950/65">
-                  If you think this is a mistake, reach out to our support team
-                  at{" "}
+                  If you think this doesn&apos;t look right, our support team at{" "}
                   <a
                     href="tel:+918929252575"
                     className="font-semibold text-rose-800 underline underline-offset-2 hover:text-rose-900"
                   >
                     +91-8929252575
                   </a>{" "}
-                  and we&apos;ll review it with you.
+                  will be glad to go through it with you.
                 </p>
               </div>
             )}
@@ -903,7 +929,15 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                   ) : (
                     <p className="text-[11px] text-stone-500">
                       {programEnded ? (
-                        "Your internship program has ended. Tasks and live classes are now closed."
+                        certificateOutcome === "ready" ? (
+                          "Your program has ended and your certificate is ready."
+                        ) : certificateOutcome === "preparing" ? (
+                          "Your program has ended. We're preparing your certificate now — it'll appear here shortly."
+                        ) : certificateOutcome === "withheld" ? (
+                          "Your program has ended. A certificate wasn't issued for this cohort."
+                        ) : (
+                          "Your program has ended. We're finishing up your certificate review."
+                        )
                       ) : hideDashboardProgramLink ? (
                         <>
                           Your cohort begins{" "}
@@ -932,10 +966,39 @@ export default function DashboardInternshipCard({ row, onWithdrawn }: Props) {
                       <ArrowUpRight className="h-4 w-4" />
                     </Link>
                   ) : hideDashboardProgramLink ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300/60 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-600 shrink-0">
-                      <Hourglass className="h-3 w-3" />
-                      {programEnded ? "Program ended" : "Not started yet"}
-                    </span>
+                    programEnded ? (
+                      /* Program over — the useful next step is the certificate,
+                         not a restatement that the program is over. */
+                      certificateOutcome === "ready" ? (
+                        <Link
+                          href={`/dashboard/certificates/${row.certificateId}`}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-900 shrink-0 transition hover:bg-emerald-100"
+                        >
+                          <Award className="h-3.5 w-3.5" />
+                          View certificate
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      ) : certificateOutcome === "withheld" ? (
+                        <Link
+                          href="/dashboard/certificates"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-stone-700 shrink-0 transition hover:bg-stone-50"
+                        >
+                          <Award className="h-3.5 w-3.5 text-stone-400" />
+                          My certificates
+                          <ArrowUpRight className="h-3 w-3" />
+                        </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300/60 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-600 shrink-0">
+                          <Hourglass className="h-3 w-3" />
+                          Certificate on its way
+                        </span>
+                      )
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-xl border border-stone-300/60 bg-stone-50 px-3 py-1.5 text-[11px] font-semibold text-stone-600 shrink-0">
+                        <Hourglass className="h-3 w-3" />
+                        Not started yet
+                      </span>
+                    )
                   ) : (
                     <span className="text-xs text-stone-400">
                       Program link unavailable

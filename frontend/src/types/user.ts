@@ -156,6 +156,8 @@ export interface User {
   profilePicture?: string;
   email: string;
   phone?: string;
+  /** Set when `phone` was proven by an MSG91 OTP. Written only by /me/phone/verify. */
+  phoneVerifiedAt?: string;
   whatsappNumber?: string;
   password: string;
   userType:

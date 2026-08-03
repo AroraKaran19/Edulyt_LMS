@@ -496,7 +496,17 @@ export const internshipCertificateFileName = (
  */
 export const createInternshipCertificateService = async (
   enrollmentId: string
-): Promise<{ certificateId: string; fileUrl: string }> => {
+): Promise<{
+  certificateId: string;
+  fileUrl: string;
+  /**
+   * Public verification page for this certificate. Returned so the closure email
+   * can build its LinkedIn share link without re-reading the document: a PDF
+   * cannot be unfurled into a link preview, and the verification page is what
+   * actually proves the credential.
+   */
+  verificationUrl: string;
+}> => {
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
     .select("_id")
     .lean();
@@ -580,7 +590,7 @@ export const createInternshipCertificateService = async (
       isActive: true,
     });
 
-    return { certificateId, fileUrl };
+    return { certificateId, fileUrl, verificationUrl };
   } catch (error) {
     if (error instanceof AppError) throw error;
     console.error("Error creating internship certificate:", error);

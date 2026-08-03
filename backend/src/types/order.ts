@@ -86,6 +86,11 @@ export interface PaymentOrder {
   invoiceUrl?: string;
   /** When the invoice PDF was rendered and uploaded. */
   invoicedAt?: Date;
+  /**
+   * When the buyer was emailed their confirmation and invoice. Claimed
+   * atomically before the send so retries and re-settlement cannot resend it.
+   */
+  confirmationEmailSentAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }

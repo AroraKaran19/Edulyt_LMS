@@ -10,6 +10,7 @@ import { Student } from "@/types";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import PhoneVerificationField from "@/components/shared/PhoneVerificationField";
 import { DEGREE_OPTIONS, EXPERIENCE_LEVELS } from "@/lib/constants/profileOptions";
 import { GraduationCap } from "lucide-react";
 
@@ -17,6 +18,10 @@ import { GraduationCap } from "lucide-react";
  * Onboarding completion page. Students who are missing experience level, phone,
  * or degree are redirected here by the OnboardingGate. There is deliberately no
  * skip / close / back affordance — the only way forward is to save all three.
+ *
+ * The phone is not part of the save: PhoneVerificationField writes it through
+ * the OTP endpoint, and `phone` here only mirrors what the account already
+ * holds so the button knows whether that step is done.
  */
 
 /** Only allow a same-origin relative path as the post-save destination. */
@@ -50,7 +55,8 @@ const OnboardingPage = () => {
   const [saving, setSaving] = useState(false);
 
   const [experienceLevel, setExperienceLevel] = useState("");
-  const [phone, setPhone] = useState("");
+  // The verified number on the account. Empty until the OTP step completes.
+  const [savedPhone, setSavedPhone] = useState("");
   // Degree dropdown selection ("Other" reveals the free-text field); degreeName
   // is the resolved value sent to the API.
   const [selectedDegree, setSelectedDegree] = useState("");
@@ -68,7 +74,7 @@ const OnboardingPage = () => {
         const profile = res.data?.data as Student | undefined;
         if (!mounted || !profile) return;
         setExperienceLevel(profile.experienceLevel || "");
-        setPhone(profile.phone || "");
+        setSavedPhone(profile.phone || "");
         const degree = profile.degreeName || "";
         setDegreeName(degree);
         if (degree) {
@@ -91,9 +97,8 @@ const OnboardingPage = () => {
     if (!experienceLevel.trim()) {
       next.experienceLevel = "Please select your experience level";
     }
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length !== 10) {
-      next.phone = "Phone number must be exactly 10 digits";
+    if (!savedPhone) {
+      next.phone = "Verify your phone number to continue";
     }
     if (!degreeName.trim()) {
       next.degreeName = "Please select or enter your course / degree";
@@ -106,16 +111,17 @@ const OnboardingPage = () => {
     if (!validate()) return;
     setSaving(true);
     try {
+      // `phone` is deliberately absent: it is already stored, verified, by the
+      // OTP endpoint, and /users/me refuses to change it.
       await apiClient.put("/users/me", {
         experienceLevel: experienceLevel.trim(),
-        phone: phone.trim(),
         degreeName: degreeName.trim(),
       });
 
       // Best-effort: mirror phone into the active session so pages reading from
       // useSession() see it without a reload. DB is the source of truth.
       try {
-        await updateSession?.({ phone: phone.trim() });
+        await updateSession?.({ phone: savedPhone });
       } catch {
         /* session sync is best-effort */
       }
@@ -183,47 +189,16 @@ const OnboardingPage = () => {
             />
           </div>
 
-          {/* Phone Number */}
-          <Input
-            label="Phone Number"
+          {/* Phone Number — saved by the OTP endpoint, not by Save & Continue */}
+          <PhoneVerificationField
             labelClassName="text-base text-text-primary font-bold"
-            placeholder="Enter your phone number"
-            type="tel"
             required
-            inputMode="numeric"
-            maxLength={10}
-            value={phone}
-            onChange={(e) => {
-              // Digits only, hard-capped at 10 (guards paste too).
-              setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+            savedPhone={savedPhone}
+            error={errors.phone || undefined}
+            onVerified={(verifiedPhone) => {
+              setSavedPhone(verifiedPhone);
               setErrors((p) => ({ ...p, phone: "" }));
             }}
-            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-              if (
-                [8, 9, 27, 13, 46, 35, 36, 37, 38, 39, 40].indexOf(
-                  e.keyCode,
-                ) !== -1 ||
-                (e.keyCode === 65 && e.ctrlKey === true) ||
-                (e.keyCode === 67 && e.ctrlKey === true) ||
-                (e.keyCode === 86 && e.ctrlKey === true) ||
-                (e.keyCode === 88 && e.ctrlKey === true)
-              ) {
-                return;
-              }
-              if (
-                (e.shiftKey || e.keyCode < 48 || e.keyCode > 57) &&
-                (e.keyCode < 96 || e.keyCode > 105)
-              ) {
-                e.preventDefault();
-              }
-            }}
-            onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => {
-              const paste = e.clipboardData.getData("text");
-              if (!/^\d+$/.test(paste)) {
-                e.preventDefault();
-              }
-            }}
-            error={errors.phone || undefined}
           />
 
           {/* Course / Degree Name */}

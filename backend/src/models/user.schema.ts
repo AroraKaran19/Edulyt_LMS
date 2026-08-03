@@ -146,6 +146,12 @@ const userSchema = new mongoose.Schema<User>(
           "Please enter a valid phone number — 10 digits, or +91 followed by your number.",
       },
     },
+    /**
+     * When the number in `phone` was last proven by an MSG91 OTP. Unset on
+     * accounts created before phone verification existed, and on numbers an
+     * admin wrote directly, so it means "proven by the owner", not "present".
+     */
+    phoneVerifiedAt: { type: Date, required: false },
     whatsappNumber: {
       type: String,
       required: false,
@@ -156,6 +162,16 @@ const userSchema = new mongoose.Schema<User>(
       },
     },
     password: { type: String, required: true, select: false },
+    /**
+     * When the password was last changed from inside the account, and when the
+     * email was last moved. Both gate a cooldown on doing it again.
+     *
+     * Absent on every account that predates the cooldown, which the check
+     * reads as "never changed, allow it" rather than backfilling a date that
+     * would lock existing learners out of a change they never made.
+     */
+    passwordChangedAt: { type: Date, required: false },
+    emailChangedAt: { type: Date, required: false },
     userType: {
       type: String,
       required: true,
@@ -217,6 +233,16 @@ const userSchema = new mongoose.Schema<User>(
         absoluteExpiresAt: { type: Date, required: true },
       },
     ],
+    /**
+     * Opt-outs for non-essential email. Absent means subscribed, so existing
+     * accounts need no backfill and only an explicit `false` suppresses a send.
+     * Transactional mail ignores this entirely.
+     */
+    emailPreferences: {
+      reviews: { type: Boolean, required: false, default: true },
+      referrals: { type: Boolean, required: false, default: true },
+      promotions: { type: Boolean, required: false, default: true },
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
   },
@@ -249,6 +275,11 @@ userSchema.pre("updateMany", function (next) {
   this.set({ updatedAt: new Date() });
   next();
 });
+
+// Phone verification looks the number up across every account to stop two
+// learners from claiming it. Sparse because most legacy accounts have no phone
+// and an unindexed lookup would scan the whole users collection on every send.
+userSchema.index({ phone: 1 }, { sparse: true });
 
 // Create the base User model
 const UserModel = mongoose.model<User>("User", userSchema);
@@ -499,6 +530,11 @@ userSchema.statics.resetPassword = async function (
   }
   const hashedPassword = await bcrypt.hash(password, 10);
   user.password = hashedPassword;
+  // Starts the change cooldown. A reset is a password change like any other, so
+  // leaving it unstamped would let a learner reset, then immediately change
+  // again from the profile, and the limit would only ever bind the second half
+  // of that pair.
+  user.passwordChangedAt = new Date();
   await user.save();
   return user;
 };

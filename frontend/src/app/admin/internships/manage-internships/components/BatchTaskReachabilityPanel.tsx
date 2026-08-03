@@ -5,6 +5,7 @@ import { useWatch } from "react-hook-form";
 import { AlertTriangle } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { istDateAndTimeToUtcIso } from "@/lib/ist";
 
 type ReachabilityRow = {
   months: number;
@@ -39,11 +40,20 @@ export default function BatchTaskReachabilityPanel({ batchIndex }: Props) {
   const cohortStartRaw = useWatch({
     name: `batches.${batchIndex}.internshipStartDate` as const,
   });
+  const cohortStartTimeRaw = useWatch({
+    name: `batches.${batchIndex}.internshipStartTime` as const,
+  });
   const idsRaw = useWatch({
     name: `batches.${batchIndex}.taskTemplateIds` as const,
   });
 
-  const cohortStart = String(cohortStartRaw ?? "");
+  // Preview against the same IST instant that will be saved, so the day offsets
+  // shown here match the windows the learner actually gets.
+  const cohortStart =
+    istDateAndTimeToUtcIso(
+      String(cohortStartRaw ?? ""),
+      String(cohortStartTimeRaw ?? ""),
+    ) ?? "";
   const taskTemplateIds: string[] = Array.isArray(idsRaw)
     ? (idsRaw as string[])
     : [];

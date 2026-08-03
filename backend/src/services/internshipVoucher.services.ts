@@ -4,11 +4,20 @@ import {
   generateVoucherCode,
 } from "../models/internshipVoucher.schema";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { EnrollmentModel } from "../models/enrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
+import { CourseModel } from "../models/course.schema";
+import { UserModel } from "../models/user.schema";
+import { internshipVoucherAwardedMail } from "../mail";
+import {
+  frontendBaseUrl,
+  internshipListingUrl,
+} from "../lib/internshipSeatUrl";
 import { AppError } from "../middlewares/error.middleware";
 import { isVoucherRedemptionWindowOpen } from "../utils/applicationWindow";
 import { sanitizeApplicationAnswers } from "./internshipEnrollment.services";
 import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
+import { queueInternshipApplicationReceivedEmail } from "./internshipApplicationMail.services";
 import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -23,6 +32,10 @@ export interface InternshipVoucherRow {
   expiresAt: string | null;
   redeemedAt: string | null;
   redeemedInternshipEnrollmentId: string | null;
+  /** Title of the course purchase that earned this voucher. */
+  sourceCourseName: string | null;
+  /** Title of the internship the voucher was spent on (redeemed only). */
+  redeemedInternshipTitle: string | null;
 }
 
 // ─── Qualification check ──────────────────────────────────────────────────────
@@ -52,6 +65,66 @@ export function qualifiesForInternshipVoucher(order: {
 // ─── Issue ────────────────────────────────────────────────────────────────────
 
 /**
+ * Tell the learner they earned a voucher.
+ *
+ * No claim guard of its own: the unique index on `sourceOrderId` means the create
+ * above succeeds exactly once per qualifying order, so this runs once by
+ * construction. Swallows its own failures, because a voucher that exists but was
+ * not announced is recoverable, and a purchase that fails because an email did not
+ * send is not.
+ */
+const notifyVoucherAwarded = async (
+  userId: string,
+  courseEnrollmentId: string,
+  voucherCode: string,
+): Promise<void> => {
+  try {
+    const [user, enrollment] = await Promise.all([
+      UserModel.findById(userId)
+        .select("firstName lastName name email")
+        .lean<{
+          firstName?: string;
+          lastName?: string;
+          name?: string;
+          email?: string;
+        }>(),
+      EnrollmentModel.findById(courseEnrollmentId)
+        .select("courseId")
+        .lean<{ courseId?: mongoose.Types.ObjectId }>(),
+    ]);
+
+    const email = user?.email?.trim();
+    if (!email) return;
+
+    const course = enrollment?.courseId
+      ? await CourseModel.findById(enrollment.courseId)
+          .select("title")
+          .lean<{ title?: string }>()
+      : null;
+
+    const name =
+      [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+      user?.name?.trim() ||
+      "there";
+
+    internshipVoucherAwardedMail.send([{ email, name }], {
+      name,
+      courseName: course?.title?.trim() || "your course",
+      voucherCode,
+      // Opens the claim modal straight onto this voucher.
+      ctaUrl: `${frontendBaseUrl()}/vouchers?claim=${encodeURIComponent(voucherCode)}`,
+      browseUrl: internshipListingUrl(),
+      year: new Date().getFullYear(),
+    });
+  } catch (error) {
+    console.error(
+      `[Voucher Mail] Could not announce voucher for user ${userId}:`,
+      error instanceof Error ? error.message : error,
+    );
+  }
+};
+
+/**
  * Issue one internship voucher for a qualifying course purchase.
  *
  * Idempotent: a second call with the same `orderId` is silently ignored
@@ -68,14 +141,16 @@ export async function issueInternshipVoucher(params: {
   const { userId, enrollmentId, orderId } = params;
 
   for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateVoucherCode();
     try {
       await InternshipVoucherModel.create({
-        code: generateVoucherCode(),
+        code,
         userId: new mongoose.Types.ObjectId(userId),
         sourceEnrollmentId: new mongoose.Types.ObjectId(enrollmentId),
         sourceOrderId: new mongoose.Types.ObjectId(orderId),
         status: "available",
       });
+      await notifyVoucherAwarded(userId, enrollmentId, code);
       return; // success
     } catch (err: unknown) {
       const e = err as { code?: number; keyPattern?: Record<string, unknown> };
@@ -111,6 +186,44 @@ export async function listVouchersForUser(
     .sort({ createdAt: -1 })
     .lean();
 
+  if (docs.length === 0) return [];
+
+  // Resolve the "what is this voucher for" labels in two batched _id lookups
+  // (no per-voucher round trips): the course purchase that earned it, and the
+  // internship it was spent on.
+  const courseEnrollmentIds = docs
+    .map((d) => d.sourceEnrollmentId)
+    .filter(Boolean) as mongoose.Types.ObjectId[];
+  const internshipEnrollmentIds = docs
+    .map((d) => d.redeemedInternshipEnrollmentId)
+    .filter(Boolean) as mongoose.Types.ObjectId[];
+
+  const [courseEnrollments, internshipEnrollments] = await Promise.all([
+    courseEnrollmentIds.length
+      ? EnrollmentModel.find({ _id: { $in: courseEnrollmentIds } })
+          .select("courseName")
+          .lean()
+      : [],
+    internshipEnrollmentIds.length
+      ? InternshipEnrollmentModel.find({ _id: { $in: internshipEnrollmentIds } })
+          .select("internshipSnapshot.title")
+          .lean()
+      : [],
+  ]);
+
+  const courseNameById = new Map<string, string>();
+  for (const e of courseEnrollments) {
+    const name = (e as { courseName?: string | null }).courseName;
+    if (name) courseNameById.set(String(e._id), name);
+  }
+
+  const internshipTitleById = new Map<string, string>();
+  for (const e of internshipEnrollments) {
+    const title = (e as { internshipSnapshot?: { title?: string } })
+      .internshipSnapshot?.title;
+    if (title) internshipTitleById.set(String(e._id), title);
+  }
+
   return docs.map((d) => ({
     _id: String(d._id),
     code: d.code,
@@ -120,6 +233,13 @@ export async function listVouchersForUser(
     redeemedAt: d.redeemedAt ? (d.redeemedAt as Date).toISOString() : null,
     redeemedInternshipEnrollmentId: d.redeemedInternshipEnrollmentId
       ? String(d.redeemedInternshipEnrollmentId)
+      : null,
+    sourceCourseName: d.sourceEnrollmentId
+      ? (courseNameById.get(String(d.sourceEnrollmentId)) ?? null)
+      : null,
+    redeemedInternshipTitle: d.redeemedInternshipEnrollmentId
+      ? (internshipTitleById.get(String(d.redeemedInternshipEnrollmentId)) ??
+        null)
       : null,
   }));
 }
@@ -338,12 +458,22 @@ export async function redeemInternshipVoucher(params: {
     redeemedInternshipEnrollmentId: enrollment._id,
   });
 
+  let awardedPoints = 0;
   try {
-    await tryAwardInternshipRegistrationPoints(String(enrollment._id));
+    awardedPoints = await tryAwardInternshipRegistrationPoints(
+      String(enrollment._id),
+    );
   } catch (e) {
     // A reward failure must never break voucher redemption.
     console.error("Internship registration reward failed:", e);
   }
+
+  // Awaited above so the email can state the points actually credited.
+  queueInternshipApplicationReceivedEmail(
+    String(enrollment._id),
+    "voucher",
+    awardedPoints,
+  );
 
   return {
     internshipEnrollmentId: String(enrollment._id),

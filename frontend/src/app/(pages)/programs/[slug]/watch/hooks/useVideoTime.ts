@@ -10,6 +10,26 @@ interface VideoTimeState {
   isPlaying: boolean;
 }
 
+/**
+ * Format seconds as MM:SS, or HH:MM:SS once past an hour.
+ *
+ * Module scope, not hook scope: it closes over nothing, and consumers read it
+ * from a context whose identity must stay stable across playback ticks.
+ */
+export const formatTime = (time: number): string => {
+  if (!time || isNaN(time)) return '0:00';
+
+  const hours = Math.floor(time / 3600);
+  const minutes = Math.floor((time % 3600) / 60);
+  const seconds = Math.floor(time % 60);
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  } else {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  }
+};
+
 export const useVideoTime = () => {
   const [timeState, setTimeState] = useState<VideoTimeState>({
     currentTime: 0,
@@ -23,20 +43,17 @@ export const useVideoTime = () => {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  // Format time in MM:SS or HH:MM:SS format
-  const formatTime = (time: number): string => {
-    if (!time || isNaN(time)) return '0:00';
-    
-    const hours = Math.floor(time / 3600);
-    const minutes = Math.floor((time % 3600) / 60);
-    const seconds = Math.floor(time % 60);
-    
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    } else {
-      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-    }
-  };
+  /**
+   * Increments every time a new <video> element is attached.
+   *
+   * Consumers that queue an action against the *next* video (jumping to a note
+   * in another lecture, say) can't rely on `isLoaded` alone: it stays true from
+   * the outgoing video until the incoming one reports metadata, so an action
+   * fired in that window would land on the element being unmounted. Comparing
+   * sequence numbers makes "a different player is now attached" observable.
+   */
+  const connectionSeqRef = useRef(0);
+  const [connectionSeq, setConnectionSeq] = useState(0);
 
   // Update time state
   const updateTimeState = useCallback((video: HTMLVideoElement) => {
@@ -60,6 +77,8 @@ export const useVideoTime = () => {
   // Connect to video element
   const connectToVideo = useCallback((video: HTMLVideoElement) => {
     videoRef.current = video;
+    connectionSeqRef.current += 1;
+    setConnectionSeq(connectionSeqRef.current);
 
     const handleTimeUpdate = () => updateTimeState(video);
     const handleLoadedMetadata = () => updateTimeState(video);
@@ -106,6 +125,13 @@ export const useVideoTime = () => {
     });
   }, []);
 
+  /**
+   * Reads the current connection sequence without subscribing to it, so a
+   * consumer can stamp "which player was attached when I queued this" without
+   * re-rendering on every playback tick.
+   */
+  const getConnectionSeq = useCallback(() => connectionSeqRef.current, []);
+
   // Seek to specific time
   const seekTo = useCallback((time: number) => {
     if (videoRef.current) {
@@ -148,6 +174,7 @@ export const useVideoTime = () => {
 
   return {
     ...timeState,
+    connectionSeq,
     connectToVideo,
     disconnectFromVideo,
     seekTo,
@@ -155,6 +182,7 @@ export const useVideoTime = () => {
     play,
     pause,
     togglePlay,
+    getConnectionSeq,
     formatTime, // Export for external use
   };
 }; 

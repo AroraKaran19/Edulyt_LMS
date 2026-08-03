@@ -23,6 +23,11 @@ export interface GetUserEnrollmentsParams {
     | "name-desc"
     | "duration-asc"
     | "duration-desc";
+  /**
+   * Exclude enrollments whose course is retired or deleted. Off by default so
+   * My Programs keeps listing them as "no longer available".
+   */
+  courseActive?: boolean;
 }
 
 export interface GetUserEnrollmentsResult {
@@ -70,6 +75,7 @@ const useUserEnrollments = () => {
           queryParams.append("status", params.status);
         if (params.search) queryParams.append("search", params.search);
         if (params.sortBy) queryParams.append("sortBy", params.sortBy);
+        if (params.courseActive) queryParams.append("courseActive", "true");
 
         const response = await apiClient.get(
           `/enrollments/user/me?${queryParams.toString()}`

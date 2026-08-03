@@ -1,17 +1,48 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "./dashboard/ui/Card";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import Loader from "@/components/ui/Loader";
 import useUserStats from "@/hooks/useUserStats";
-import ReferAndEarnModal from "@/components/shared/Referral/ReferAndEarnModal";
+import ReferAndEarnModal, {
+  REFER_MODAL_QUERY_PARAM,
+} from "@/components/shared/Referral/ReferAndEarnModal";
 
 const DashboardBanner = () => {
   const { data: session } = useSession();
   const { stats, isLoading } = useUserStats();
-  const [referModalOpen, setReferModalOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  /**
+   * Opens the modal from a link rather than a click, so the referral email's
+   * CTA lands on the rewards themselves rather than on a dashboard where the
+   * reader still has to find the button.
+   *
+   * Read as the initial value rather than set from an effect: the link always
+   * arrives as a fresh mount of this route, and deriving it avoids a second
+   * render just to open the modal.
+   */
+  const [referModalOpen, setReferModalOpen] = useState(
+    () => searchParams.get(REFER_MODAL_QUERY_PARAM) === "1",
+  );
+
+  // Strip the param once it has been acted on, or every back-navigation to the
+  // dashboard reopens the modal.
+  useEffect(() => {
+    if (searchParams.get(REFER_MODAL_QUERY_PARAM) !== "1") return;
+
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete(REFER_MODAL_QUERY_PARAM);
+    const query = next.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }, [searchParams, pathname, router]);
 
   const hour = new Date().getHours();
   const timeMessage =

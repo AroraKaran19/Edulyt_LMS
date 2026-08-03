@@ -20,6 +20,25 @@ export const ENDPOINTS = {
     revokeSession: "/auth/sessions/revoke",
     /** POST — sign out every device except the current one. */
     revokeOtherSessions: "/auth/sessions/revoke-others",
+    /** POST body `{ pendingId, otp }` — confirm the signup code, creates the account. */
+    verifyRegistrationOtp: "/auth/register/verify-otp",
+    /** POST body `{ pendingId }` — email a fresh signup code. */
+    resendRegistrationOtp: "/auth/register/resend-otp",
+  },
+
+  /**
+   * Opt-outs for non-essential email. Transactional mail (codes, resets,
+   * receipts, certificates) is never governed by these.
+   */
+  emailPreferences: {
+    /** GET — current opt-in state per category. */
+    me: "/email-preferences/me",
+    /** PATCH body `{ preferences: { reviews: boolean, ... } }`. */
+    update: "/email-preferences/me",
+    /** POST body `{ uid, cat, sig }` — from an emailed link, no session. */
+    unsubscribe: "/email-preferences/unsubscribe",
+    /** POST body `{ uid, cat, sig }` — undo an unsubscribe. */
+    resubscribe: "/email-preferences/resubscribe",
   },
 
   // Course Routes
@@ -432,6 +451,21 @@ export const ENDPOINTS = {
       add: "/qnas",
       remove: "/qnas",
     },
+  },
+
+  /**
+   * Private video notes. Every route is scoped to the caller's own notes;
+   * there is deliberately no admin or instructor variant.
+   */
+  notes: {
+    /** GET `?courseId=` — the caller's whole note set for one course. */
+    list: "/notes",
+    /** POST body `{ courseId, lessonId, contentId, content, timestamp }`. */
+    create: "/notes",
+    /** PUT `/notes/:id` body `{ content }` — text only, anchor stays put. */
+    update: "/notes",
+    /** DELETE `/notes/:id`. */
+    delete: "/notes",
   },
 
   /** Public marketing home page CMS — read-only. */

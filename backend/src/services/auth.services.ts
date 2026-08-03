@@ -1,4 +1,5 @@
 import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
+import { assertPasswordChangeAllowed } from "../constants/accountChangeCooldown";
 import { AppError } from "../middlewares/error.middleware";
 import {
   CollaboratorModel,
@@ -12,12 +13,27 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validatePassword } from "../utils/passwordValidation";
 
+/** Picks the discriminator model for a user type. Students are the default. */
+const buildUserModel = (userData: Partial<User>) => {
+  switch (userData.userType) {
+    case "instructor":
+      return new InstructorModel(userData);
+    case "collaborator":
+      return new CollaboratorModel(userData);
+    case "partner":
+      return new PartnerModel(userData);
+    case "student":
+    default:
+      return new StudentModel(userData);
+  }
+};
+
 export const registerUser = async (userData: Partial<User>) => {
   // Validate password before hashing
   if (userData.password) {
     validatePassword(userData.password);
   }
-  
+
   const hashedPassword = await bcrypt.hash(userData.password!, 10);
   const newUserData: Partial<User> = {
     ...userData,
@@ -25,27 +41,32 @@ export const registerUser = async (userData: Partial<User>) => {
   };
 
   try {
-    let newUser: any;
-    switch (newUserData.userType) {
-      case "student":
-        newUser = new StudentModel(newUserData);
-        break;
-      case "instructor":
-        newUser = new InstructorModel(newUserData);
-        break;
-      case "collaborator":
-        newUser = new CollaboratorModel(newUserData);
-        break;
-      case "partner":
-        newUser = new PartnerModel(newUserData);
-        break;
-      default:
-        newUser = new StudentModel(newUserData);
-        break;
-    }
+    const newUser = buildUserModel(newUserData);
     await newUser.save();
     return newUser;
   } catch (error) {
+    throw new AppError("Internal server error", 500);
+  }
+};
+
+/**
+ * Creates the account for a signup whose email OTP has been verified.
+ *
+ * Takes the password ALREADY hashed, straight from the pending record. Routing
+ * this through `registerUser` would bcrypt the hash a second time and lock the
+ * learner out of an account they can never log into.
+ */
+export const createVerifiedUser = async (
+  userData: Partial<User> & { password: string },
+) => {
+  try {
+    const newUser = buildUserModel(userData);
+    await newUser.save();
+    return newUser;
+  } catch (error) {
+    if ((error as { code?: number })?.code === 11000) {
+      throw new AppError("User already exists!", 400, "USER_EXISTS");
+    }
     throw new AppError("Internal server error", 500);
   }
 };
@@ -292,6 +313,13 @@ export const resetUserPassword = async (token: string, newPassword: string) => {
   if (!user) {
     throw new AppError("User not found", 404);
   }
+
+  // Enforced when the link is redeemed, not when it is requested. Refusing to
+  // send would be indistinguishable from a delivery failure, and the request
+  // endpoint has to answer identically for every address so it cannot be used
+  // to probe for accounts. Here the holder of a valid token can simply be told.
+  assertPasswordChangeAllowed(user.passwordChangedAt);
+
   await (UserModel as any).resetPassword(decoded.userId, newPassword);
 };
 
@@ -305,6 +333,10 @@ export const changeUserPassword = async (
     throw new AppError("User not found", 404);
   }
 
+  // `PUT /auth/change-password` writes the same field as the profile route, so
+  // it needs the same limit or it is simply the unlocked door next to it.
+  assertPasswordChangeAllowed(user.passwordChangedAt);
+
   const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
   if (!isPasswordValid) {
     throw new AppError("Invalid credentials", 401);
@@ -312,5 +344,6 @@ export const changeUserPassword = async (
 
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   user.password = hashedPassword;
+  user.passwordChangedAt = new Date();
   await user.save();
 };

@@ -38,6 +38,12 @@ export function createDefaultInternshipAnalytics(): InternshipAnalytics {
   };
 }
 
+/**
+ * Cohorts begin at IST midnight unless the admin picks another time.
+ * Paired with `internshipStartDate` and sent as a single UTC instant.
+ */
+export const DEFAULT_BATCH_START_TIME = "00:00";
+
 /** Batch row in the form (date fields as YYYY-MM-DD strings for inputs). Embedded on internship at save. */
 export interface InternshipBatchFormValue {
   /** Present when editing an existing embedded batch (Mongo subdocument id). */
@@ -45,6 +51,12 @@ export interface InternshipBatchFormValue {
   name: string;
   applicationLastDate: string;
   internshipStartDate: string;
+  /**
+   * IST wall-clock time of day the cohort begins ("HH:mm", 24h). Form-only:
+   * combined with `internshipStartDate` into the stored `internshipStartDate`
+   * instant. Defaults to {@link DEFAULT_BATCH_START_TIME}.
+   */
+  internshipStartTime: string;
   status: "active" | "inactive" | "completed";
   isActive: boolean;
   /** Review ids; usually updated by backend, not the wizard. */

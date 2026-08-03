@@ -7,6 +7,8 @@ interface CustomError extends Error {
   errors?: any;
   path?: string;
   value?: any;
+  isOperational?: boolean;
+  meta?: Record<string, unknown>;
 }
 
 interface ErrorResponse {
@@ -16,6 +18,9 @@ interface ErrorResponse {
     type: string;
     statusCode: number;
     code?: string;
+    /** Client-actionable data from AppError. Kept in production. */
+    meta?: Record<string, unknown>;
+    /** Debug-only; stripped outside development. */
     details?: any;
     timestamp: string;
     path: string;
@@ -127,12 +132,14 @@ export const errorHandler = (
     };
   }
 
-  // Rate limiting errors
-  if (err.statusCode === 429) {
-    const message = "Too many requests. Please try again later.";
+  // Rate limiting errors.
+  // Only generic throttles are rewritten. An operational AppError already
+  // carries copy that tells the user which limit they hit and when it lifts;
+  // replacing it would strip exactly the information they need.
+  if (err.statusCode === 429 && !err.isOperational) {
     error = {
       ...error,
-      message,
+      message: "Too many requests. Please try again later.",
       statusCode: 429,
     };
   }
@@ -160,6 +167,7 @@ export const errorHandler = (
       type: errorType,
       statusCode,
       ...(code && { code }),
+      ...(err.meta && { meta: err.meta }),
       timestamp: new Date().toISOString(),
       path: req.path,
       ...(process.env.NODE_ENV === "development" && {
@@ -227,12 +235,25 @@ export class AppError extends Error {
   public statusCode: number;
   public isOperational: boolean;
   public code?: string;
+  /**
+   * Structured data sent to the client alongside the message, for cases where
+   * the UI has to act on a number rather than print a sentence (e.g.
+   * `retryAfterMinutes` on a throttled request). Survives production, unlike
+   * `details`, so never put internals in here.
+   */
+  public meta?: Record<string, unknown>;
 
-  constructor(message: string, statusCode: number, code?: string) {
+  constructor(
+    message: string,
+    statusCode: number,
+    code?: string,
+    meta?: Record<string, unknown>,
+  ) {
     super(message);
     this.statusCode = statusCode;
     this.isOperational = true;
     if (code) this.code = code;
+    if (meta) this.meta = meta;
 
     Error.captureStackTrace(this, this.constructor);
   }

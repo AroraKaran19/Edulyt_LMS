@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <title>Airkrit India</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .logo-pad { padding-left: 20px !important; padding-right: 20px !important; }
+      .hero-pad { padding: 22px 20px !important; }
+      .hero-title { font-size: 20px !important; line-height: 27px !important; }
+      .body-pad { padding-left: 20px !important; padding-right: 20px !important; }
+      .env-badge { display: block !important; margin-top: 10px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#FFF6EF;">
+  <!-- Preheader -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+    {{environment}} / {{severity}}: {{alertTitle}}
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6EF;">
+    <tr>
+      <td align="center" style="padding: 32px 16px 40px 16px;">
+        <table role="presentation" class="container" cellpadding="0" cellspacing="0" border="0" width="640" style="width:100%; max-width:640px;">
+
+          <tr>
+            <td style="padding:0; background-color:#FFFFFF; border:1px solid #F3E1D4; border-radius:20px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+
+                <tr>
+                  <td class="logo-pad" align="center" style="padding: 26px 40px 18px 40px; border-radius:20px 20px 0 0;">
+                    <a href="https://www.airkrit.com" target="_blank" style="text-decoration:none;">
+                      <img src="https://www.airkrit.com/logo.png" width="160" alt="Airkrit India" style="display:block; border:0; outline:none; text-decoration:none; height:auto; max-width:160px;" />
+                    </a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="hero-pad" bgcolor="#F77124" style="background-color:#F77124; background-image:linear-gradient(135deg, #F77124 0%, #FF9A4D 100%); padding: 26px 40px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td valign="middle">
+                          <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FFE3CC;">{{environment}} Alert</p>
+                          <h1 class="hero-title" style="margin:0; font-size:23px; line-height:30px; font-weight:800; color:#FFFFFF;">{{alertTitle}}</h1>
+                        </td>
+                        <td valign="middle" align="right" style="white-space:nowrap; padding-left:16px;">
+                          <!-- Severity, not environment: it is what varies and what decides
+                               whether anyone acts tonight. Also drives the subject prefix. -->
+                          <span class="env-badge" style="display:inline-block; background-color:rgba(255,255,255,0.22); color:#FFFFFF; font-size:11px; line-height:14px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; padding:6px 12px; border-radius:20px;">{{severity}}</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="body-pad" style="padding: 30px 40px 32px 40px;">
+
+                    <!-- Static prose, because MSG91 review rejected a version that was almost
+                         entirely variables. Written for the engineer who receives it, not for
+                         the reviewer: an alert that explains to the ops team that it is going to
+                         the ops team reads like it was addressed to somebody else. -->
+                    <p style="margin:0 0 26px 0; font-size:15px; line-height:24px; color:#5C4A42;">A background job or worker on the Airkrit India platform has failed and stopped retrying. The details below identify what broke and where, so it can be re-queued once the cause is fixed.</p>
+
+                    <p style="margin:0 0 10px 0; font-size:11px; line-height:16px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#A2938B;">Failure details</p>
+
+                    <!-- alertBody arrives HTML-escaped with newlines already converted to <br>,
+                         so no email client is relied on to honour white-space CSS. The red rule
+                         marks this block as the failure payload without fighting the brand hero. -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F3E1D4; border-left:3px solid #D64545; border-radius:8px; background-color:#FFF7F1;">
+                      <tr>
+                        <td style="padding:20px 22px; font-family:'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; font-size:13px; line-height:21px; color:#5C4A42;">
+                          {{alertBody}}
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin:26px 0 0 0; padding-top:22px; border-top:1px solid #F0E3DA; font-size:13px; line-height:20px; color:#9A8B84;">Sent automatically by the Airkrit India backend. Repeat alerts of the same kind are suppressed for a short window, so one email can stand for several failures.</p>
+
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding: 22px 16px 4px 16px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <p style="margin:0; font-size:12px; line-height:18px; color:#B3A79F;">&copy; {{year}} Airkrit India. Internal use only.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

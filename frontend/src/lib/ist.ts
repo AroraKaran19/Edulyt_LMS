@@ -56,6 +56,21 @@ export function istDatetimeLocalToUtcIso(localStr: string | null | undefined): s
   return istWallClockToUtc(+m[1], +m[2], +m[3], +m[4], +m[5], m[6] ? +m[6] : 0).toISOString();
 }
 
+/**
+ * Combine a `type="date"` value with a `type="time"` value (both IST wall-clock)
+ * into a UTC ISO string. A blank/missing time means IST midnight, so a form that
+ * only collects a date still stores the start of that IST day.
+ */
+export function istDateAndTimeToUtcIso(
+  dateStr: string | null | undefined,
+  timeStr?: string | null,
+): string | null {
+  const date = String(dateStr ?? "").trim();
+  if (!date) return null;
+  const time = String(timeStr ?? "").trim() || "00:00";
+  return istDatetimeLocalToUtcIso(`${date}T${time}`);
+}
+
 /** Parse a date-only value ("YYYY-MM-DD") as IST midnight → UTC ISO string. */
 export function istDateOnlyToUtcIso(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null;
@@ -99,6 +114,11 @@ export function utcToIstDatetimeLocalValue(value: DateInput): string {
 /** Pre-fill a `type="date"` input from a stored instant, in IST ("YYYY-MM-DD"). */
 export function utcToIstDateValue(value: DateInput): string {
   return ymdIst(value) ?? "";
+}
+
+/** Pre-fill a `type="time"` input from a stored instant, in IST ("HH:mm"). */
+export function utcToIstTimeValue(value: DateInput): string {
+  return utcToIstDatetimeLocalValue(value).slice(11, 16);
 }
 
 /**

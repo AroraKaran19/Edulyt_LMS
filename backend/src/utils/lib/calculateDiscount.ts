@@ -1,25 +1,31 @@
 import { Discount, CourseDiscount } from "../../types";
+import { istNowParts, todayIst, ymdIst } from "../ist";
 
 /**
  * Check if plan discount is currently active
- * Only apply when current date is within startDate and endDate.
+ * Only apply when the current IST calendar day is within startDate and endDate
+ * (both inclusive). Day-string comparison, not instant math: the admin picks
+ * calendar dates, and `setHours` here would read the server's UTC day and open
+ * or close the sale 5h30m late. Mirrors `getDiscountInfo` on the frontend.
  */
 function isPlanDiscountCurrentlyActive(
   planDiscount?: Discount | null,
 ): boolean {
   if (!planDiscount || !planDiscount.isActive) return false;
   if (!planDiscount.startDate || !planDiscount.endDate) return true;
-  const now = new Date();
-  const startDate = new Date(planDiscount.startDate);
-  const endDate = new Date(planDiscount.endDate);
-  startDate.setHours(0, 0, 0, 0);
-  endDate.setHours(23, 59, 59, 999);
-  return now >= startDate && now <= endDate;
+  const today = todayIst();
+  const start = ymdIst(planDiscount.startDate);
+  const end = ymdIst(planDiscount.endDate);
+  return !!start && !!end && today >= start && today <= end;
 }
 
 /**
  * Check if course discount is currently active
  * Respects displayTime/resetAfter (expired) and startTime/endTime window.
+ *
+ * `startTime`/`endTime` are IST times-of-day, so "now" must be read in IST too.
+ * Reading the server clock (UTC) shifted the whole window by 5h30m and made the
+ * price the API charged disagree with the price the frontend was showing.
  */
 function isCourseDiscountCurrentlyActive(
   courseDiscount?: CourseDiscount | null,
@@ -31,10 +37,10 @@ function isCourseDiscountCurrentlyActive(
   };
   if (cd.displayTime === "00:00:00" || cd.resetAfter === 0) return false;
   if (!cd.startTime || !cd.endTime) return true;
-  const now = new Date();
+  const ist = istNowParts();
   const [startHour, startMin] = cd.startTime.split(":").map(Number);
   const [endHour, endMin] = cd.endTime.split(":").map(Number);
-  const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentTimeInMinutes = ist.hh * 60 + ist.mm;
   const startTimeInMinutes = startHour * 60 + startMin;
   const endTimeInMinutes = endHour * 60 + endMin;
   if (startTimeInMinutes <= endTimeInMinutes) {

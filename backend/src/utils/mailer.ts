@@ -13,11 +13,11 @@ dotenv.config();
  * `sendTemplateMail` when the caller genuinely needs the outcome.
  *
  * Templates live in the MSG91 dashboard; the backend only ever sends a
- * template id plus its variables. Declare each template once in
- * `mailTemplates.ts` with `defineMailTemplate` so its variables are typed at
+ * template id plus its variables. Declare each template once in its own module
+ * under `src/mail/` with `defineMailTemplate` so its variables are typed at
  * the call site:
  *
- *   // src/utils/mailTemplates.ts
+ *   // src/mail/welcome.mail.ts
  *   export const welcomeMail = defineMailTemplate<{
  *     name: string;
  *     loginUrl: string;

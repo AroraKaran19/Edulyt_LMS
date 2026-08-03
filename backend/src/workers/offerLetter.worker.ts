@@ -1,3 +1,4 @@
+import { sendOpsAlert } from "../services/opsAlert.services";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { processOfferLetterForEnrollment } from "../services/cron.services";
 import {
@@ -143,6 +144,21 @@ async function processOfferLetterJob(job: {
     console.log(
       `[Offer Letter Worker] Job ${jobId} marked failed — awaiting admin retry.`,
     );
+
+    // This worker never auto-retries, so a failed job sits until a human notices.
+    // Without an alert the only trace is a job row nobody is watching, and the
+    // learner is waiting on an offer letter that has no process behind it.
+    await sendOpsAlert({
+      key: "offer-letter-generation-failed",
+      title: "Offer letter generation failed",
+      body: [
+        `job:   ${jobId}`,
+        `error: ${message}`,
+        "",
+        "This worker does not auto-retry. Retry the job from the admin dashboard",
+        "once the cause is fixed.",
+      ].join("\n"),
+    });
   }
 }
 
@@ -205,6 +221,17 @@ export function startOfferLetterWorker(): void {
       }
     } catch (error) {
       console.error("[Offer Letter Worker] Error in job processing loop:", error);
+      // The tick itself broke rather than one job, so no job row records it.
+      void sendOpsAlert({
+        key: "offer-letter-worker-tick",
+        title: "Offer letter worker tick failed",
+        body: [
+          "The offer letter job loop threw. The loop continues, but jobs may not",
+          "be draining.",
+          "",
+          `error: ${error instanceof Error ? error.stack || error.message : String(error)}`,
+        ].join("\n"),
+      });
     } finally {
       tickRunning = false;
     }

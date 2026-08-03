@@ -121,6 +121,19 @@ export interface Enrollment {
   certificateIssuedAt?: Date;
   /** Set when success points were credited for this enrollment (at most once). */
   successPointsCompletionAwarded?: boolean;
+  /**
+   * When the learner was emailed their certificate. Distinct from
+   * `certificateIssuedAt`, which records when the document was minted rather than
+   * whether anyone was told. Claimed atomically so a re-queued job cannot mail
+   * the same learner twice.
+   */
+  certificateEmailSentAt?: Date;
+  /**
+   * When the learner was told their certificate is still being prepared, after
+   * generation failed permanently. Interim notice, so it deliberately does not
+   * consume the terminal slot above.
+   */
+  certificatePendingEmailSentAt?: Date;
   
   // Analytics
   totalTimeSpent?: number; // In seconds

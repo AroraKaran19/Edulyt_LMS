@@ -64,7 +64,11 @@
 
                     <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">Hi {{name}},</p>
 
-                    <p style="margin:0 0 6px 0; font-size:15px; line-height:24px; color:#5C4A42;">Thank you for taking the entrance exam for <strong style="color:#2B1508;">{{internshipName}}</strong>. This time, you didn't make the merit list, and we know that's not the news you hoped for.</p>
+                    <!-- "Not selected" rather than "didn't make the merit list": an admin can
+                         reject from `in_merit_pool` as well as from `exam_attempted`, so a learner
+                         who did reach the shortlist can receive this. Naming the merit list would
+                         tell them they failed a step they actually passed. -->
+                    <p style="margin:0 0 6px 0; font-size:15px; line-height:24px; color:#5C4A42;">Thank you for taking the entrance exam for <strong style="color:#2B1508;">{{internshipName}}</strong>. You were not selected for this batch, and we know that's not the news you hoped for.</p>
 
                     <p style="margin:16px 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">But you can still join, a limited number of seats are open right now.</p>
 

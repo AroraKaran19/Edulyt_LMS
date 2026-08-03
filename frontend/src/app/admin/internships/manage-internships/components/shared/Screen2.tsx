@@ -9,6 +9,7 @@ import {
   InternshipFormData,
   createDefaultInternshipBatchPlan,
   createDefaultInternshipDiscount,
+  DEFAULT_BATCH_START_TIME,
 } from "@/types/internshipForm";
 import InternshipBatchPlanFields from "../InternshipBatchPlanFields";
 import BatchExamTemplatesSelect from "../BatchExamTemplatesSelect";
@@ -33,6 +34,7 @@ const defaultBatch = () => ({
   name: "",
   applicationLastDate: "",
   internshipStartDate: "",
+  internshipStartTime: DEFAULT_BATCH_START_TIME,
   status: "active" as const,
   isActive: true,
   plan: createDefaultInternshipBatchPlan(),
@@ -68,6 +70,18 @@ function formatShortIst(iso: string): string {
       minute: "2-digit",
     }) || iso
   );
+}
+
+/** "00:00" → "12:00 AM" for the collapsed batch summary. */
+function formatStartTime(hhmm: string | undefined): string {
+  const m = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/.exec(
+    (hhmm || DEFAULT_BATCH_START_TIME).trim(),
+  );
+  if (!m) return hhmm ?? "";
+  const hours = Number(m[1]);
+  const suffix = hours < 12 ? "AM" : "PM";
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return `${hour12}:${m[2]} ${suffix}`;
 }
 
 const discountTypeOptions = ["Percentage", "Fixed Amount"];
@@ -209,7 +223,8 @@ const Screen2 = () => {
           </p>
           <p className="text-xs text-gray-600">
             Batches are saved on this internship. Give each batch a name,
-            application deadline, and internship start date.{" "}
+            application deadline, and internship start date. The cohort goes
+            live at the start time you set (12:00 AM IST by default).{" "}
             <span className="font-medium text-gray-800">
               Entrance exam start and end are set per batch here (Screen 2),
               after you pick an entrance template — expand the batch to see them.
@@ -290,6 +305,14 @@ const Screen2 = () => {
                                     batchData?.internshipStartDate || "",
                                   )}
                                 </span>
+                                {batchData?.internshipStartDate && (
+                                  <span className="text-xs font-medium text-gray-500">
+                                    {formatStartTime(
+                                      batchData?.internshipStartTime,
+                                    )}{" "}
+                                    IST
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -492,6 +515,42 @@ const Screen2 = () => {
                               />
                             )}
                           />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 flex-col md:flex-row">
+                        <div className="flex-1 min-w-0">
+                          <Controller
+                            name={`batches.${index}.internshipStartTime`}
+                            control={control}
+                            rules={{
+                              required: "Internship start time is required",
+                              validate: validateTime,
+                            }}
+                            render={({ field: f }) => (
+                              <Input
+                                {...f}
+                                label="Internship start time (IST)"
+                                type="time"
+                                value={f.value || DEFAULT_BATCH_START_TIME}
+                                onChange={(e) => f.onChange(e.target.value)}
+                                error={
+                                  errors.batches?.[index]?.internshipStartTime
+                                    ?.message as string | undefined
+                                }
+                                required
+                                className="w-full"
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 flex items-center">
+                          <p className="text-xs text-gray-500 leading-relaxed">
+                            India time the cohort goes live on the start date.
+                            Defaults to 12:00 AM. Learners get their dashboard
+                            and day-0 tasks from exactly this moment, and every
+                            task unlock is counted forward from it.
+                          </p>
                         </div>
                       </div>
 

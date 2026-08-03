@@ -22,6 +22,7 @@ import {
   getLatestCertificateService,
 } from "./certificate.services";
 import { createCertificateJobService } from "./certificateJob.services";
+import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
 
 /**
  * Check if an enrollment is still valid (not expired)
@@ -387,6 +388,9 @@ export const GetUserEnrollmentsService = async (
   limit: number = 10,
   search?: string,
   sortBy?: string,
+  /** Exclude enrollments whose course is retired or deleted. Off by default: My
+   *  Programs deliberately still lists them as "no longer available". */
+  courseActive?: boolean,
 ): Promise<{
   enrollments: Enrollment[];
   total: number;
@@ -436,20 +440,50 @@ export const GetUserEnrollmentsService = async (
       }
     }
 
-    // When searching, resolve matching course IDs first so that skip/limit
-    // and countDocuments operate on the already-narrowed enrollment set.
+    // Course-level narrowing (title search and/or availability) resolves to a
+    // concrete courseId list BEFORE the enrollment query, so skip/limit and
+    // countDocuments operate on the already-narrowed enrollment set.
+    let narrowedCourseIds: mongoose.Types.ObjectId[] | null = null;
+
     // Case-insensitive **substring** on `title` only. No description (noisy),
     // no text/fuzzy/typo-tolerant index — just escaped regex.
     if (search) {
       const q = String(search).trim();
       if (q) {
         const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const matchingCourseIds = await CourseModel.find(
+        const matchingCourses = await CourseModel.find(
           { title: { $regex: escaped, $options: "i" } },
           { _id: 1 },
         ).lean();
-        filters.courseId = { $in: matchingCourseIds.map((c: any) => c._id) };
+        narrowedCourseIds = matchingCourses.map((c: any) => c._id);
       }
+    }
+
+    // `courseActive` callers (the Home "New Courses" row) want only courses a
+    // learner can still open. Retired courses (isActive === false) are excluded,
+    // and so are deleted ones for free: their courseId is unlinked to null, which
+    // matches no Course and therefore no `$in` entry. Doing this here rather than
+    // after the query keeps `total` consistent with the page contents. The
+    // candidate set is the user's own enrolled courses, resolved through the
+    // { userId, courseId } index — never the whole catalogue.
+    if (courseActive) {
+      const candidateIds =
+        narrowedCourseIds ??
+        (await EnrollmentModel.distinct("courseId", { userId }));
+      // `$ne: false` not `true`: `isActive` only defaults to true, so documents
+      // predating the field must still count as available.
+      const courseQuery: any = {
+        _id: { $in: candidateIds },
+        isActive: { $ne: false },
+      };
+      const openCourses = await CourseModel.find(courseQuery, {
+        _id: 1,
+      }).lean();
+      narrowedCourseIds = openCourses.map((c: any) => c._id);
+    }
+
+    if (narrowedCourseIds) {
+      filters.courseId = { $in: narrowedCourseIds };
     }
 
     const enrollments = await EnrollmentModel.find(filters)
@@ -1774,43 +1808,32 @@ export const GetUserDashboardStatsService = async (
       averageTimePerSession = 1;
     }
 
-    // Calculate daily goal progress (episodes/content accessed today)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Calculate daily goal progress (episodes/content accessed today).
+    // The learner's "day" is the IST calendar day, not the server's: `setHours`
+    // here would snap to UTC midnight, so studying between 00:00 and 05:30 IST
+    // counted as the previous day and silently broke the streak.
+    const todayYmd = todayIst();
 
-    const coursesAccessedToday = enrollments.filter((enrollment) => {
-      const lastActivity = enrollment.lastActivityAt;
-      if (!lastActivity) return false;
-      const activityDate = new Date(lastActivity);
-      activityDate.setHours(0, 0, 0, 0);
-      return activityDate.getTime() === today.getTime();
-    }).length;
+    const coursesAccessedToday = enrollments.filter(
+      (enrollment) => ymdIst(enrollment.lastActivityAt) === todayYmd,
+    ).length;
 
-    // Calculate streak (consecutive days with activity)
+    // Calculate streak (consecutive IST days with activity)
+    const activityDays = new Set<string>();
+    for (const enrollment of enrollments) {
+      const day = ymdIst(enrollment.lastActivityAt);
+      if (day) activityDays.add(day);
+    }
+
     let streak = 0;
-    const checkDate = new Date(today);
-    for (let i = 0; i < 30; i++) {
-      // Check last 30 days
-      const hasActivity = enrollments.some((enrollment) => {
-        const lastActivity = enrollment.lastActivityAt;
-        if (!lastActivity) return false;
-
-        const activityDate = new Date(lastActivity);
-        if (isNaN(activityDate.getTime())) return false;
-
-        activityDate.setHours(0, 0, 0, 0);
-        return activityDate.getTime() === checkDate.getTime();
-      });
-
-      if (hasActivity) {
-        streak++;
-        checkDate.setDate(checkDate.getDate() - 1);
-      } else if (i > 0) {
-        // Don't break streak on first day if no activity
-        break;
-      } else {
-        break;
-      }
+    // IST has no DST, so stepping back exactly 24h from an IST midnight always
+    // lands on the previous IST midnight.
+    let cursor = parseIstDateOnly(todayYmd);
+    for (let i = 0; i < 30 && cursor; i++) {
+      const day = ymdIst(cursor);
+      if (!day || !activityDays.has(day)) break;
+      streak++;
+      cursor = new Date(cursor.getTime() - 24 * 60 * 60 * 1000);
     }
 
     // Get most recent activity

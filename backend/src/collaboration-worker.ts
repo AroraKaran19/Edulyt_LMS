@@ -8,11 +8,19 @@
 import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
+import {
+  installWorkerCrashAlerts,
+  reportWorkerStartupFailure,
+} from "./lib/workerProcessGuards";
 import dotenv from "dotenv";
 
 dotenv.config();
 
+const PROCESS_NAME = "collaboration worker";
+
 const start = async () => {
+  installWorkerCrashAlerts(PROCESS_NAME);
+
   try {
     await connectDB();
     await initializeS3();
@@ -28,7 +36,7 @@ const start = async () => {
       process.exit(0);
     });
   } catch (error) {
-    console.error("❌ Failed to start collaboration worker:", error);
+    await reportWorkerStartupFailure(PROCESS_NAME, error);
     process.exit(1);
   }
 };

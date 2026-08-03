@@ -21,6 +21,7 @@ import {
   resolveProgramEndDate,
 } from "../lib/internshipProgramWindow";
 import { computeTaskWindow } from "../lib/internshipTaskWindow";
+import { ymdIst } from "../utils/ist";
 import {
   assertS3ObjectContentLengthAtMost,
   extractS3KeyFromUrl,
@@ -404,8 +405,10 @@ export async function createInternshipSubmission(
           );
         }
         if (now < win.visibleFrom) {
+          // IST day, not the UTC one: the gate itself is IST, so a UTC-sliced
+          // date could name a different day than the rule actually enforces.
           throw new AppError(
-            `This task is not yet available. It unlocks on ${win.visibleFrom.toISOString().slice(0, 10)}.`,
+            `This task is not yet available. It unlocks on ${ymdIst(win.visibleFrom)}.`,
             403,
           );
         }
@@ -413,7 +416,7 @@ export async function createInternshipSubmission(
         // learner's "Missed" badge uses, so the two cannot disagree.
         if (now > win.closesAt) {
           throw new AppError(
-            `The submission window for this task has closed. It was due by ${win.dueAt.toISOString().slice(0, 10)}.`,
+            `The submission window for this task has closed. It was due by ${ymdIst(win.dueAt)}.`,
             403,
           );
         }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Gift, Ticket, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -44,9 +45,48 @@ const STATUS: Record<
   },
 };
 
+/** One-line explanation of what this specific voucher buys the learner. */
+const describeVoucher = (v: InternshipVoucher) => {
+  if (v.status === "redeemed") {
+    return v.redeemedInternshipTitle
+      ? `Used for a free seat in ${v.redeemedInternshipTitle}`
+      : "Used for a free internship seat";
+  }
+  if (v.status === "expired") {
+    return "Expired before it was used";
+  }
+  return "Good for one free internship seat on any open batch";
+};
+
 const VouchersPage = () => {
   const { available, vouchers, isLoading, refetch } = useInternshipVouchers();
   const [claiming, setClaiming] = useState<InternshipVoucher | null>(null);
+
+  /**
+   * `?claim=CODE` opens the picker straight away. The award email links here so a
+   * learner who is already signed in goes from inbox to choosing an internship in
+   * one click, and a signed-out one lands here after logging in.
+   *
+   * Fires once per page load: without the ref, closing the modal would immediately
+   * reopen it, because the query string is still there.
+   */
+  const requestedCode = useSearchParams().get("claim")?.trim().toUpperCase();
+  const autoOpened = useRef(false);
+
+  useEffect(() => {
+    if (autoOpened.current || !requestedCode || isLoading) return;
+
+    // Only an unredeemed voucher can be claimed. An unknown or already-spent code
+    // silently leaves the list on screen, which is the right outcome for a link
+    // that was forwarded, bookmarked, or clicked twice.
+    const match = vouchers.find(
+      (v) => v.code?.toUpperCase() === requestedCode && v.status === "available",
+    );
+    if (!match) return;
+
+    autoOpened.current = true;
+    setClaiming(match);
+  }, [requestedCode, isLoading, vouchers]);
 
   return (
     <div className="w-full mx-auto p-6 flex flex-col gap-6">
@@ -123,8 +163,14 @@ const VouchersPage = () => {
                         {meta.label}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-sm text-gray-700">
+                      {describeVoucher(v)}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
                       {issued && <>Earned {issued}</>}
+                      {v.sourceCourseName && (
+                        <> from your {v.sourceCourseName} purchase</>
+                      )}
                       {v.status === "redeemed" && redeemed && (
                         <> · Used {redeemed}</>
                       )}

@@ -451,11 +451,15 @@ export async function tryAwardRegistrationBonus(
  *
  * No-op when `internshipRegistrationSuccessPoints` is 0. Safe to call from
  * any registration path — failures are swallowed by the caller.
+ *
+ * Returns the points actually credited, 0 when nothing was. The registration
+ * email needs the real figure: it must not claim a bonus that the sibling check
+ * or a zero setting suppressed.
  */
 export async function tryAwardInternshipRegistrationPoints(
   enrollmentId: string,
-): Promise<void> {
-  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) return;
+): Promise<number> {
+  if (!mongoose.Types.ObjectId.isValid(enrollmentId)) return 0;
 
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
     .select("user internship registrationSuccessPointsAwarded")
@@ -465,8 +469,8 @@ export async function tryAwardInternshipRegistrationPoints(
       internship?: mongoose.Types.ObjectId;
       registrationSuccessPointsAwarded?: boolean;
     } | null>();
-  if (!enrollment || !enrollment.user || !enrollment.internship) return;
-  if (enrollment.registrationSuccessPointsAwarded) return;
+  if (!enrollment || !enrollment.user || !enrollment.internship) return 0;
+  if (enrollment.registrationSuccessPointsAwarded) return 0;
 
   // "Once per internship": skip the credit if another enrollment of the
   // same internship (any batch) was already processed for this reward.
@@ -487,17 +491,17 @@ export async function tryAwardInternshipRegistrationPoints(
     { $set: { registrationSuccessPointsAwarded: true } },
     { new: true },
   );
-  if (!claimed) return;
+  if (!claimed) return 0;
 
   // Already credited for this internship via a sibling enrollment.
-  if (siblingAwarded) return;
+  if (siblingAwarded) return 0;
 
   const { internshipRegistrationSuccessPoints } = await getPointsSettings();
   const points = Math.max(
     0,
     Math.floor(Number(internshipRegistrationSuccessPoints)),
   );
-  if (points <= 0) return;
+  if (points <= 0) return 0;
 
   try {
     await awardWalletSuccessPoints(
@@ -512,6 +516,8 @@ export async function tryAwardInternshipRegistrationPoints(
     });
     throw e;
   }
+
+  return points;
 }
 
 // ===================================================================

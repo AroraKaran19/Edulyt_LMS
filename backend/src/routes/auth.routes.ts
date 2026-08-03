@@ -8,7 +8,9 @@ import {
   oauthSignin,
   refreshToken,
   register,
+  resendRegistrationOtp,
   resetPassword,
+  verifyRegistrationOtp,
   revokeOtherSessionsController,
   revokeSessionController,
 } from "../controllers/auth.controller";
@@ -20,10 +22,25 @@ const router = Router();
 
 /**
  * @route   POST /api/auth/register
- * @desc    Register a new user
+ * @desc    Start registration: stores a pending signup and emails a code.
+ *          No account exists until POST /register/verify-otp succeeds.
  * @access  Public
  */
 router.post("/register", register);
+
+/**
+ * @route   POST /api/auth/register/verify-otp
+ * @desc    Confirm the emailed code and create the account
+ * @access  Public
+ */
+router.post("/register/verify-otp", verifyRegistrationOtp);
+
+/**
+ * @route   POST /api/auth/register/resend-otp
+ * @desc    Email a fresh code for a pending signup
+ * @access  Public
+ */
+router.post("/register/resend-otp", resendRegistrationOtp);
 
 /**
  * @route   POST /api/auth/login
@@ -69,9 +86,10 @@ router.post("/reset-password", resetPassword);
 
 /**
  * @route   POST /api/auth/generate-reset-password-token
- * @desc    Generate reset password token
+ * @desc    Email a password reset link. Answers identically whether or not the
+ *          address has an account, and returns no token: the link exists only
+ *          in the inbox it was sent to.
  * @access  Public
- * @todo    Need to send through email in future
  */
 router.post("/generate-reset-password-token", generateResetPasswordToken);
 

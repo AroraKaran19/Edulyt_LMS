@@ -1,80 +1,79 @@
 import TextArea from "@/components/ui/inputs/TextArea";
-import { Bold, ChevronDown, Clock, Italic, List } from "lucide-react";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import WhiteButton from "@/components/ui/buttons/WhiteButton";
+import { Clock } from "lucide-react";
+import { MAX_NOTE_LENGTH } from "@/hooks/useVideoNotes";
 
+/**
+ * The editor panel, shared by both note paths.
+ *
+ * `timestampLabel` arrives as a prop rather than being read from the video
+ * context, which is what lets the same component serve editing (where the
+ * anchor is fixed and merely displayed) as well as composing. It also keeps
+ * this component off the ticking context entirely.
+ */
 const AddNotes = ({
   onClose,
   onSave,
   onNoteContentChange,
   noteContent,
+  timestampLabel,
+  isSaving = false,
+  saveLabel = "Save",
 }: {
   onClose: () => void;
   onSave: () => void;
   onNoteContentChange: (content: string) => void;
   noteContent: string;
+  timestampLabel: string;
+  isSaving?: boolean;
+  saveLabel?: string;
 }) => {
+  const canSave = noteContent.trim().length > 0 && !isSaving;
+
   return (
-    <div className="bg-white rounded-lg w-full mt-8 p-2 shadow-[0px_4px_10.7px_0px_#00000012_inset]">
-      {/* Header/Toolbar */}
-      <div className=" bg-white border border-[#00000021] shadow-[0px_-3px_3.7px_0px_#0146E721_inset] px-4 py-2 rounded-xl flex items-center justify-between">
-        <div className="flex items-center gap-4rounded-2xl">
-          {/* Style Dropdown */}
-          <div className="flex items-center gap-2 cursor-pointer">
-            <span className="text-base font-plus-jakarta font-bold text-[#2B1508]">
-              Style
-            </span>
-            <ChevronDown className="size-6 text-[#2B1508]" />
-          </div>
-          <span className="border border-r border-[#00000029]"></span>
-
-          {/* Formatting Icons */}
-          <div className="flex items-center gap-2">
-            <button title="Bold" className="p-1 hover:bg-gray-200 rounded">
-              <Bold className="size-6 text-[#2B1508]" />
-            </button>
-            <button title="Italic" className="p-1 hover:bg-gray-200 rounded">
-              <Italic className="size-6 text-[#2B1508]" />
-            </button>
-            <button title="List" className="p-1 hover:bg-gray-200 rounded">
-              <List className="size-6 text-[#2B1508]" />
-            </button>
-          </div>
-        </div>
-
-        {/* Timestamp */}
-        <div className="flex items-center gap-2 bg-[#0000000D] rounded-lg px-3 py-1">
-          <Clock className="size-4 text-white" fill="#000000" />
-          <span className="text-base font-semibold font-plus-jakarta text-black">
-            00:01
+    <div className="bg-white rounded-xl w-full border border-[#00000021] p-3">
+      {/* Anchor */}
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <span className="text-base font-plus-jakarta font-bold text-[#2B1508]">
+          Note
+        </span>
+        <span className="flex items-center gap-2 bg-[#0000000D] rounded-lg px-3 py-1 text-black">
+          <Clock className="size-4" />
+          <span className="text-sm font-semibold font-plus-jakarta">
+            {timestampLabel}
           </span>
-        </div>
+        </span>
       </div>
 
-      {/* Content Area */}
       <TextArea
         placeholder="Start typing your note..."
         onChange={(e) => onNoteContentChange(e.target.value)}
-        className="bg-white border resize-none mt-1 border-[#00000026] rounded-lg p-4 flex items-center justify-center min-h-[100px]"
+        className="min-h-[110px]"
+        lockHeight
         value={noteContent}
+        maxLength={MAX_NOTE_LENGTH}
+        showWordCount
+        autoFocus
       />
 
-      {/* Footer */}
-      <div className="bg-gray-100 px-4 py-3 rounded-b-lg flex justify-end gap-3">
-        <button
+      <div className="flex justify-end gap-3 mt-3">
+        <WhiteButton
           type="button"
-          title="Cancel"
+          glow={false}
           onClick={onClose}
-          className="cursor-pointer px-8 py-2 bg-white text-[#F5691D] rounded-lg hover:bg-orange-50 transition-colors"
+          disabled={isSaving}
         >
           Cancel
-        </button>
-        <button
+        </WhiteButton>
+        <OrangeButton
           type="button"
-          title="Save"
+          glow={false}
           onClick={onSave}
-          className="cursor-pointer px-8 py-2 bg-[#F5691D] text-white rounded-lg hover:bg-[#F5691D] transition-colors"
+          disabled={!canSave}
         >
-          Save
-        </button>
+          {isSaving ? "Saving..." : saveLabel}
+        </OrangeButton>
       </div>
     </div>
   );

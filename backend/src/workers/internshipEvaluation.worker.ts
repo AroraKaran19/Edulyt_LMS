@@ -1,3 +1,4 @@
+import { sendOpsAlert } from "../services/opsAlert.services";
 import {
   enqueueDueInternshipEvaluations,
   getNextPendingInternshipEvaluationJobService,
@@ -56,6 +57,21 @@ async function processJob(job: {
       status: "failed",
       error: message,
     });
+
+    // A stalled verdict means a learner who finished their programme is told
+    // nothing at all: no certificate, no closure email, no explanation. Nothing
+    // else surfaces that, so it is worth an alert rather than a job row.
+    await sendOpsAlert({
+      key: "internship-evaluation-failed",
+      title: "Internship certificate evaluation failed",
+      body: [
+        `job:   ${jobId}`,
+        `error: ${message}`,
+        "",
+        "This learner has no verdict, so they have not been told how their",
+        "internship closed. Re-enqueue the job once the cause is fixed.",
+      ].join("\n"),
+    });
   }
 }
 
@@ -94,6 +110,16 @@ export function startInternshipEvaluationWorker(): void {
       }
     } catch (error) {
       console.error("[Internship Evaluation Worker] Tick failed:", error);
+      void sendOpsAlert({
+        key: "internship-evaluation-worker-tick",
+        title: "Internship evaluation worker tick failed",
+        body: [
+          "The evaluation loop threw. The loop continues, but verdicts may not be",
+          "being decided, which stalls every closure email behind them.",
+          "",
+          `error: ${error instanceof Error ? error.stack || error.message : String(error)}`,
+        ].join("\n"),
+      });
     } finally {
       tickRunning = false;
     }

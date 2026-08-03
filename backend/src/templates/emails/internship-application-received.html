@@ -21,9 +21,11 @@
   </style>
 </head>
 <body style="margin:0; padding:0; background-color:#FFF6EF;">
-  <!-- Preheader: inbox preview text, hidden in body -->
+  <!-- Preheader: inbox preview text, hidden in body. Path-neutral: the same
+       template serves entrance-exam, paid-seat and voucher registrations, and
+       only one of those has an exam as its next step. -->
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
-    You're registered for {{internshipName}}. Your next step is the entrance exam.
+    You're registered for {{internshipName}}.
   </div>
 
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#FFF6EF;">
@@ -68,7 +70,11 @@
 
                     <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#5C4A42;">Hi {{name}},</p>
 
-                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">Thanks for registering for <strong style="color:#2B1508;">{{internshipName}}</strong>! Your spot is confirmed and your next step is the entrance exam.</p>
+                    <!-- introLine: built per registration path in
+                         lib/internshipApplicationMail.ts. A paid-seat row is
+                         `payment_pending`, so "your spot is confirmed" is only
+                         true on some paths. -->
+                    <p style="margin:0 0 28px 0; font-size:15px; line-height:24px; color:#5C4A42;">{{introLine}}</p>
 
                     <!-- Application summary -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid #F3E1D4; border-radius:12px;">
@@ -89,9 +95,13 @@
                       <tr>
                         <td style="padding:4px 20px 16px 20px;">
                           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <!-- No registration ID row: enrollments carry no
+                                 human-readable identifier, and quoting a raw
+                                 ObjectId at a learner helps nobody. The cohort
+                                 is what they actually need to confirm. -->
                             <tr>
-                              <td style="padding:12px 0; font-size:14px; line-height:20px; color:#8A7A72;">Registration ID</td>
-                              <td align="right" style="padding:12px 0; font-size:14px; line-height:20px; font-weight:600; color:#2B1508;">{{registrationId}}</td>
+                              <td style="padding:12px 0; font-size:14px; line-height:20px; color:#8A7A72;">Cohort</td>
+                              <td align="right" style="padding:12px 0; font-size:14px; line-height:20px; font-weight:600; color:#2B1508;">{{batchName}}</td>
                             </tr>
                             <tr>
                               <td style="padding:12px 0; border-top:1px solid #F0E3DA; font-size:14px; line-height:20px; color:#8A7A72;">Registered on</td>
@@ -102,26 +112,15 @@
                       </tr>
                     </table>
 
-                    <!-- successPoints:start  (remove this block if no points were awarded) -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:24px; border:1px solid #F6CDA6; border-radius:12px; background-color:#FFF3EA;">
-                      <tr>
-                        <td align="center" style="padding:13px 18px;">
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-                            <tr>
-                              <td valign="middle" width="28" style="padding-right:10px;">
-                                <img src="https://img.icons8.com/ios-filled/50/F77124/coins.png" width="22" height="22" alt="" style="display:block; border:0; outline:none;" />
-                              </td>
-                              <td valign="middle" style="font-size:14px; line-height:20px; color:#5C4A42;">
-                                You earned <strong style="color:#D2540E; font-size:15px;">{{successPoints}}</strong> Success Points
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
-                    <!-- successPoints:end -->
+                    <!-- pointsBlock: the whole Success Points card, or "".
+                         MSG91 evaluates nothing, so this is built in
+                         lib/internshipApplicationMail.ts rather than branched
+                         here. Empty whenever no points were credited, which
+                         includes registering for a second batch of the same
+                         internship. -->
+                    {{pointsBlock}}
 
-                    <p style="margin:26px 0 0 0; font-size:15px; line-height:24px; color:#5C4A42;"><strong style="color:#2B1508;">What happens next?</strong><br />Your next step is the entrance exam. We'll email you the exam link and instructions before your exam window opens.</p>
+                    <p style="margin:26px 0 0 0; font-size:15px; line-height:24px; color:#5C4A42;"><strong style="color:#2B1508;">What happens next?</strong><br />{{nextStepLine}}</p>
 
                     <!-- CTA button -->
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:28px auto 0 auto;">
@@ -132,24 +131,12 @@
                       </tr>
                     </table>
 
-                    <!-- Promotional: confirm seat directly -->
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:32px; border-radius:16px;">
-                      <tr>
-                        <td align="center" bgcolor="#E0590F" style="border-radius:16px; background-color:#E0590F; background-image:linear-gradient(135deg, #F26A1B 0%, #D2540C 100%); padding:28px 28px 30px 28px;">
-                          <img src="https://img.icons8.com/ios-filled/100/FFFFFF/ticket.png" width="34" height="34" alt="" style="display:block; margin:0 auto 12px auto; border:0; outline:none;" />
-                          <p style="margin:0 0 6px 0; font-size:11px; line-height:16px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#FFD9BE;">Reserve your spot</p>
-                          <p style="margin:0 0 10px 0; font-size:19px; line-height:26px; font-weight:800; color:#FFFFFF;">Confirm your seat directly</p>
-                          <p style="margin:0 0 22px 0; font-size:14px; line-height:22px; color:#FFE7D6;">Prefer not to wait? Secure your place in {{internshipName}} and get started right away.</p>
-                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
-                            <tr>
-                              <td align="center" bgcolor="#FFFFFF" style="border-radius:12px; background-color:#FFFFFF;">
-                                <a href="{{confirmSeatUrl}}" target="_blank" class="cta-link" style="display:inline-block; padding:15px 42px; font-family:'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:15px; line-height:20px; font-weight:800; color:#D2540E; text-decoration:none; border-radius:12px;">Confirm your seat</a>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-                    </table>
+                    <!-- seatOfferBlock: the paid-seat offer card, or "".
+                         Shown only to entrance-exam registrants whose cohort
+                         has an active plan. Without that plan the link leads to
+                         a form that refuses the purchase, and on the paid and
+                         voucher paths it would sell a seat already taken. -->
+                    {{seatOfferBlock}}
 
                     <p style="margin:30px 0 0 0; padding-top:22px; border-top:1px solid #F0E3DA; font-size:13px; line-height:20px; color:#9A8B84;">Questions about your application? Reach us at <a href="mailto:support@airkrit.com" style="color:#D2540E; text-decoration:none; font-weight:600;">support@airkrit.com</a>.</p>
 

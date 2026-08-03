@@ -61,6 +61,7 @@ export function getInternshipScreenTriggerFields(
         names.push(
           `batches.${bi}.plan.price`,
           `batches.${bi}.applicationLastDate`,
+          `batches.${bi}.internshipStartTime`,
           `batches.${bi}.documentationStartAt`,
           `batches.${bi}.documentationEndAt`,
         );

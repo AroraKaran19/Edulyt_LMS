@@ -9,6 +9,9 @@ import Loader from "@/components/ui/Loader";
 import Error from "@/components/ui/Error";
 import { AlertCircle } from "lucide-react";
 
+/** Cards shown in the Home row. */
+const VISIBLE_COUNT = 8;
+
 const NewCoursesSection = () => {
   const { getUserEnrollments, isLoading, error } = useUserEnrollments();
   const [newCourses, setNewCourses] = useState<Enrollment[]>([]);
@@ -17,17 +20,13 @@ const NewCoursesSection = () => {
     const fetchNewCourses = async () => {
       const result = await getUserEnrollments({
         page: 1,
-        limit: 8,
-        sortBy: "recent", // Most recently enrolled courses
+        limit: VISIBLE_COUNT,
+        sortBy: "recent",
+        courseActive: true,
       });
 
       if (result) {
-        // Deleted/unlinked courses belong only under My Programs, not on Home —
-        // filter them out here (the card keeps a null-guard as a safety net).
-        const withCourse = result.enrollments.filter(
-          (e) => e.courseId && typeof e.courseId === "object",
-        );
-        setNewCourses(withCourse.slice(0, 8));
+        setNewCourses(result.enrollments);
       }
     };
 

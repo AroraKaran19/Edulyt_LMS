@@ -543,24 +543,13 @@
                         </tr>
                       </table>
 
-                      <!-- successPoints:start  (remove this block if no points were awarded) -->
-                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:26px; border:1px solid #F6CDA6; border-radius:12px; background-color:#FFF3EA;">
-                        <tr>
-                          <td align="center" style="padding:13px 18px;">
-                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center">
-                              <tr>
-                                <td valign="middle" width="28" style="padding-right:10px;">
-                                  <img src="https://img.icons8.com/ios-filled/50/F77124/coins.png" width="22" height="22" alt="" style="display:block; border:0; outline:none;" />
-                                </td>
-                                <td valign="middle" style="font-size:14px; line-height:20px; color:#5C4A42;">
-                                  Welcome bonus: <strong style="color:#D2540E; font-size:15px;">{{successPoints}}</strong> Success Points added to your account
-                                </td>
-                              </tr>
-                            </table>
-                          </td>
-                        </tr>
-                      </table>
-                      <!-- successPoints:end -->
+                      <!-- welcomeBonusBlock: the whole Success Points card, or "".
+                           Built in lib/signupVerificationMail.ts because the bonus is
+                           configurable and routinely zero, and MSG91 cannot hide a block on a
+                           condition. This replaces a pair of template variants that shared one
+                           dashboard id, so the "no points" variant never actually existed and
+                           everyone saw "You earned 0 Success Points". -->
+                      {{welcomeBonusBlock}}
 
                       <p
                         style="

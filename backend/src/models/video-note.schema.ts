@@ -1,9 +1,15 @@
 import mongoose from "mongoose";
 import { VideoNote } from "../types/notes";
 
+/**
+ * A learner's private note against a playback position in a course video.
+ *
+ * Never read by anyone but its author, which is why there is no moderation
+ * state, no approval flag, and no instructor-facing query on this collection.
+ */
 const videoNoteSchema = new mongoose.Schema<VideoNote>(
   {
-    user: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
@@ -37,50 +43,13 @@ const videoNoteSchema = new mongoose.Schema<VideoNote>(
   { timestamps: true }
 );
 
-// Indexes
-videoNoteSchema.index({ userId: 1, courseId: 1, createdAt: -1 }); // For fetching user's notes by course
-videoNoteSchema.index({ lessonId: 1, contentId: 1, timestamp: 1 }); // For fetching notes by lesson/content
-videoNoteSchema.index({ userId: 1, lessonId: 1, contentId: 1 }); // For fetching user's notes for specific video
+// The one read the feature performs: a learner's whole note set for a course,
+// newest first. Its `userId` prefix also serves the account-deletion cascade in
+// `user.services.ts`.
+videoNoteSchema.index({ userId: 1, courseId: 1, createdAt: -1 });
 
-// functions
-videoNoteSchema.statics.getVideoNotes = async function (
-  userId: string,
-  courseId: string,
-  lessonId: string,
-  contentId: string,
-  page: number = 1,
-  limit: number = 10
-) {
-  const skip = (page - 1) * limit;
-  const notes = await this.find({ userId, courseId, lessonId, contentId })
-    .sort({ timestamp: 1, createdAt: 1 })
-    .skip(skip)
-    .limit(limit)
-    .lean();
-  return notes;
-};
-videoNoteSchema.statics.getVideoNoteById = async function (
-  noteId: string,
-  userId: string
-) {
-  const note = await this.findOne({ _id: noteId, userId }).lean();
-  return note;
-};
-videoNoteSchema.statics.updateVideoNote = async function (
-  noteId: string,
-  userId: string,
-  content: string,
-  timestamp?: number
-) {
-  const existingNote = await this.findOne({ _id: noteId, userId });
-  if (!existingNote) {
-    throw new Error("Note not found or unauthorized");
-  }
-  return await this.findByIdAndUpdate(
-    noteId,
-    { content, timestamp },
-    { new: true, runValidators: true }
-  ).lean();
-};
+// Course deletion clears notes by course alone (`course.services.ts`), which
+// the index above cannot serve because `courseId` is not its prefix.
+videoNoteSchema.index({ courseId: 1 });
 
 export const VideoNoteModel = mongoose.model("VideoNote", videoNoteSchema);

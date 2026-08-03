@@ -13,6 +13,10 @@ export interface InternshipVoucher {
   expiresAt: string | null;
   redeemedAt: string | null;
   redeemedInternshipEnrollmentId: string | null;
+  /** Title of the course purchase that earned this voucher. */
+  sourceCourseName?: string | null;
+  /** Title of the internship the voucher was spent on (redeemed only). */
+  redeemedInternshipTitle?: string | null;
 }
 
 interface VouchersResponse {

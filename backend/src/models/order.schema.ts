@@ -111,6 +111,16 @@ const orderSchema = new Schema<PaymentOrder>(
     invoiceUrl: { type: String, required: false, trim: true },
     /** When the invoice PDF was rendered and uploaded. */
     invoicedAt: { type: Date, required: false },
+
+    /**
+     * When the buyer was emailed their confirmation and invoice.
+     *
+     * Claimed atomically before the send. The invoice worker retries, a
+     * reconcile cron can re-settle an order, and `generateInvoiceForOrderService`
+     * returns early for an order that already has an invoice, so without this a
+     * customer could be sent the same receipt several times.
+     */
+    confirmationEmailSentAt: { type: Date, required: false },
   },
   { timestamps: true },
 );

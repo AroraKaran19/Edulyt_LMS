@@ -5,6 +5,7 @@ import path from "path";
 import { DOMParser, XMLSerializer } from "xmldom";
 import ImageModule from "docxtemplater-image-module-free";
 import QRCode from "qrcode";
+import { ymdIst } from "./ist";
 
 /**
  * Certificate Generator using DOCX Templates
@@ -681,19 +682,19 @@ export async function generateCertificateFromDocx(
 }
 
 /**
- * Format date to DD-MM-YYYY format
+ * Format date to DD-MM-YYYY format, on the IST calendar day.
+ *
+ * The date is printed onto a permanent artifact, so it must not depend on the
+ * host clock: the server runs UTC, and `getDate()` there prints the previous
+ * day for anything issued between 00:00 and 05:30 IST.
  */
 function formatDateDDMMYYYY(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
-  } catch (error) {
-    // If date parsing fails, return the original string
-    return dateString;
-  }
+  // Returns null for an unparseable input, where the old getDate() path
+  // silently produced "NaN-NaN-NaN".
+  const ymd = ymdIst(dateString);
+  if (!ymd) return dateString;
+  const [year, month, day] = ymd.split("-");
+  return `${day}-${month}-${year}`;
 }
 
 /**

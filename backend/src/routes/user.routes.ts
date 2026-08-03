@@ -16,7 +16,6 @@ import {
   getCurrentUserProfile,
   getCurrentUserStats,
   changeUserPassword,
-  changeUserEmail,
   setUserPassword,
   unlinkGoogleAccount,
   unlinkLinkedInAccount,
@@ -24,6 +23,16 @@ import {
   adminChangeUserPassword,
   adminCreatePartner,
 } from "../controllers/user.controller";
+import {
+  getPhoneOtpStatus,
+  requestPhoneOtp,
+  verifyPhoneOtp,
+} from "../controllers/phoneVerification.controller";
+import {
+  requestUserEmailChange,
+  resendUserEmailChangeOtp,
+  verifyUserEmailChange,
+} from "../controllers/emailChange.controller";
 
 const router = Router();
 
@@ -31,9 +40,23 @@ const router = Router();
 router.get("/me", verifyUser, getCurrentUserProfile);
 router.get("/me/stats", verifyUser, getCurrentUserStats);
 router.put("/me", verifyUser, updateUserProfile);
+
+// MSG91 phone verification. `/me` refuses to change `phone`, so these are the
+// only way a learner's number gets set.
+router.get("/me/phone/otp-status", verifyUser, getPhoneOtpStatus);
+router.post("/me/phone/otp-request", verifyUser, requestPhoneOtp);
+router.post("/me/phone/verify", verifyUser, verifyPhoneOtp);
+
 router.put("/change-password", verifyUser, changeUserPassword);
 router.put("/set-password", verifyUser, setUserPassword);
-router.put("/change-email", verifyUser, changeUserEmail);
+
+// Verified email change. There is deliberately no single-call route here: one
+// that swapped the address on a password check alone would make the OTP below
+// bypassable, and the address is the account's password-reset channel.
+router.post("/change-email/request", verifyUser, requestUserEmailChange);
+router.post("/change-email/verify", verifyUser, verifyUserEmailChange);
+router.post("/change-email/resend", verifyUser, resendUserEmailChangeOtp);
+
 router.delete("/unlink-google", verifyUser, unlinkGoogleAccount);
 router.delete("/unlink-linkedin", verifyUser, unlinkLinkedInAccount);
 

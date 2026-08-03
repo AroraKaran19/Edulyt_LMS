@@ -213,6 +213,10 @@ export const createReviewService = async (reviewData: {
     );
   }
 
+  // No email here. Item reviews are acknowledged in the UI and earn nothing; the
+  // "thanks for sharing" email belongs to community reviews, which are a separate
+  // system with their own copy (see `community-review.services.ts`).
+
   // Populate user data
   const populatedReview = await ReviewModel.findById(savedReview._id)
     .populate("userId", "firstName lastName email profilePicture")

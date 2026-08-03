@@ -20,6 +20,7 @@ import { User } from "../types/user";
 import { AppError } from "../middlewares/error.middleware";
 import bcrypt from "bcrypt";
 import { validatePassword } from "../utils/passwordValidation";
+import { assertPasswordChangeAllowed } from "../constants/accountChangeCooldown";
 
 /**
  * Lightweight dashboard counts for the authenticated learner: course
@@ -482,7 +483,7 @@ export const deleteUserService = async (
     EnrollmentModel.deleteMany({ userId: userObjectId }),
     OrderModel.deleteMany({ userId: userObjectId }),
     CertificateModel.deleteMany({ userId: userObjectId }),
-    VideoNoteModel.deleteMany({ user: userObjectId }),
+    VideoNoteModel.deleteMany({ userId: userObjectId }),
     ReviewModel.deleteMany({ userId: userObjectId }),
     QnAModel.deleteMany({ userId: userObjectId }),
     AffiliateModel.updateMany(
@@ -646,6 +647,10 @@ export const changeUserPasswordService = async (
     throw new AppError("User not found", 404);
   }
 
+  // Checked before the password so a locked account is told it is locked,
+  // rather than being sent to reset a password that was never the problem.
+  assertPasswordChangeAllowed(user.passwordChangedAt);
+
   // Verify current password
   const isCurrentPasswordValid = await bcrypt.compare(
     currentPassword,
@@ -672,11 +677,13 @@ export const changeUserPasswordService = async (
   const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
   // Update password
+  const changedAt = new Date();
   await UserModel.findByIdAndUpdate(
     userId,
     {
       password: hashedNewPassword,
-      updatedAt: new Date(),
+      passwordChangedAt: changedAt,
+      updatedAt: changedAt,
     },
     { new: true },
   );
@@ -694,6 +701,24 @@ export const setUserPasswordService = async (
     throw new AppError("User not found", 404);
   }
 
+  // This route asks for no current password, which is only safe for the case
+  // it exists to serve: an OAuth account that has never had one to ask for.
+  // The UI only ever opens it for those, but nothing enforced that server-side,
+  // so any session could overwrite its own password without knowing the old one
+  // and skip `changeUserPasswordService` entirely.
+  if (user.provider !== "google" && user.provider !== "linkedin") {
+    throw new AppError(
+      "Your account already has a password. Use the change password option instead.",
+      400,
+    );
+  }
+
+  // The same cooldown as `changeUserPasswordService`. Without it this route is
+  // a way around that one: it writes the same field. A genuine first-time set
+  // is unaffected, because an account that has never used any of the password
+  // routes has no `passwordChangedAt`.
+  assertPasswordChangeAllowed(user.passwordChangedAt);
+
   // Validate password
   validatePassword(newPassword);
 
@@ -702,11 +727,13 @@ export const setUserPasswordService = async (
   const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
 
   // Update password
+  const changedAt = new Date();
   await UserModel.findByIdAndUpdate(
     userId,
     {
       password: hashedNewPassword,
-      updatedAt: new Date(),
+      passwordChangedAt: changedAt,
+      updatedAt: changedAt,
     },
     { new: true },
   );
@@ -714,68 +741,15 @@ export const setUserPasswordService = async (
   return true;
 };
 
-export const changeUserEmailService = async (
-  userId: string,
-  currentPassword: string,
-  newEmail: string,
-): Promise<User | null> => {
-  // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(newEmail)) {
-    throw new AppError("Invalid email format", 400);
-  }
-
-  // Get user with password field
-  const user = await UserModel.findById(userId).select("+password");
-  if (!user) {
-    throw new AppError("User not found", 404);
-  }
-
-  // Verify current password
-  const isCurrentPasswordValid = await bcrypt.compare(
-    currentPassword,
-    user.password,
-  );
-  if (!isCurrentPasswordValid) {
-    throw new AppError("Current password is incorrect", 400);
-  }
-
-  // Check if new email is different from current
-  if (user.email.toLowerCase() === newEmail.toLowerCase()) {
-    throw new AppError("New email must be different from current email", 400);
-  }
-
-  // Check if new email already exists
-  const existingUser = await UserModel.findOne({
-    email: newEmail.toLowerCase(),
-    _id: { $ne: userId },
-  });
-  if (existingUser) {
-    throw new AppError("Email already in use by another account", 400);
-  }
-
-  // Get the old email for notification
-  const oldEmail = user.email;
-
-  // Update email
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    userId,
-    {
-      email: newEmail.toLowerCase(),
-      updatedAt: new Date(),
-    },
-    { new: true, runValidators: true },
-  ).select("-password -refreshTokens -__v -successPointsHistory");
-
-  if (!updatedUser) {
-    throw new AppError("Failed to update email", 500);
-  }
-
-  // TODO: Send notification email to old email address
-  // TODO: Send verification email to new email address (if email verification is required)
-
-  return updatedUser as User | null;
-};
+/**
+ * Email changes live in `emailChangeVerification.services.ts`.
+ *
+ * The version that stood here swapped the address on a password check alone,
+ * with the two `TODO`s about verification never done. That address is the
+ * account's password-reset channel, so moving it unverified is a one-way door:
+ * a typo locks the learner out, and a hijacked session takes the account with
+ * no signal reaching its owner.
+ */
 
 export const unlinkGoogleAccountService = async (
   userId: string,

@@ -55,15 +55,35 @@ const AuthGuard: React.FC<AuthGuardProps> = ({
 
     if (isLoading) return;
 
+    /**
+     * Where to come back to after signing in.
+     *
+     * Read off `window` rather than `useSearchParams`, which would force every
+     * layout wrapped in this guard behind a Suspense boundary.
+     *
+     * Without this the destination was dropped: a guarded link from an email
+     * (say the referral reward's `/dashboard?refer=1`) sent the reader to
+     * login and then to the plain role home, so whatever they clicked for
+     * never opened.
+     */
+    const returnTo =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "";
+    const loginPath =
+      fallbackPath === "/login" && returnTo
+        ? `/login?callbackUrl=${encodeURIComponent(returnTo)}`
+        : fallbackPath;
+
     // Refresh failed server-side — sign out cleanly instead of white-screening.
     if (sessionExpired) {
-      signOut({ callbackUrl: fallbackPath });
+      signOut({ callbackUrl: loginPath });
       return;
     }
 
     // User is not authenticated
     if (isUnauthenticated || !user) {
-      router.push(fallbackPath);
+      router.push(loginPath);
       return;
     }
 

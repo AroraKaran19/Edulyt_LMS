@@ -14,11 +14,19 @@
 import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
+import {
+  installWorkerCrashAlerts,
+  reportWorkerStartupFailure,
+} from "./lib/workerProcessGuards";
 import dotenv from "dotenv";
 
 dotenv.config();
 
+const PROCESS_NAME = "internship evaluation worker";
+
 const start = async () => {
+  installWorkerCrashAlerts(PROCESS_NAME);
+
   try {
     await connectDB();
     await initializeS3();
@@ -34,7 +42,7 @@ const start = async () => {
       process.exit(0);
     });
   } catch (error) {
-    console.error("❌ Failed to start internship evaluation worker:", error);
+    await reportWorkerStartupFailure(PROCESS_NAME, error);
     process.exit(1);
   }
 };

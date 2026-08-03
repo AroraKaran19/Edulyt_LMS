@@ -20,7 +20,7 @@ import dynamic from "next/dynamic";
 import { useLessonNavigation } from "./hooks/useLessonNavigation";
 import {
   VideoTimeProvider,
-  useVideoTimeContext,
+  useVideoControls,
 } from "./context/VideoTimeContext";
 import TabSwitcher from "@/components/ui/course/TabSwitcher";
 import OverviewSection from "./components/OverviewSection";
@@ -28,6 +28,7 @@ import LiveClassesSection from "./components/LiveClassesSection";
 import { VideoContent } from "@/types";
 import Reviews from "./components/Reviews";
 import QASections from "./components/QASections";
+import NotesSection from "./components/NotesSection";
 import { formatDuration, cn } from "@/lib/utils";
 import { usePresignedVideoSources } from "@/hooks/usePresignedUrl";
 import useQnA from "@/hooks/useQnA";
@@ -48,10 +49,28 @@ import { useWatchAutoplayNext } from "./hooks/useWatchAutoplayNext";
 import QuizSection from "./components/QuizSection";
 import DocumentSection from "./components/DocumentSection";
 
+/**
+ * The 16:9 box the player (and every one of its placeholder states) fills.
+ *
+ * Height is capped at 70dvh so a wide viewport can't stretch the poster to the
+ * full height of the screen. The cap is expressed as a *max-width* derived from
+ * that height (70dvh × 16/9) rather than a bare `max-h`, because clamping the
+ * height alone would leave the box wider than 16:9 and `object-cover` would
+ * crop the top and bottom off the video. Capping the width instead keeps the
+ * ratio exact and just centres the narrower player inside its card.
+ */
+const VIDEO_FRAME =
+  "w-full aspect-video max-h-[70dvh] max-w-[calc(70dvh*16/9)] mx-auto";
+
 const VideoPlayer = dynamic(() => import("@/components/video/VideoPlayer"), {
   ssr: false,
   loading: () => (
-    <div className="w-full aspect-video bg-gray-100 flex items-center justify-center">
+    <div
+      className={cn(
+        VIDEO_FRAME,
+        "bg-gray-100 flex items-center justify-center"
+      )}
+    >
       <div className="text-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
         <p className="text-gray-600">Loading video player...</p>
@@ -76,7 +95,7 @@ const VideoSection = memo(
     onVideoComplete?: () => void;
     shouldAutoPlay?: boolean;
   }) => {
-    const { connectToVideo } = useVideoTimeContext();
+    const { connectToVideo } = useVideoControls();
     const { accessControl } = useEnrollmentContext() || { accessControl: null };
     const { isContentCompleted } = useCompletedContents();
 
@@ -245,22 +264,23 @@ const VideoSection = memo(
     // Show locked content message if user doesn't have access (video)
     if (!hasContentAccess) {
       return (
-        <SectionContainer
-          id="video-player"
-          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-        >
-          <div className="text-center max-w-md mx-auto p-8">
-            <Lock className="size-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Content Locked
-            </h3>
-            <p className="text-gray-600 mb-4">
-              You don't have access to this content. Please contact your
-              administrator to request access.
-            </p>
-            <p className="text-sm text-gray-500">
-              Content: {selectedContent.title}
-            </p>
+        <SectionContainer id="video-player" className="w-full bg-gray-100">
+          <div
+            className={cn(VIDEO_FRAME, "flex items-center justify-center")}
+          >
+            <div className="text-center max-w-md mx-auto p-8">
+              <Lock className="size-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Content Locked
+              </h3>
+              <p className="text-gray-600 mb-4">
+                You don't have access to this content. Please contact your
+                administrator to request access.
+              </p>
+              <p className="text-sm text-gray-500">
+                Content: {selectedContent.title}
+              </p>
+            </div>
           </div>
         </SectionContainer>
       );
@@ -269,13 +289,14 @@ const VideoSection = memo(
     // Show loading state while generating presigned URLs
     if (isUrlLoading) {
       return (
-        <SectionContainer
-          id="video-player"
-          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-        >
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
-            <p className="text-gray-600">Preparing secure video access...</p>
+        <SectionContainer id="video-player" className="w-full bg-gray-100">
+          <div
+            className={cn(VIDEO_FRAME, "flex items-center justify-center")}
+          >
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-[#F77124] mx-auto mb-4"></div>
+              <p className="text-gray-600">Preparing secure video access...</p>
+            </div>
           </div>
         </SectionContainer>
       );
@@ -284,38 +305,36 @@ const VideoSection = memo(
     // Show error state if presigned URL generation failed
     if (urlError) {
       return (
-        <SectionContainer
-          id="video-player"
-          className="w-full aspect-video bg-gray-100 flex items-center justify-center"
-        >
-          <div className="text-center">
-            <div className="text-red-500 mb-4">
-              <svg
-                className="w-12 h-12 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
+        <SectionContainer id="video-player" className="w-full bg-gray-100">
+          <div
+            className={cn(VIDEO_FRAME, "flex items-center justify-center")}
+          >
+            <div className="text-center">
+              <div className="text-red-500 mb-4">
+                <svg
+                  className="w-12 h-12 mx-auto"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+              </div>
+              <p className="text-gray-600 mb-2">Failed to load video securely</p>
+              <p className="text-sm text-gray-500">{urlError}</p>
             </div>
-            <p className="text-gray-600 mb-2">Failed to load video securely</p>
-            <p className="text-sm text-gray-500">{urlError}</p>
           </div>
         </SectionContainer>
       );
     }
 
     return (
-      <SectionContainer
-        id="video-player"
-        className="w-full aspect-video relative"
-      >
+      <SectionContainer id="video-player" className="w-full relative">
         {/* Smooth transition overlay during content change */}
         {isTransitioning && (
           <div className="absolute inset-0 bg-gray-900/50 z-10 flex items-center justify-center transition-opacity duration-300">
@@ -327,7 +346,8 @@ const VideoSection = memo(
         )}
         <div
           className={cn(
-            "w-full h-full transition-opacity duration-300",
+            VIDEO_FRAME,
+            "transition-opacity duration-300",
             isTransitioning ? "opacity-0" : "opacity-100"
           )}
         >
@@ -1239,6 +1259,25 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     [courseId]
   );
 
+  const notesTabComponent = useMemo(
+    () => (
+      <NotesSection
+        course={filteredCourse}
+        selectedLessonId={selectedLessonId}
+        selectedContentId={selectedContentId}
+        selectedContentType={selectedContent?.type}
+        navigateToContent={navigateToContent}
+      />
+    ),
+    [
+      filteredCourse,
+      selectedLessonId,
+      selectedContentId,
+      selectedContent?.type,
+      navigateToContent,
+    ]
+  );
+
   // Memoize tabs array - only recreate when structure actually changes
   const tabs = useMemo(() => {
     const mobileContentTab = isMobile
@@ -1262,6 +1301,10 @@ const PreviewCourse = ({ course }: { course: Course }) => {
         component: liveClassesTabComponent,
       },
       {
+        label: "Notes",
+        component: notesTabComponent,
+      },
+      {
         label: `Q&A (${filteredQuestions.length})`,
         component: qaTabComponent,
       },
@@ -1275,6 +1318,7 @@ const PreviewCourse = ({ course }: { course: Course }) => {
     mobileContentTabComponent,
     overviewTabComponent,
     liveClassesTabComponent,
+    notesTabComponent,
     qaTabComponent,
     reviewsTabComponent,
     filteredQuestions.length,

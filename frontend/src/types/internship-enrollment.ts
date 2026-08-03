@@ -269,6 +269,14 @@ export interface InternshipEnrollmentListRow {
     requiredPoints: number;
     evaluatedAt: string;
   };
+  /**
+   * `_id` of the issued certificate, when one exists — link target for
+   * `/dashboard/certificates/<certificateId>`.
+   *
+   * Only ever set on a pass. Absent means either no certificate was issued or
+   * the generation job is still running; the verdict/override tells them apart.
+   */
+  certificateId?: string;
   createdAt?: string;
   updatedAt?: string;
   /** ISO — when the entrance exam window opens (populated for merit-path `exam_registered`/`exam_attempted`). */

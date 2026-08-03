@@ -6,6 +6,7 @@ import { ReferralSaleModel } from "../models/referralSale.schema";
 import { ReferralWithdrawalModel } from "../models/referralWithdrawal.schema";
 import { UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
+import { queueReferralUsedEmail } from "./referralMail.services";
 import type {
   ReferralCommissionTier,
   ReferralSale,
@@ -360,6 +361,15 @@ export async function recordReferralSaleForOrder(params: {
     if (e.code === 11000) return; // duplicate orderId — already recorded
     throw err;
   }
+
+  // Only past the create, so the duplicate-orderId path above cannot mail the
+  // same reward twice. The unique index is what makes that guarantee, not this
+  // call site.
+  queueReferralUsedEmail({
+    referrerUserId: profile.userId,
+    buyerName: params.buyerName,
+    commissionAmount,
+  });
 }
 
 export interface PaginatedReferralSales {

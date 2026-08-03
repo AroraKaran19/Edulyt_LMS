@@ -4,6 +4,8 @@ import {
   incrementInvoiceJobRetryService,
 } from "../services/invoiceJob.services";
 import { generateInvoiceForOrderService } from "../services/invoice.services";
+import { sendPurchaseConfirmationEmail } from "../services/purchaseConfirmationMail.services";
+import { sendOpsAlert } from "../services/opsAlert.services";
 import { InvoiceJob } from "../types/invoiceJob";
 
 const MAX_RETRIES = 3;
@@ -74,6 +76,11 @@ async function processInvoiceJob(job: InvoiceJob): Promise<void> {
         ? `[Invoice Worker] Job ${jobId}: order ${orderId} was already invoiced (${result.invoiceNumber}).`
         : `[Invoice Worker] Job ${jobId} completed. Invoice ${result.invoiceNumber} -> ${result.invoiceUrl}`,
     );
+
+    // The receipt is sent from here rather than at payment time, because the
+    // invoice it carries does not exist until now. Guarded on the order, so the
+    // `alreadyExisted` path above cannot produce a second one.
+    await sendPurchaseConfirmationEmail(orderId);
   } catch (error: any) {
     console.error(`[Invoice Worker] Error processing job ${jobId}:`, error);
 
@@ -87,13 +94,35 @@ async function processInvoiceJob(job: InvoiceJob): Promise<void> {
       console.log(
         `[Invoice Worker] Job ${jobId} will be retried (${currentRetryCount + 1}/${MAX_RETRIES})`,
       );
-    } else {
-      await updateInvoiceJobStatusService(jobId, {
-        status: "failed",
-        error: error.message || "Invoice generation failed",
-      });
-      console.log(`[Invoice Worker] Job ${jobId} failed after ${MAX_RETRIES} retries`);
+      return;
     }
+
+    await updateInvoiceJobStatusService(jobId, {
+      status: "failed",
+      error: error.message || "Invoice generation failed",
+    });
+    console.log(`[Invoice Worker] Job ${jobId} failed after ${MAX_RETRIES} retries`);
+
+    // Still confirm the purchase. The customer paid, and holding their receipt
+    // hostage to a failed PDF render is worse than sending it without one. The
+    // invoice card goes empty rather than promising an attachment that is absent.
+    await sendPurchaseConfirmationEmail(orderId);
+
+    // A paid order with no tax invoice is a compliance problem, not just a
+    // missing email, so this one is worth waking someone for.
+    await sendOpsAlert({
+      key: "invoice-generation-failed",
+      title: "Invoice generation failed",
+      body: [
+        `order:   ${orderId}`,
+        `job:     ${jobId}`,
+        `retries: ${currentRetryCount}/${MAX_RETRIES}`,
+        `error:   ${error?.message || String(error)}`,
+        "",
+        "The buyer has been sent their confirmation without an invoice attached.",
+        "Re-queue the job once fixed; the confirmation will not be sent twice.",
+      ].join("\n"),
+    });
   }
 }
 
@@ -137,6 +166,19 @@ export function startInvoiceWorker(): void {
       }
     } catch (error) {
       console.error("[Invoice Worker] Error in job processing loop:", error);
+      // The tick broke rather than one job, so no job row records it. Purchase
+      // confirmations are sent from this worker, so a stalled loop also means
+      // paying customers are receiving no receipt at all.
+      void sendOpsAlert({
+        key: "invoice-worker-tick",
+        title: "Invoice worker tick failed",
+        body: [
+          "The invoice job loop threw. The loop continues, but invoices may not be",
+          "draining, and purchase confirmations are sent from this worker.",
+          "",
+          `error: ${error instanceof Error ? error.stack || error.message : String(error)}`,
+        ].join("\n"),
+      });
     } finally {
       tickRunning = false;
     }

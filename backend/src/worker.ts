@@ -13,11 +13,19 @@ import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import { startInvoiceWorker } from "./workers/invoice.worker";
+import {
+  installWorkerCrashAlerts,
+  reportWorkerStartupFailure,
+} from "./lib/workerProcessGuards";
 import dotenv from "dotenv";
 
 dotenv.config();
 
+const PROCESS_NAME = "worker (all-in-one)";
+
 const startWorker = async () => {
+  installWorkerCrashAlerts(PROCESS_NAME);
+
   try {
     await connectDB();
     await initializeS3();
@@ -40,7 +48,7 @@ const startWorker = async () => {
       process.exit(0);
     });
   } catch (error) {
-    console.error("❌ Failed to start worker:", error);
+    await reportWorkerStartupFailure(PROCESS_NAME, error);
     process.exit(1);
   }
 };
