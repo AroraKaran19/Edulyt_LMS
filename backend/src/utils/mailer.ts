@@ -74,10 +74,22 @@ export interface MailRecipient extends MailAddress {
   bcc?: MailAddress[];
 }
 
-/** Passed through to MSG91 unchanged. `file` is a publicly reachable URL. */
+/**
+ * `file` is either a publicly reachable URL or an inline `data:<type>;base64,…`
+ * URI. MSG91 keeps those in two different fields and 422s the entire send if
+ * they are crossed, so the split is done for you in `buildMsg91Payload` rather
+ * than at the call site.
+ */
 export interface MailAttachment {
   file: string;
   filename?: string;
+}
+
+/** What MSG91 actually accepts: a URL in `filePath`, base64 in `file`. */
+interface Msg91Attachment {
+  filePath?: string;
+  file?: string;
+  fileName?: string;
 }
 
 export interface SendTemplateMailOptions {
@@ -125,7 +137,7 @@ export interface Msg91EmailPayload {
   domain: string;
   template_id: string;
   reply_to?: MailAddress[];
-  attachments?: MailAttachment[];
+  attachments?: Msg91Attachment[];
 }
 
 /** Read per call so tests and hot reloads see env changes. */
@@ -242,6 +254,23 @@ export const chunkRecipients = <T>(
   return chunks;
 };
 
+/**
+ * Route each attachment into the field MSG91 expects for its kind.
+ *
+ * A URL sent as `file` is rejected with 422 ("File field must be in the
+ * following format: data:content/type;base64") and the email is dropped whole,
+ * attachment and body alike, so this mapping is not cosmetic.
+ */
+const toMsg91Attachment = (attachment: MailAttachment): Msg91Attachment => {
+  const value = attachment.file?.trim() ?? "";
+  const name = attachment.filename?.trim();
+
+  return {
+    ...(value.startsWith("data:") ? { file: value } : { filePath: value }),
+    ...(name ? { fileName: name } : {}),
+  };
+};
+
 export const buildMsg91Payload = (
   recipients: Msg91RecipientPayload[],
   config: { domain: string; from: MailAddress },
@@ -261,7 +290,7 @@ export const buildMsg91Payload = (
     template_id: options.templateId,
     ...(replyTo ? { reply_to: replyTo } : {}),
     ...(options.attachments?.length
-      ? { attachments: options.attachments }
+      ? { attachments: options.attachments.map(toMsg91Attachment) }
       : {}),
   };
 };

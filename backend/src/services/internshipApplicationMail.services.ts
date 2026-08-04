@@ -12,7 +12,7 @@ import {
   buildSeatOfferBlock,
 } from "../lib/internshipApplicationMail";
 import {
-  buildConfirmSeatUrl,
+  confirmSeatUrl,
   dashboardInternshipsUrl,
 } from "../lib/internshipSeatUrl";
 import { formatIstDate } from "../utils/ist";
@@ -97,26 +97,16 @@ export const sendInternshipApplicationReceivedEmail = async (
   if (!user?.email) return;
 
   const internshipName = enrollment.internshipSnapshot?.title?.trim() || "";
-  const slug = enrollment.internshipSnapshot?.slug?.trim() || "";
   const batchId = enrollment.batchSnapshot?.batchId || "";
 
   // Only the merit path is offered the paid seat, and only when the cohort
   // actually has one to sell.
   const offerSeat =
-    path === "merit" && Boolean(slug && batchId)
+    path === "merit" && Boolean(batchId)
       ? await hasActivePaidSeat(enrollment.internship, batchId)
       : false;
 
-  // Shared with the entrance-exam rejection email, which offers the same seat.
-  // Empty when the cohort cannot be named, so the offer card is dropped rather
-  // than pointing at a catalogue the learner has to search again.
-  const seatUrl = slug && batchId ? buildConfirmSeatUrl(slug, batchId) : "";
-
-  const { ctaUrl, ctaLabel } = buildCta(
-    path,
-    dashboardInternshipsUrl(),
-    seatUrl,
-  );
+  const { ctaUrl, ctaLabel } = buildCta(path, dashboardInternshipsUrl());
 
   const fullName = [user.firstName, user.lastName]
     .filter(Boolean)
@@ -136,7 +126,7 @@ export const sendInternshipApplicationReceivedEmail = async (
       nextStepLine: buildNextStepLine(path),
       pointsBlock: buildPointsBlock(awardedPoints),
       seatOfferBlock: offerSeat
-        ? buildSeatOfferBlock(internshipName, seatUrl)
+        ? buildSeatOfferBlock(internshipName, confirmSeatUrl())
         : "",
       ctaUrl,
       ctaLabel,

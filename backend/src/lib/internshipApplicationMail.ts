@@ -129,16 +129,18 @@ export const buildSeatOfferBlock = (
     </table>`;
 };
 
-/** Where the main CTA points, and what it says. */
+/**
+ * Where the main CTA points, and what it says.
+ *
+ * One destination, two labels. The dashboard card is where both actions happen:
+ * a `payment_pending` row shows "Complete payment" on the same card everyone
+ * else uses to view a registration, so only the wording has to change.
+ */
 export const buildCta = (
   path: RegistrationPath,
   dashboardUrl: string,
-  confirmSeatUrl: string,
-): { ctaUrl: string; ctaLabel: string } => {
-  // A payment_pending learner's useful next click is the payment, not a
-  // dashboard row telling them the payment is outstanding.
-  if (path === "paid_seat" && confirmSeatUrl) {
-    return { ctaUrl: confirmSeatUrl, ctaLabel: "Complete your payment" };
-  }
-  return { ctaUrl: dashboardUrl, ctaLabel: "View my registration" };
-};
+): { ctaUrl: string; ctaLabel: string } => ({
+  ctaUrl: dashboardUrl,
+  ctaLabel:
+    path === "paid_seat" ? "Complete your payment" : "View my registration",
+});

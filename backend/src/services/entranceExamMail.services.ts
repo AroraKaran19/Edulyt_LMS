@@ -26,7 +26,7 @@ import {
   entranceExamRejectedMail,
 } from "../mail";
 import {
-  buildConfirmSeatUrl,
+  confirmSeatUrl,
   dashboardInternshipsUrl,
 } from "../lib/internshipSeatUrl";
 
@@ -88,9 +88,6 @@ type EntranceContext = {
   email: string;
   name: string;
   internshipName: string;
-  /** Identifies the cohort, so the seat offer can link straight to it. */
-  slug: string;
-  batchId: string;
 };
 
 /**
@@ -101,12 +98,10 @@ const loadContext = async (
   enrollmentId: mongoose.Types.ObjectId,
 ): Promise<EntranceContext | null> => {
   const enrollment = await InternshipEnrollmentModel.findById(enrollmentId)
-    .select("user internship internshipSnapshot.slug batchSnapshot.batchId")
+    .select("user internship")
     .lean<{
       user: mongoose.Types.ObjectId;
       internship: mongoose.Types.ObjectId;
-      internshipSnapshot?: { slug?: string };
-      batchSnapshot?: { batchId?: string };
     }>();
   if (!enrollment) return null;
 
@@ -134,8 +129,6 @@ const loadContext = async (
       user?.name?.trim() ||
       "there",
     internshipName: internship?.title?.trim() || "your internship",
-    slug: enrollment.internshipSnapshot?.slug?.trim() || "",
-    batchId: enrollment.batchSnapshot?.batchId?.trim() || "",
   };
 };
 
@@ -183,11 +176,11 @@ export const sendEntranceExamResultEmail = async (
       entranceExamRejectedMail.send(to, {
         name: context.name,
         internshipName: context.internshipName,
-        // The enroll form in seat mode with their cohort preselected, not the
-        // bare catalogue: a candidate being offered a seat should not have to
-        // find their own programme and batch again. Same link the registration
-        // email uses, and it survives an expired session.
-        confirmSeatUrl: buildConfirmSeatUrl(context.slug, context.batchId),
+        // Their programme card in the dashboard, which offers the seat against
+        // the registration they already hold, not the enroll form that would
+        // ask them to apply a second time. Same link the registration email
+        // uses, and it survives an expired session.
+        confirmSeatUrl: confirmSeatUrl(),
         year,
       });
     }
