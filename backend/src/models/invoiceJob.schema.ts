@@ -5,6 +5,13 @@ const invoiceJobSchema = new mongoose.Schema<InvoiceJob>(
   {
     jobId: { type: String, required: true, unique: true, index: true },
     orderId: { type: String, required: true },
+    snapshot: {
+      userName: { type: String },
+      itemName: { type: String },
+      amount: { type: Number },
+      orderKind: { type: String },
+      paymentMethod: { type: String },
+    },
     status: {
       type: String,
       enum: ["pending", "processing", "completed", "failed"],

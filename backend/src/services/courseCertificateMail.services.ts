@@ -49,6 +49,23 @@ const claimSendSlot = async (
   return res.modifiedCount === 1;
 };
 
+/**
+ * Give the slot back after a send that never landed.
+ *
+ * The claim has to be taken before the send to win the race, but on its own that
+ * makes the marker a record of intent rather than of delivery: a rejected send
+ * would leave the learner certified and never told, with no path to a retry.
+ */
+const releaseSendSlot = async (
+  enrollmentId: mongoose.Types.ObjectId,
+  kind: CourseCertificateEmailPayload["kind"],
+): Promise<void> => {
+  await EnrollmentModel.updateOne(
+    { _id: enrollmentId },
+    { $unset: { [claimFieldFor(kind)]: "" } },
+  );
+};
+
 type CourseCertificateContext = {
   email: string;
   name: string;
@@ -108,9 +125,12 @@ export const sendCourseCertificateEmail = async (
   enrollmentId: string,
   payload: CourseCertificateEmailPayload,
 ): Promise<boolean> => {
+  let claimed = false;
+  let _id: mongoose.Types.ObjectId | null = null;
+
   try {
     if (!mongoose.Types.ObjectId.isValid(enrollmentId)) return false;
-    const _id = new mongoose.Types.ObjectId(enrollmentId);
+    _id = new mongoose.Types.ObjectId(enrollmentId);
 
     const context = await loadContext(_id);
     if (!context) {
@@ -121,6 +141,7 @@ export const sendCourseCertificateEmail = async (
     }
 
     if (!(await claimSendSlot(_id, payload.kind))) return false;
+    claimed = true;
 
     const reasonLine = buildCourseReasonLine(
       context.courseName,
@@ -130,16 +151,23 @@ export const sendCourseCertificateEmail = async (
     const to = [{ email: context.email, name: context.name }];
 
     if (payload.kind === "pending") {
-      courseCertificatePendingMail.send(to, {
+      const pending = await courseCertificatePendingMail.sendNow(to, {
         name: context.name,
         reasonLine,
         courseName: context.courseName,
         year,
       });
+      if (!pending.ok) {
+        await releaseSendSlot(_id, payload.kind);
+        console.error(
+          `[Course Certificate Mail] Send rejected for enrollment ${enrollmentId} (pending): ${pending.error}. Slot released.`,
+        );
+        return false;
+      }
       return true;
     }
 
-    courseCertificateIssuedMail.send(
+    const issued = await courseCertificateIssuedMail.sendNow(
       to,
       {
         name: context.name,
@@ -163,8 +191,23 @@ export const sendCourseCertificateEmail = async (
         ],
       },
     );
+
+    if (!issued.ok) {
+      await releaseSendSlot(_id, payload.kind);
+      console.error(
+        `[Course Certificate Mail] Send rejected for enrollment ${enrollmentId} (issued): ${issued.error}. ` +
+          "Slot released, so re-running the certificate job will try again.",
+      );
+      return false;
+    }
+
     return true;
   } catch (error) {
+    // The claim outlives this function only if the send succeeded, so anything
+    // thrown after it has to hand the slot back.
+    if (claimed && _id) {
+      await releaseSendSlot(_id, payload.kind).catch(() => undefined);
+    }
     console.error(
       `[Course Certificate Mail] Failed to send ${payload.kind} email for enrollment ${enrollmentId}:`,
       error instanceof Error ? error.message : error,

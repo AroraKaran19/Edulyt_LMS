@@ -1,7 +1,8 @@
 import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
 import { InvoiceJobModel } from "../models/invoiceJob.schema";
-import { InvoiceJob, InvoiceJobStatus } from "../types/invoiceJob";
+import { OrderModel } from "../models/order.schema";
+import { InvoiceJob, InvoiceJobSnapshot, InvoiceJobStatus } from "../types/invoiceJob";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -38,6 +39,50 @@ const MAX_STUCK_RECLAIMS = Math.max(
 );
 
 /**
+ * Copy the order's display fields for storage on the job row.
+ *
+ * The order already snapshots `userName` / `courseName` / `internshipTitle` at
+ * checkout, so this is a copy of a copy rather than a fresh read of the user and
+ * course. Returns dotted paths so the caller can merge them into `$setOnInsert`
+ * without replacing the whole `snapshot` object.
+ *
+ * Never throws: this runs on the payment-success path, and failing to record a
+ * display name is not a reason to leave a paid order uninvoiced.
+ */
+export const buildInvoiceJobSnapshotPaths = async (
+  orderId: string,
+): Promise<Record<string, unknown>> => {
+  try {
+    // `orderId` is a String on this model, and an unparseable one would make
+    // findById throw a CastError rather than simply miss.
+    if (!mongoose.isValidObjectId(orderId)) return {};
+
+    const order = await OrderModel.findById(orderId)
+      .select("userName courseName internshipTitle amount orderKind paymentMethod")
+      .lean();
+    if (!order) return {};
+
+    const snapshot: InvoiceJobSnapshot = {
+      userName: order.userName,
+      // Mirrors what the admin list has always shown for the Item column.
+      itemName: order.courseName ?? order.internshipTitle,
+      amount: order.amount,
+      orderKind: order.orderKind,
+      paymentMethod: order.paymentMethod,
+    };
+
+    return Object.fromEntries(
+      Object.entries(snapshot)
+        .filter(([, value]) => value !== undefined && value !== null && value !== "")
+        .map(([key, value]) => [`snapshot.${key}`, value]),
+    );
+  } catch (error) {
+    console.error(`[Invoice] Could not snapshot order ${orderId} onto its job:`, error);
+    return {};
+  }
+};
+
+/**
  * Queue an invoice for a paid order.
  *
  * Atomic upsert plus the partial unique index on `orderId` means the three
@@ -48,6 +93,8 @@ export const createInvoiceJobService = async (
   orderId: string,
 ): Promise<InvoiceJob> => {
   try {
+    const snapshotPaths = await buildInvoiceJobSnapshotPaths(orderId);
+
     const job = await InvoiceJobModel.findOneAndUpdate(
       { orderId, status: { $in: ["pending", "processing"] } },
       {
@@ -57,6 +104,7 @@ export const createInvoiceJobService = async (
           status: "pending" as InvoiceJobStatus,
           progress: 0,
           retryCount: 0,
+          ...snapshotPaths,
         },
       },
       { upsert: true, new: true },
@@ -243,11 +291,12 @@ export const reclaimStuckInvoiceJobsService = async (): Promise<{
 };
 
 /**
- * Paginated invoice jobs for the admin dashboard, enriched from the order.
+ * Paginated invoice jobs for the admin dashboard.
  *
- * The order already snapshots `userName` / `courseName` / `internshipTitle` at
- * checkout, so one lookup covers every display column without touching the user
- * or course collections.
+ * Display columns come from the job's own `snapshot`, taken when the job was
+ * queued. The lookup into `orders` is only a fallback for rows written before
+ * snapshots existed: reading these live meant that deleting an order blanked out
+ * the customer, item and amount on an invoice that had genuinely been issued.
  */
 export const getAllInvoiceJobsService = async (
   options: {
@@ -308,16 +357,25 @@ export const getAllInvoiceJobsService = async (
       { $unwind: { path: "$order", preserveNullAndEmptyArrays: true } },
       {
         $addFields: {
-          userName: { $ifNull: ["$order.userName", ""] },
+          userName: {
+            $ifNull: ["$snapshot.userName", { $ifNull: ["$order.userName", ""] }],
+          },
           itemName: {
             $ifNull: [
-              "$order.courseName",
-              { $ifNull: ["$order.internshipTitle", ""] },
+              "$snapshot.itemName",
+              {
+                $ifNull: [
+                  "$order.courseName",
+                  { $ifNull: ["$order.internshipTitle", ""] },
+                ],
+              },
             ],
           },
-          amount: "$order.amount",
-          orderKind: "$order.orderKind",
-          paymentMethod: "$order.paymentMethod",
+          amount: { $ifNull: ["$snapshot.amount", "$order.amount"] },
+          orderKind: { $ifNull: ["$snapshot.orderKind", "$order.orderKind"] },
+          paymentMethod: {
+            $ifNull: ["$snapshot.paymentMethod", "$order.paymentMethod"],
+          },
         },
       },
     ];

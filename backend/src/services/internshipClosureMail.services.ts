@@ -13,6 +13,7 @@
  */
 import mongoose from "mongoose";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import type { MailSendResult } from "../utils/mailer";
 import { InternshipModel } from "../models/internship.schema";
 import { UserModel } from "../models/user.schema";
 import {
@@ -53,6 +54,23 @@ const claimSendSlot = async (
     { $set: { [field]: new Date() } },
   );
   return res.modifiedCount === 1;
+};
+
+/**
+ * Give the slot back after a send that never landed.
+ *
+ * The claim has to be taken before the send to win the race, but on its own that
+ * makes the marker a record of intent rather than of delivery: a rejected send
+ * would close the internship silently, with no path to a retry.
+ */
+const releaseSendSlot = async (
+  enrollmentId: mongoose.Types.ObjectId,
+  kind: ClosureEmailPayload["kind"],
+): Promise<void> => {
+  await InternshipEnrollmentModel.updateOne(
+    { _id: enrollmentId },
+    { $unset: { [claimFieldFor(kind)]: "" } },
+  );
 };
 
 type ClosureContext = {
@@ -148,9 +166,12 @@ export const sendInternshipClosureEmail = async (
   enrollmentId: string,
   payload: ClosureEmailPayload,
 ): Promise<boolean> => {
+  let claimed = false;
+  let _id: mongoose.Types.ObjectId | null = null;
+
   try {
     if (!mongoose.Types.ObjectId.isValid(enrollmentId)) return false;
-    const _id = new mongoose.Types.ObjectId(enrollmentId);
+    _id = new mongoose.Types.ObjectId(enrollmentId);
 
     const context = await loadClosureContext(_id, payload.kind);
     if (!context) {
@@ -161,14 +182,17 @@ export const sendInternshipClosureEmail = async (
     }
 
     if (!(await claimSendSlot(_id, payload.kind))) return false;
+    claimed = true;
 
     const reasonLine = buildReasonLine(context.outcome, context.internshipName);
     const year = new Date().getFullYear();
     const to = [{ email: context.email, name: context.name }];
 
+    let result: MailSendResult;
+
     switch (payload.kind) {
       case "issued":
-        internshipCertificateIssuedMail.send(
+        result = await internshipCertificateIssuedMail.sendNow(
           to,
           {
             name: context.name,
@@ -192,28 +216,44 @@ export const sendInternshipClosureEmail = async (
             ],
           },
         );
-        return true;
+        break;
 
       case "pending":
-        internshipCertificatePendingMail.send(to, {
+        result = await internshipCertificatePendingMail.sendNow(to, {
           name: context.name,
           reasonLine,
           internshipName: context.internshipName,
           year,
         });
-        return true;
+        break;
 
       case "withheld":
-        internshipCertificateWithheldMail.send(to, {
+        result = await internshipCertificateWithheldMail.sendNow(to, {
           name: context.name,
           reasonLine,
           helpText: buildHelpText(context.hadCertificationExam),
           contactPhone: CONTACT_PHONE,
           year,
         });
-        return true;
+        break;
     }
+
+    if (!result.ok) {
+      await releaseSendSlot(_id, payload.kind);
+      console.error(
+        `[Closure Mail] Send rejected for enrollment ${enrollmentId} (${payload.kind}): ${result.error}. ` +
+          "Slot released, so re-running the certificate job will try again.",
+      );
+      return false;
+    }
+
+    return true;
   } catch (error) {
+    // The claim outlives this function only if the send succeeded, so anything
+    // thrown after it has to hand the slot back.
+    if (claimed && _id) {
+      await releaseSendSlot(_id, payload.kind).catch(() => undefined);
+    }
     console.error(
       `[Closure Mail] Failed to send ${payload.kind} email for enrollment ${enrollmentId}:`,
       error instanceof Error ? error.message : error,

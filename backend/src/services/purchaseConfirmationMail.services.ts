@@ -33,6 +33,9 @@ import {
  * already-invoiced order, so the worker can legitimately reach the success path
  * more than once for the same order. This is what stops that becoming a second
  * receipt.
+ *
+ * Claimed before the send so two workers racing the same order cannot both mail
+ * it, and released again by `releaseSendSlot` if that send does not land.
  */
 const claimSendSlot = async (
   orderId: mongoose.Types.ObjectId,
@@ -42,6 +45,22 @@ const claimSendSlot = async (
     { $set: { confirmationEmailSentAt: new Date() } },
   );
   return res.modifiedCount === 1;
+};
+
+/**
+ * Give the slot back after a send that never landed.
+ *
+ * Without this the marker records an intent to send rather than a send, and the
+ * buyer's receipt is lost for good: nothing re-reads a settled order, so a
+ * rejected send would leave them paid, invoiced, and never told.
+ */
+const releaseSendSlot = async (
+  orderId: mongoose.Types.ObjectId,
+): Promise<void> => {
+  await OrderModel.updateOne(
+    { _id: orderId },
+    { $unset: { confirmationEmailSentAt: "" } },
+  );
 };
 
 type OrderLean = {
@@ -86,9 +105,12 @@ const callToAction = (
 export const sendPurchaseConfirmationEmail = async (
   orderId: string,
 ): Promise<boolean> => {
+  let claimed = false;
+  let _id: mongoose.Types.ObjectId | null = null;
+
   try {
     if (!mongoose.Types.ObjectId.isValid(orderId)) return false;
-    const _id = new mongoose.Types.ObjectId(orderId);
+    _id = new mongoose.Types.ObjectId(orderId);
 
     const order = await OrderModel.findById(_id)
       .select(
@@ -139,10 +161,11 @@ export const sendPurchaseConfirmationEmail = async (
           "Your purchase";
 
     if (!(await claimSendSlot(_id))) return false;
+    claimed = true;
 
     const { ctaUrl, ctaLabel } = callToAction(kind);
 
-    purchaseConfirmationMail.send(
+    const result = await purchaseConfirmationMail.sendNow(
       [
         {
           email,
@@ -196,8 +219,20 @@ export const sendPurchaseConfirmationEmail = async (
         : undefined,
     );
 
+    if (!result.ok) {
+      await releaseSendSlot(_id);
+      console.error(
+        `[Purchase Mail] Send rejected for order ${orderId}: ${result.error}. ` +
+          "Slot released, so re-running the invoice job will try again.",
+      );
+      return false;
+    }
+
     return true;
   } catch (error) {
+    // The claim outlives this function only if the send succeeded, so anything
+    // thrown after it has to hand the slot back.
+    if (claimed && _id) await releaseSendSlot(_id).catch(() => undefined);
     console.error(
       `[Purchase Mail] Failed to send confirmation for order ${orderId}:`,
       error instanceof Error ? error.message : error,
