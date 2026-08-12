@@ -7,20 +7,6 @@ import useAuth from "@/hooks/useAuth";
 import { Student } from "@/types";
 import { FullScreenLoader } from "@/components/ui/Loader";
 
-/**
- * Global guard that forces students with an incomplete profile to finish
- * onboarding before using the app. A student is "complete" once `phone`,
- * `experienceLevel`, and `degreeName` are all set.
- *
- * Mounted inside <SessionProvider> in LayoutWrapper. To make onboarding appear
- * immediately on login — rather than flashing the landing page and then
- * redirecting — the gate BLOCKS rendering (full-screen loader) for an
- * authenticated student until the first completeness check resolves. The
- * verdict is cached per user so later navigations don't block again.
- */
-
-// Path prefixes the gate never acts on: auth flows, other-role areas, the
-// OAuth handoff, payment status, and the onboarding page itself.
 const EXCLUDED_PREFIXES = [
   "/onboarding",
   "/login",
@@ -31,6 +17,7 @@ const EXCLUDED_PREFIXES = [
   "/partner",
   "/auth-redirect",
   "/payment/status",
+  "/join",
 ];
 
 const isExcluded = (pathname: string) =>
@@ -77,13 +64,9 @@ const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
           if (userId) verifiedUserId.current = userId;
           setTick((t) => t + 1); // re-render → unblock children
         } else {
-          // Keep the loader up while we navigate to onboarding (the loader
-          // bridges the redirect so the destination page never shows).
           router.replace(`/onboarding?next=${encodeURIComponent(pathname)}`);
         }
       } catch {
-        // Fail open — a transient API error must not lock students out of the
-        // whole app, and must not leave them stuck on the loader.
         if (!cancelled && userId) {
           failedOpenUserId.current = userId;
           setTick((t) => t + 1);
@@ -98,8 +81,6 @@ const OnboardingGate = ({ children }: { children: React.ReactNode }) => {
     };
   }, [needsCheck, userId, pathname, router]);
 
-  // Block the underlying page until we know the verdict (or while bouncing to
-  // /onboarding), so an incomplete student never sees the destination page.
   if (needsCheck) {
     return <FullScreenLoader text="Loading..." size="lg" variant="spinner" />;
   }
