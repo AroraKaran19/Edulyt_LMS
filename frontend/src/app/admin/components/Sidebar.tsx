@@ -9,6 +9,7 @@ import {
   Settings,
   ShoppingCart,
   Tag,
+  UserPlus,
   Users,
 } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
@@ -165,6 +166,11 @@ const AdminSidebar = ({
           href: "/admin/community/moderation",
         },
       ],
+    },
+    {
+      icon: <UserPlus className="size-6" />,
+      label: "Leads",
+      href: "/admin/leads",
     },
     {
       icon: <HelpCircle className="size-6" />,

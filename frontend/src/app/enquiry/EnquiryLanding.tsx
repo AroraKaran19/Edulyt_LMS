@@ -1,29 +1,47 @@
 "use client";
 
 import { Fragment, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import JoinButton from "./JoinButton";
+import EnquiryButton from "./EnquiryButton";
 import LeadForm from "./LeadForm";
-import PlanStack from "./PlanStack";
-import { ARTIFACTS, ISSUERS, PLANS, STATS, type PlanId } from "./plans";
+import PlanMatrix from "./PlanMatrix";
+import CertificateShowcase from "./CertificateShowcase";
+import { ISSUERS, PLANS, RATING, STATS, STEPS, type PlanId } from "./plans";
 import { useReveal } from "./useReveal";
 
 const MARQUEE = [
-  "Every course unlocked",
-  "Cisco certified",
-  "Meta certified",
-  "Apple certified",
-  "Recommendation letter",
-  "Live internship",
+  "15+ hrs live mentorship",
+  "Live projects on real data",
+  "Internship offer letter",
+  "Mock interviews",
+  "ATS-optimised resume",
+  "Referrals into 5 top companies",
 ];
 
 
-export default function JoinLanding() {
+export default function EnquiryLanding() {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [plan, setPlan] = useState<PlanId>(3);
+
+  /*
+   * Google sign-in is a full page redirect, so the picks a student made before
+   * it are carried in the return URL rather than in storage. Reading them as
+   * lazy initial state keeps the server and client render identical.
+   */
+  const params = useSearchParams();
+  const [plan, setPlan] = useState<PlanId>(() => {
+    const raw = Number(params.get("plan"));
+    return raw === 1 || raw === 2 || raw === 3 ? (raw as PlanId) : 3;
+  });
+  /** Which MNC certification the student wants, null if none. */
+  const [cert, setCert] = useState<string | null>(() => {
+    const raw = params.get("cert");
+    return ISSUERS.some((i) => i.name === raw) ? raw : null;
+  });
+  const initialStage = params.get("stage") ?? "";
   const [docked, setDocked] = useState(false);
 
   useReveal(rootRef);
@@ -42,7 +60,7 @@ export default function JoinLanding() {
   };
 
   const toForm = () => {
-    const target = document.getElementById("jo-form");
+    const target = document.getElementById("eq-form");
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "center" });
     target.querySelector<HTMLInputElement>("input")?.focus({
@@ -54,9 +72,9 @@ export default function JoinLanding() {
 
   return (
     <div
-      data-join
+      data-enquiry
       ref={rootRef}
-      className="relative isolate overflow-x-clip bg-[#fff6f1] text-text-secondary antialiased"
+      className="relative isolate overflow-x-clip bg-[#fff6f1] font-[family-name:var(--font-eq-body)] text-text-secondary antialiased"
     >
       <div
         aria-hidden="true"
@@ -68,7 +86,7 @@ export default function JoinLanding() {
       />
 
       <header className="sticky top-0 z-40 border-b border-[#fbe3d2] bg-white/[0.86] backdrop-blur-[14px]">
-        <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-5 md:px-8 flex h-[70px] items-center gap-4">
+        <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-5 md:px-8 flex h-[78px] items-center gap-4">
           <Link
             href="/"
             className="flex flex-none items-center"
@@ -81,20 +99,20 @@ export default function JoinLanding() {
               height={30}
               priority
               unoptimized
-              className="h-[34px] w-auto"
+              className="h-11 w-auto sm:h-[52px]"
             />
           </Link>
           <span className="ml-auto hidden items-center gap-2 rounded-full bg-[#3aa544]/10 px-3.5 py-[7px] text-[11.5px] font-bold uppercase tracking-[0.08em] text-[#2c7f34] md:inline-flex">
             <i className="size-[7px] flex-none rounded-full bg-[#3aa544]" />
             Admissions open
           </span>
-          <JoinButton
+          <EnquiryButton
             variant="ghost"
             className="ml-auto md:ml-0"
             onClick={toForm}
           >
             Get your plan
-          </JoinButton>
+          </EnquiryButton>
         </div>
       </header>
 
@@ -105,42 +123,84 @@ export default function JoinLanding() {
           className="relative z-[1] mx-auto w-full max-w-[1240px] px-5 md:px-8 grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14"
         >
           <div>
-            <span
+            <div
               data-fade
-              className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-[7px] text-[11.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a] animate-jo-fade-up [animation-delay:300ms]"
+              className="flex animate-eq-fade-up flex-wrap items-center gap-2.5 [animation-delay:300ms]"
             >
-              <i className="size-1.5 flex-none rounded-full bg-primary" />
-              One enrolment · Three plans
-            </span>
+              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-[7px] text-[11.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a]">
+                <i className="size-1.5 flex-none rounded-full bg-primary" />
+                Career Acceleration Program
+              </span>
 
-            <h1 className="mt-5 text-[clamp(2rem,6.4vw,4.05rem)] font-extrabold leading-[1.04] tracking-[-0.03em] text-text-primary">
+              {/* Google rating, partial star drawn by clipping a gold row over a grey one */}
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#fbe3d2] bg-white py-[6px] pr-3.5 pl-3 shadow-[0_6px_18px_-12px_rgba(43,21,8,0.28)]">
+                <span className="sr-only">
+                  Rated {RATING.score} out of 5 from {RATING.count} {RATING.source}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="relative inline-flex items-center"
+                >
+                  <span className="flex gap-[1px] text-[#e6d6c8]">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <Star key={i} size={13} strokeWidth={0} fill="currentColor" />
+                    ))}
+                  </span>
+                  <span
+                    className="absolute inset-y-0 left-0 overflow-hidden"
+                    style={{ width: `${(RATING.score / 5) * 100}%` }}
+                  >
+                    <span className="flex gap-[1px] text-[#f7ad24]">
+                      {[0, 1, 2, 3, 4].map((i) => (
+                        <Star
+                          key={i}
+                          size={13}
+                          strokeWidth={0}
+                          fill="currentColor"
+                        />
+                      ))}
+                    </span>
+                  </span>
+                </span>
+                <span aria-hidden="true" className="text-[12px] font-extrabold text-text-primary">
+                  {RATING.score}
+                </span>
+                <span aria-hidden="true" className="text-[11.5px] font-semibold text-[#8c7a70]">
+                  by students across India
+                </span>
+              </span>
+            </div>
+
+            <h1 className="mt-5 font-[family-name:var(--font-eq-display)] text-[clamp(2rem,6.4vw,4.05rem)] font-extrabold leading-[1.04] tracking-[-0.03em] text-text-primary">
               <span className="block overflow-hidden pb-[0.06em]">
-                <span className="block animate-jo-rise [animation-delay:50ms]">
-                  Anyone can learn it.
+                <span className="block animate-eq-rise [animation-delay:50ms]">
+                  Don&apos;t just learn.
                 </span>
               </span>
               <span className="block overflow-hidden pb-[0.06em]">
-                <span className="block animate-jo-rise [animation-delay:130ms]">
-                  Few can <em className="not-italic text-primary">prove</em> it.
+                <span className="block animate-eq-rise [animation-delay:130ms]">
+                  <em className="not-italic text-primary">
+                    Get placed at a top MNC.
+                  </em>
                 </span>
               </span>
             </h1>
 
             <p
               data-fade
-              className="mt-5 max-w-[50ch] animate-jo-fade-up text-[1.0625rem] leading-[1.62] text-text-secondary [animation-delay:300ms]"
+              className="mt-5 max-w-[50ch] animate-eq-fade-up text-[1.0625rem] leading-[1.62] text-text-secondary [animation-delay:300ms]"
             >
-              Courses teach you the skill. Airkrit hands you the proof a recruiter
-              actually looks for:{" "}
+              India&apos;s first edtech collaborating with{" "}
               <strong className="font-bold text-text-primary">
-                certifications, a recommendation letter and a real internship
-              </strong>
-              . Pick how far you want to go.
+                Meta, Microsoft, Adobe and Cisco
+              </strong>{" "}
+              for certifications. Learn, get mentored, get placed. Pick the plan
+              that matches how much support you want.
             </p>
 
             <ul
               data-fade
-              className="mt-7 grid animate-jo-fade-up gap-2.5 [animation-delay:300ms] sm:grid-cols-3"
+              className="mt-7 grid animate-eq-fade-up gap-2.5 [animation-delay:300ms] sm:grid-cols-3"
             >
               {STATS.map((stat) => (
                 <li
@@ -159,10 +219,10 @@ export default function JoinLanding() {
 
             <div
               data-fade
-              className="mt-[30px] animate-jo-fade-up border-t border-[#fbe3d2] pt-[22px] [animation-delay:420ms]"
+              className="mt-[30px] animate-eq-fade-up border-t border-[#fbe3d2] pt-[22px] [animation-delay:420ms]"
             >
               <span className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-[#8c7a70]">
-                Certifications issued by
+                Certification partners (CATC)
               </span>
               <ul className="mt-3.5 grid max-w-[560px] grid-cols-2 gap-2.5 sm:grid-cols-4">
                 {ISSUERS.map((issuer) => (
@@ -187,9 +247,16 @@ export default function JoinLanding() {
 
           <div
             data-fade
-            className="animate-jo-fade-up [animation-delay:300ms] lg:sticky lg:top-24"
+            className="animate-eq-fade-up [animation-delay:300ms] lg:sticky lg:top-24"
           >
-            <LeadForm selected={plan} onSelect={setPlan} onCompare={toPlans} />
+            <LeadForm
+              selected={plan}
+              onSelect={setPlan}
+              cert={cert}
+              onCert={setCert}
+              onCompare={toPlans}
+              initialStage={initialStage}
+            />
           </div>
         </div>
       </section>
@@ -201,7 +268,7 @@ export default function JoinLanding() {
         {[0, 1].map((copy) => (
           <div
             key={copy}
-            className="flex min-w-full flex-none animate-jo-slide items-center justify-around gap-[22px]"
+            className="flex min-w-full flex-none animate-eq-slide items-center justify-around gap-[22px]"
           >
             {MARQUEE.map((item) => (
               <Fragment key={item}>
@@ -215,26 +282,71 @@ export default function JoinLanding() {
         ))}
       </div>
 
-      <section className="relative z-[1] py-[72px] lg:py-[104px]" id="plans">
+      <section className="relative z-[1] py-[60px] lg:py-[72px]" id="plans">
         <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-5 md:px-8">
           <div data-reveal className="translate-y-6 opacity-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,0.9,0.28,1)] data-[visible=true]:translate-y-0 data-[visible=true]:opacity-100">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-[7px] text-[11.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a]">
               <i className="size-1.5 flex-none rounded-full bg-primary" />
-              The plans
+              Compare the plans
             </span>
             <h2 className="mt-[18px] text-[clamp(2rem,4.4vw,2.9rem)] font-extrabold leading-[1.1] tracking-[-0.02em] text-balance text-text-primary">
-              Each plan <em className="not-italic text-primary">keeps</em>{" "}
-              everything in the one above it
+              Everything we offer, and{" "}
+              <em className="not-italic text-primary">what each plan unlocks</em>
             </h2>
             <p className="mt-3.5 max-w-[58ch] text-base leading-[1.65] text-text-secondary">
-              Nothing resets and nothing is sold to you twice. Every plan carries
-              the one above it forward and adds a new kind of proof. Pick a plan
-              to see exactly what you would be holding.
+              Pick a plan on the right. The list lights up with what you get and
+              dims what you do not. The MNC certification is free on
+              Mentor-to-Placement and can be added to either other plan.
             </p>
           </div>
 
           <div data-reveal className="translate-y-6 opacity-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,0.9,0.28,1)] data-[visible=true]:translate-y-0 data-[visible=true]:opacity-100 delay-[80ms]">
-            <PlanStack selected={plan} onSelect={setPlan} />
+            <PlanMatrix
+              selected={plan}
+              onSelect={setPlan}
+              cert={cert}
+              onCert={setCert}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="relative z-[1] py-[60px] lg:py-[80px]" id="certificates">
+        <div className="relative z-[1] mx-auto w-full max-w-[1240px] px-5 md:px-8">
+          <div data-reveal className="translate-y-6 opacity-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,0.9,0.28,1)] data-[visible=true]:translate-y-0 data-[visible=true]:opacity-100">
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-[7px] text-[11.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a]">
+              <i className="size-1.5 flex-none rounded-full bg-primary" />
+              Certificates
+            </span>
+            <h2 className="mt-[18px] text-[clamp(2rem,4.4vw,2.9rem)] font-extrabold leading-[1.1] tracking-[-0.02em] text-balance text-text-primary">
+              The certificates and letters{" "}
+              <em className="not-italic text-primary">you walk away with</em>
+            </h2>
+            <p className="mt-3.5 max-w-[58ch] text-base leading-[1.65] text-text-secondary">
+              Every one of these is issued in your name and verifiable. Pick any
+              on the right to see the real document.
+            </p>
+
+            <p className="mt-4 flex max-w-[62ch] items-start gap-2.5 rounded-xl border border-[#3aa544]/25 bg-[#3aa544]/[0.07] px-4 py-3 text-[13.5px] leading-[1.55] text-text-primary">
+              <BadgeCheck
+                size={17}
+                strokeWidth={2.4}
+                className="mt-0.5 flex-none text-[#2c7f34]"
+              />
+              <span>
+                <b className="font-extrabold">
+                  Airkrit certification is guaranteed on every plan.
+                </b>{" "}
+                Clear the programme goals and your training certificate,
+                internship offer letter and internship certificate are issued
+                whichever plan you are on. The MNC certification is the only one
+                that depends on your plan or an add-on.
+              </span>
+            </p>
+          </div>
+
+          <div data-reveal className="translate-y-6 opacity-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,0.9,0.28,1)] data-[visible=true]:translate-y-0 data-[visible=true]:opacity-100 delay-[80ms]">
+            <CertificateShowcase />
           </div>
         </div>
       </section>
@@ -244,49 +356,42 @@ export default function JoinLanding() {
           <div data-reveal className="translate-y-6 opacity-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,0.9,0.28,1)] data-[visible=true]:translate-y-0 data-[visible=true]:opacity-100">
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3.5 py-[7px] text-[11.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a]">
               <i className="size-1.5 flex-none rounded-full bg-primary" />
-              On paper
+              How it runs
             </span>
             <h2 className="mt-[18px] text-[clamp(2rem,4.4vw,2.9rem)] font-extrabold leading-[1.1] tracking-[-0.02em] text-balance text-text-primary">
-              What you <em className="not-italic text-primary">walk away</em>{" "}
-              holding
+              Learn, get mentored,{" "}
+              <em className="not-italic text-primary">get placed</em>
             </h2>
             <p className="mt-3.5 max-w-[58ch] text-base leading-[1.65] text-text-secondary">
-              The parts of the programme that outlive it. These are documents that
-              go into a job application, not a screenshot of a progress bar.
+              Three stages, in order. Every plan covers the first, Mentor-Led adds
+              the second, Mentor-to-Placement carries you through all three.
             </p>
           </div>
 
           <div className="mt-10 grid gap-[18px] sm:grid-cols-3">
-            {ARTIFACTS.map((item, i) => (
+            {STEPS.map((step, i) => (
               <article
-                key={item.title}
+                key={step.no}
                 data-reveal
                 className={cn(
                   "rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]",
                   "translate-y-6 opacity-0 transition-[opacity,transform] duration-700 ease-[cubic-bezier(0.16,0.9,0.28,1)] data-[visible=true]:translate-y-0 data-[visible=true]:opacity-100",
                   "hover:shadow-[0_22px_44px_-18px_rgba(43,21,8,0.26),0_3px_8px_rgba(43,21,8,0.05)]",
-                  "relative flex flex-col px-[22px] py-6 hover:-translate-y-1.5 hover:border-[#f2d6c2]",
+                  "relative flex flex-col px-[22px] py-6 transition-[transform,box-shadow,border-color] hover:-translate-y-1.5 hover:border-[#f2d6c2]",
                   i === 0 && "delay-[80ms]",
                   i === 1 && "delay-[160ms]",
                   i === 2 && "delay-[240ms]"
                 )}
               >
-                <span className="absolute top-6 right-5 text-[11.5px] font-bold text-[#c4551a]">
-                  {item.rung}
-                </span>
-                <span className="inline-flex self-start rounded-full bg-[#f7ad24]/[0.16] px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.07em] text-[#8a5c05]">
-                  {item.kind}
+                <span className="grid size-11 place-items-center rounded-full bg-primary/10 text-[15px] font-extrabold text-primary">
+                  {step.no}
                 </span>
                 <h3 className="mt-4 mb-2 text-[1.3rem] font-extrabold leading-[1.2] tracking-[-0.02em] text-text-primary">
-                  {item.title}
+                  {step.title}
                 </h3>
-                <p className="mb-5 text-[0.9rem] leading-[1.6] text-text-secondary">
-                  {item.body}
+                <p className="text-[0.9rem] leading-[1.6] text-text-secondary">
+                  {step.body}
                 </p>
-                <span className="mt-auto flex items-center gap-2 border-t border-[#fbe3d2] pt-4 text-[12.5px] font-bold text-[#2c7f34]">
-                  <BadgeCheck size={16} strokeWidth={2.4} />
-                  {item.seal}
-                </span>
               </article>
             ))}
           </div>
@@ -310,13 +415,14 @@ export default function JoinLanding() {
               Three plans. One short form.
             </h2>
             <p className="relative mx-auto mb-[26px] max-w-[50ch] text-base leading-[1.6] text-white/[0.92]">
-              Share your name, email and number. We will send the plan breakdown
-              and fee structure, then call to fix your batch.
+              Share your name, email and number. We will send the full plan
+              breakdown, confirm your batch and answer anything about the MNC
+              certification add-on.
             </p>
-            <JoinButton variant="onColor" className="relative" onClick={toForm}>
+            <EnquiryButton variant="onColor" className="relative" onClick={toForm}>
               Get {picked.name} details
               <ArrowRight size={16} strokeWidth={2.6} />
-            </JoinButton>
+            </EnquiryButton>
           </div>
 
           <footer className="relative z-[1] mt-11 flex flex-wrap items-center gap-x-[22px] gap-y-3 border-t border-[#fbe3d2] pt-6 text-[13px] font-semibold text-[#8c7a70]">
@@ -358,9 +464,9 @@ export default function JoinLanding() {
             {picked.name}
           </b>
         </span>
-        <JoinButton className="ml-auto h-[46px] flex-none" onClick={toForm}>
+        <EnquiryButton className="ml-auto h-[46px] flex-none" onClick={toForm}>
           Get details
-        </JoinButton>
+        </EnquiryButton>
       </div>
     </div>
   );

@@ -82,6 +82,12 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     ],
   },
   {
+    key: "leads",
+    label: "Leads",
+    single: true,
+    pages: [{ key: "leads", label: "Leads", href: "/admin/leads" }],
+  },
+  {
     key: "faqs",
     label: "FAQs",
     single: true,

@@ -43,6 +43,7 @@ export * from "./course";
 export * from "./user";
 export * from "./review";
 export * from "./faq";
+export * from "./lead";
 export * from "./enrollment";
 export * from "./affiliate";
 export * from "./order";

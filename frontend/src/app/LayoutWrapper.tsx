@@ -26,7 +26,7 @@ export default function LayoutWrapper({
     !pathname.startsWith("/register") &&
     !pathname.startsWith("/payment/status") &&
     !pathname.startsWith("/onboarding") &&
-    !pathname.startsWith("/join") &&
+    !pathname.startsWith("/enquiry") &&
     !pathname.startsWith("/forgot-password");
 
   useEffect(() => {

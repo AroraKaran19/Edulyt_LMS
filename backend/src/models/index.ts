@@ -22,6 +22,7 @@ import { CommunityReviewModel } from "./community-review.schema";
 import { OrderModel } from "./order.schema";
 import TestimonialModel from "./testimonial.schema";
 import { FAQModel } from "./faq.schema";
+import { LeadModel } from "./lead.schema";
 import ReviewModel from "./review.schema";
 import { EnrollmentModel } from "./enrollment.schema";
 import { CertificateModel } from "./certificate.schema";
@@ -62,6 +63,7 @@ export {
   OrderModel,
   TestimonialModel,
   FAQModel,
+  LeadModel,
   ReviewModel,
   EnrollmentModel,
   CertificateModel,

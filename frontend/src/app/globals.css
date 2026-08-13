@@ -160,8 +160,8 @@ button:disabled {
     ease-in-out infinite;
   --animate-announcement-sheen: announcementSheen 4s ease-in-out infinite;
 
-  /* ---- /join campaign landing page ---- */
-  @keyframes joRise {
+  /* ---- /enquiry campaign landing page ---- */
+  @keyframes eqRise {
     from {
       transform: translateY(105%);
     }
@@ -170,7 +170,7 @@ button:disabled {
     }
   }
 
-  @keyframes joFadeUp {
+  @keyframes eqFadeUp {
     from {
       opacity: 0;
       transform: translateY(14px);
@@ -181,33 +181,33 @@ button:disabled {
     }
   }
 
-  @keyframes joSlide {
+  @keyframes eqSlide {
     to {
       transform: translateX(-100%);
     }
   }
 
-  --animate-jo-rise: joRise 0.85s cubic-bezier(0.16, 0.9, 0.28, 1) both;
-  --animate-jo-fade-up: joFadeUp 0.75s cubic-bezier(0.16, 0.9, 0.28, 1) both;
-  --animate-jo-slide: joSlide 40s linear infinite;
+  --animate-eq-rise: eqRise 0.85s cubic-bezier(0.16, 0.9, 0.28, 1) both;
+  --animate-eq-fade-up: eqFadeUp 0.75s cubic-bezier(0.16, 0.9, 0.28, 1) both;
+  --animate-eq-slide: eqSlide 40s linear infinite;
 }
 
 /*
- * /join: one blanket motion opt-out. Doing this with a `motion-reduce:` variant
+ * /enquiry: one blanket motion opt-out. Doing this with a `motion-reduce:` variant
  * would mean repeating it on ~40 elements, so it lives here instead.
  */
 @media (prefers-reduced-motion: reduce) {
-  [data-join] *,
-  [data-join] *::before,
-  [data-join] *::after {
+  [data-enquiry] *,
+  [data-enquiry] *::before,
+  [data-enquiry] *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
 
-  [data-join] [data-reveal],
-  [data-join] [data-fade],
-  [data-join] [data-rise] {
+  [data-enquiry] [data-reveal],
+  [data-enquiry] [data-fade],
+  [data-enquiry] [data-rise] {
     opacity: 1 !important;
     transform: none !important;
   }
