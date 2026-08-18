@@ -84,6 +84,18 @@ const couponSchema = new mongoose.Schema<Coupon>(
       ref: "User",
       required: true,
     },
+    /**
+     * Set when the coupon belongs to a scholarship campaign. Such coupons are
+     * read-only on /admin/coupons: they carry no `usageLimit` because every
+     * qualifier redeems the same code, so a careless edit there would break the
+     * reward for every qualifier at once.
+     */
+    sourceScholarshipTestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScholarshipTest",
+      required: false,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -98,6 +110,7 @@ couponSchema.index({ validFrom: 1, validUntil: 1 });
 couponSchema.index({ createdBy: 1 });
 couponSchema.index({ applicableCourses: 1 });
 couponSchema.index({ applicableCategories: 1 });
+couponSchema.index({ sourceScholarshipTestId: 1 });
 
 // Validation: validUntil must be after validFrom
 couponSchema.pre("save", function (next) {

@@ -39,6 +39,12 @@ import { PendingSignupModel } from "./pendingSignup.schema";
 import { PendingEmailChangeModel } from "./pendingEmailChange.schema";
 import { PasswordResetRequestModel } from "./passwordResetRequest.schema";
 import { PhoneVerificationModel } from "./phoneVerification.schema";
+import { ScholarshipTestModel } from "./scholarshipTest.schema";
+import { ScholarshipAttemptModel } from "./scholarshipAttempt.schema";
+import { ScholarshipCouponEntitlementModel } from "./scholarshipCouponEntitlement.schema";
+import { ScholarshipTestDailyStatModel } from "./scholarshipTestDailyStat.schema";
+import { ScholarshipEmailOtpModel } from "./scholarshipEmailOtp.schema";
+import { ScholarshipSessionModel } from "./scholarshipSession.schema";
 
 export {
   UserModel,
@@ -80,4 +86,10 @@ export {
   PendingEmailChangeModel,
   PasswordResetRequestModel,
   PhoneVerificationModel,
+  ScholarshipTestModel,
+  ScholarshipAttemptModel,
+  ScholarshipCouponEntitlementModel,
+  ScholarshipTestDailyStatModel,
+  ScholarshipEmailOtpModel,
+  ScholarshipSessionModel,
 };

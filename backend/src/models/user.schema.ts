@@ -180,6 +180,7 @@ const userSchema = new mongoose.Schema<User>(
         "instructor",
         "collaborator",
         "partner",
+        "marketer",
         "admin",
         "super-admin",
       ],
@@ -507,6 +508,11 @@ const partnerSchema = new mongoose.Schema({
   internshipAnalyticsEnabled: { type: Boolean, required: true, default: true },
 });
 
+// Marketer discriminator schema. Carries no fields of its own: the role exists
+// so scholarship access is a userType rather than a permissions grant, which
+// keeps marketers out of every other admin surface by construction.
+const marketerSchema = new mongoose.Schema({});
+
 // Create discriminator models
 const InstructorModel = UserModel.discriminator<Instructor>(
   "instructor",
@@ -518,6 +524,7 @@ const CollaboratorModel = UserModel.discriminator<Collaborator>(
   collaboratorSchema
 );
 const PartnerModel = UserModel.discriminator<Partner>("partner", partnerSchema);
+const MarketerModel = UserModel.discriminator("marketer", marketerSchema);
 
 // reset password
 userSchema.statics.resetPassword = async function (
@@ -545,4 +552,5 @@ export {
   StudentModel,
   CollaboratorModel,
   PartnerModel,
+  MarketerModel,
 };

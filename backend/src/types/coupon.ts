@@ -18,6 +18,8 @@ export interface Coupon {
   validUntil: Date;
   isActive: boolean;
   createdBy: string | User;
+  /** Set when this coupon belongs to a scholarship campaign. */
+  sourceScholarshipTestId?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

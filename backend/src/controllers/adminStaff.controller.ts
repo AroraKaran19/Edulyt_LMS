@@ -31,28 +31,42 @@ export const listAdminsController = asyncHandler(
   },
 );
 
+/** Staff can be an admin or a marketer, so the copy has to name which. */
+const roleLabel = (role?: string): string =>
+  role === "marketer" ? "Marketer" : "Admin";
+
 /**
  * @route   POST /api/admin/staff/admins
- * @desc    Create a new admin account with page permissions
+ * @desc    Create a new staff account: an admin with page permissions, or a marketer
  * @access  Super-admin
  */
 export const createAdminController = asyncHandler(
   async (req: Request, res: Response) => {
     const admin = await createAdminService(req.body);
-    sendSuccessResponse(res, admin, "Admin created successfully", 201);
+    sendSuccessResponse(
+      res,
+      admin,
+      `${roleLabel(req.body?.role)} created successfully`,
+      201,
+    );
   },
 );
 
 /**
  * @route   POST /api/admin/staff/admins/promote
- * @desc    Promote an existing user to admin
+ * @desc    Promote an existing user to admin or marketer
  * @access  Super-admin
  */
 export const promoteUserController = asyncHandler(
   async (req: Request, res: Response) => {
-    const { email, permissions } = req.body;
-    const admin = await promoteUserToAdminService(email, permissions);
-    sendSuccessResponse(res, admin, "User promoted to admin", 200);
+    const { email, permissions, role } = req.body;
+    const admin = await promoteUserToAdminService(email, permissions, role);
+    sendSuccessResponse(
+      res,
+      admin,
+      `User promoted to ${roleLabel(role).toLowerCase()}`,
+      200,
+    );
   },
 );
 

@@ -17,7 +17,8 @@ interface AdminUser {
   firstName?: string;
   lastName?: string;
   email: string;
-  userType: "admin" | "super-admin";
+  // Marketers are staff too, so the list endpoint returns them here.
+  userType: "admin" | "super-admin" | "marketer";
   permissions?: string[];
 }
 
@@ -148,6 +149,7 @@ const AdminAccessPage = () => {
               ) : (
                 admins.map((admin) => {
                   const isSuper = admin.userType === "super-admin";
+                  const isMarketer = admin.userType === "marketer";
                   const chips = isSuper
                     ? ["Full access"]
                     : describePermissions(admin.permissions);
@@ -173,6 +175,10 @@ const AdminAccessPage = () => {
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-violet-100 text-violet-700">
                             <ShieldCheck className="w-3 h-3" /> Super Admin
                           </span>
+                        ) : isMarketer ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
+                            Marketer
+                          </span>
                         ) : (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
                             Admin
@@ -181,7 +187,11 @@ const AdminAccessPage = () => {
                       </td>
                       <td className="px-4 sm:px-6 py-4">
                         <div className="flex flex-wrap gap-1.5 max-w-md">
-                          {chips.length === 0 ? (
+                          {isMarketer ? (
+                            <span className="text-xs text-gray-500">
+                              Scholarship campaigns only, set by the role
+                            </span>
+                          ) : chips.length === 0 ? (
                             <span className="text-xs text-gray-400 italic">
                               No pages granted
                             </span>
@@ -209,13 +219,17 @@ const AdminAccessPage = () => {
                           <span className="text-xs text-gray-400">—</span>
                         ) : (
                           <div className="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditing(admin)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
-                            >
-                              <Pencil className="w-3.5 h-3.5" /> Edit
-                            </button>
+                            {/* No Edit for a marketer: its access comes from the
+                                role, so there are no page keys to change. */}
+                            {!isMarketer && (
+                              <button
+                                type="button"
+                                onClick={() => setEditing(admin)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Edit
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => setRevoking(admin)}

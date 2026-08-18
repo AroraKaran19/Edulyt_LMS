@@ -17,7 +17,10 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
   }
 
   return (
-    <AuthGuard requiredUserType={["admin", "super-admin"]} fallbackPath="/login">
+    <AuthGuard
+      requiredUserType={["admin", "super-admin", "marketer"]}
+      fallbackPath="/login"
+    >
       <SidebarProvider>
         <div className="flex w-full min-h-screen lg:h-screen">
           {showLayout && <SidebarContainer />}

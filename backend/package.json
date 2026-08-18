@@ -43,6 +43,8 @@
     "scripts:backfill-referral-commission:apply": "ts-node src/scripts/backfill-referral-commission.ts --apply",
     "scripts:migrate-documentation-to-batch": "ts-node src/scripts/migrate-documentation-to-batch.ts",
     "scripts:migrate-documentation-to-batch:apply": "ts-node src/scripts/migrate-documentation-to-batch.ts --apply",
+    "scripts:drop-scholarship-otp-throttles": "ts-node src/scripts/drop-scholarship-otp-throttles.ts",
+    "scripts:drop-scholarship-otp-throttles:apply": "ts-node src/scripts/drop-scholarship-otp-throttles.ts --apply",
     "scripts:cleanup-orphan-task-templates": "ts-node src/scripts/cleanup-orphan-task-templates.ts",
     "scripts:cleanup-orphan-task-templates:apply": "ts-node src/scripts/cleanup-orphan-task-templates.ts --apply",
     "scripts:seed-sample-certs": "ts-node src/scripts/seed-sample-certificates.ts",

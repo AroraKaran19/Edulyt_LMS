@@ -245,3 +245,64 @@ button:disabled {
 .csv-import-shuttle {
   animation: csv-import-shuttle 1.35s ease-in-out infinite;
 }
+/* ── Scholarship campaign flow ───────────────────────────────────────────── */
+@theme {
+  --color-sch-ink: #14100e;
+  --color-sch-ink-raised: #201a16;
+  --color-sch-ink-line: #3a2f28;
+  --color-sch-paper: #fbf5ea;
+  --color-sch-foil: #e4572e;
+  --color-sch-gold: #f0a63c;
+  --color-sch-gold-deep: #c97b1d;
+  --color-sch-on-ink: #f4ede2;
+  --color-sch-on-ink-dim: #a2938a;
+  --color-sch-on-paper: #1c1512;
+  --color-sch-on-paper-dim: #6b5c52;
+
+  --font-sch-display: var(--font-fraunces), Georgia, serif;
+  --font-sch-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  --animate-sch-sheen: sch-sheen 5.5s ease-in-out infinite;
+  --animate-sch-rise: sch-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sch-sheen {
+  0%,
+  62% {
+    transform: translateX(-60%);
+  }
+  86%,
+  100% {
+    transform: translateX(60%);
+  }
+}
+
+@keyframes sch-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility sch-foil {
+  background:
+    repeating-linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.14) 0px,
+      rgba(255, 255, 255, 0) 2px,
+      rgba(0, 0, 0, 0.06) 5px,
+      rgba(255, 255, 255, 0.1) 8px
+    ),
+    linear-gradient(
+      135deg,
+      #c97b1d 0%,
+      #f0a63c 38%,
+      #ffd98a 52%,
+      #f0a63c 66%,
+      #c97b1d 100%
+    );
+}

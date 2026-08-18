@@ -79,6 +79,33 @@ export const getCouponByCodeService = async (
   return coupon as Coupon | null;
 };
 
+/**
+ * Refuses to touch a coupon that a scholarship campaign owns.
+ *
+ * Every qualifier redeems the same code, so these carry no `usageLimit` and the
+ * real gate is the entitlement claim. One edit here, a changed percentage, a
+ * shortened window, a deletion, would therefore break the reward for every
+ * holder at once. The campaign screen is the only place they may change.
+ *
+ * A legacy coupon predating the field has it missing rather than null, and
+ * `$ne: null` matches neither, so those stay editable.
+ */
+const assertNotCampaignOwned = async (couponId: string): Promise<void> => {
+  const owned = await CouponModel.findOne({
+    _id: couponId,
+    sourceScholarshipTestId: { $ne: null },
+  })
+    .select("_id")
+    .lean();
+
+  if (owned) {
+    throw new AppError(
+      "This coupon belongs to a scholarship campaign. Manage it from the campaign instead.",
+      409,
+    );
+  }
+};
+
 export const createCouponService = async (
   couponData: Partial<Coupon>,
   createdBy: string
@@ -112,6 +139,10 @@ export const createCouponService = async (
 
   const coupon = new CouponModel({
     ...couponData,
+    // Set only by campaign creation. Honouring it from a request body would let
+    // an ordinary coupon be minted pre-claimed by a campaign, and so locked out
+    // of the page that just created it.
+    sourceScholarshipTestId: null,
     code: couponData.code?.toUpperCase(),
     createdBy,
     usageCount: 0,
@@ -133,6 +164,12 @@ export const updateCouponService = async (
   if (!mongoose.Types.ObjectId.isValid(couponId)) {
     throw new AppError("Invalid coupon ID", 400);
   }
+
+  await assertNotCampaignOwned(couponId);
+
+  // Never from a request body: accepting it would let this endpoint claim an
+  // ordinary coupon for a campaign, or unlock a campaign's own by clearing it.
+  delete couponData.sourceScholarshipTestId;
 
   // Check if code is being updated and if it already exists
   if (couponData.code) {
@@ -194,6 +231,8 @@ export const deleteCouponService = async (
   if (!mongoose.Types.ObjectId.isValid(couponId)) {
     throw new AppError("Invalid coupon ID", 400);
   }
+
+  await assertNotCampaignOwned(couponId);
 
   const result = await CouponModel.findByIdAndDelete(couponId);
   return !!result;

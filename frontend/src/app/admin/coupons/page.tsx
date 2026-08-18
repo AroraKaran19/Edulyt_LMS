@@ -14,6 +14,7 @@ import {
   Package,
   Clock,
   Sparkles,
+  Lock,
 } from "lucide-react";
 import { useCoupon } from "@/hooks/useCoupon";
 import { Coupon } from "@/types/coupon";
@@ -21,6 +22,10 @@ import CouponModal from "@/components/ui/modals/CouponModal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Pagination from "@/components/admin/Pagination";
 import { toast } from "react-toastify";
+
+/** Shown on every locked control, so the reason is never a mystery 409. */
+const CAMPAIGN_LOCK_HINT =
+  "Owned by a scholarship campaign. Manage it from the campaign instead.";
 
 const CouponsPage = () => {
   const { getCoupons, updateCoupon, deleteCoupon, isLoading } = useCoupon();
@@ -129,6 +134,14 @@ const CouponsPage = () => {
       day: "numeric",
     });
   };
+
+  /**
+   * A scholarship campaign's own coupon. Every qualifier redeems the same code,
+   * so the API refuses edits and deletes here; the row is locked to match rather
+   * than offering buttons that only return a 409.
+   */
+  const isCampaignOwned = (coupon: Coupon) =>
+    Boolean(coupon.sourceScholarshipTestId);
 
   const getDiscountDisplay = (coupon: Coupon) => {
     if (coupon.discountType === "percentage") {
@@ -347,6 +360,12 @@ const CouponsPage = () => {
                           {getDiscountDisplay(coupon)}
                         </span>
                       </div>
+                      {isCampaignOwned(coupon) ? (
+                        <span className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg border border-purple-200 flex items-center gap-1">
+                          <Lock className="w-3.5 h-3.5" />
+                          Scholarship campaign
+                        </span>
+                      ) : null}
                       {isExpired(coupon.validUntil) ? (
                         <span className="px-3 py-1.5 bg-red-100 text-red-700 text-sm font-semibold rounded-lg border border-red-200 flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />
@@ -431,20 +450,24 @@ const CouponsPage = () => {
                   <div className="flex lg:flex-col gap-2 lg:ml-4">
                     <button
                       onClick={() => handleToggleActive(coupon)}
-                      disabled={isExpired(coupon.validUntil)}
+                      disabled={
+                        isExpired(coupon.validUntil) || isCampaignOwned(coupon)
+                      }
                       className={`p-3 rounded-lg transition-all cursor-pointer font-medium text-sm flex items-center justify-center gap-2 ${
-                        isExpired(coupon.validUntil)
+                        isExpired(coupon.validUntil) || isCampaignOwned(coupon)
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : coupon.isActive
                             ? "bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border border-yellow-200"
                             : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
                       }`}
                       title={
-                        isExpired(coupon.validUntil)
-                          ? "Cannot modify expired coupon"
-                          : coupon.isActive
-                            ? "Pause Coupon"
-                            : "Activate Coupon"
+                        isCampaignOwned(coupon)
+                          ? CAMPAIGN_LOCK_HINT
+                          : isExpired(coupon.validUntil)
+                            ? "Cannot modify expired coupon"
+                            : coupon.isActive
+                              ? "Pause Coupon"
+                              : "Activate Coupon"
                       }
                     >
                       {coupon.isActive ? (
@@ -461,16 +484,34 @@ const CouponsPage = () => {
                     </button>
                     <button
                       onClick={() => handleEdit(coupon)}
-                      className="p-3 rounded-lg transition-all cursor-pointer bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 font-medium text-sm flex items-center justify-center gap-2"
-                      title="Edit Coupon"
+                      disabled={isCampaignOwned(coupon)}
+                      className={`p-3 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2 ${
+                        isCampaignOwned(coupon)
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                          : "cursor-pointer bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
+                      }`}
+                      title={
+                        isCampaignOwned(coupon)
+                          ? CAMPAIGN_LOCK_HINT
+                          : "Edit Coupon"
+                      }
                     >
                       <Edit className="w-4 h-4" />
                       <span className="hidden sm:inline">Edit</span>
                     </button>
                     <button
                       onClick={() => handleDelete(coupon._id!)}
-                      className="p-3 rounded-lg transition-all cursor-pointer bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 font-medium text-sm flex items-center justify-center gap-2"
-                      title="Delete Coupon"
+                      disabled={isCampaignOwned(coupon)}
+                      className={`p-3 rounded-lg transition-all font-medium text-sm flex items-center justify-center gap-2 ${
+                        isCampaignOwned(coupon)
+                          ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                          : "cursor-pointer bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                      }`}
+                      title={
+                        isCampaignOwned(coupon)
+                          ? CAMPAIGN_LOCK_HINT
+                          : "Delete Coupon"
+                      }
                     >
                       <Trash2 className="w-4 h-4" />
                       <span className="hidden sm:inline">Delete</span>

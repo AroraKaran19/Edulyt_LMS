@@ -16,7 +16,20 @@ interface UserOption {
   email: string;
 }
 
-const STEPS = ["Select user", "Permissions", "Review"] as const;
+const STEPS = ["Select user", "Access", "Review"] as const;
+
+type StaffRole = "admin" | "marketer";
+
+const ROLE_COPY: Record<StaffRole, { label: string; blurb: string }> = {
+  admin: {
+    label: "Admin",
+    blurb: "Pick exactly which admin pages they can open.",
+  },
+  marketer: {
+    label: "Marketer",
+    blurb: "Scholarship campaigns only. No other admin page.",
+  },
+};
 
 const errorMessage = (error: unknown, fallback: string): string => {
   const e = error as {
@@ -40,8 +53,11 @@ const AddAdminModal = ({
   const [step, setStep] = useState(0);
   const [selectedId, setSelectedId] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserOption | null>(null);
+  const [role, setRole] = useState<StaffRole>("admin");
   const [permissions, setPermissions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const isMarketer = role === "marketer";
 
   // Cache every user we page through so onChange(id) can resolve the full object.
   const usersCache = useRef<Record<string, UserOption>>({});
@@ -66,12 +82,17 @@ const AddAdminModal = ({
     try {
       await apiClient.post("/admin/staff/admins/promote", {
         email: selectedUser.email,
-        permissions,
+        // Sent even for a marketer, where the server discards it: the role, not
+        // the payload, is what decides a marketer's access.
+        permissions: isMarketer ? [] : permissions,
+        role,
       });
-      toast.success(`${nameOf(selectedUser)} is now an admin`);
+      toast.success(
+        `${nameOf(selectedUser)} is now a ${ROLE_COPY[role].label.toLowerCase()}`,
+      );
       onDone();
     } catch (error) {
-      toast.error(errorMessage(error, "Failed to add admin"));
+      toast.error(errorMessage(error, "Failed to add staff member"));
     } finally {
       setSubmitting(false);
     }
@@ -85,7 +106,7 @@ const AddAdminModal = ({
         {/* Header + stepper */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 text-lg">Add new admin</h3>
+            <h3 className="font-bold text-gray-900 text-lg">Add staff member</h3>
             <button
               onClick={onClose}
               className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg"
@@ -149,7 +170,7 @@ const AddAdminModal = ({
           {step === 0 && (
             <div className="flex flex-col gap-3">
               <label className="text-sm font-medium text-gray-700">
-                Select the user to make an admin
+                Select the user to give staff access
               </label>
               <InfiniteScrollSelect<UserOption>
                 value={selectedId}
@@ -198,16 +219,62 @@ const AddAdminModal = ({
           )}
 
           {step === 1 && (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Choose the pages this admin can access
+                  Role
                 </label>
-                <span className="text-xs text-gray-500">
-                  {permissionLabels.length} selected
-                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(Object.keys(ROLE_COPY) as StaffRole[]).map((r) => {
+                    const active = role === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRole(r)}
+                        className={`text-left rounded-xl border-2 p-3 transition-colors ${
+                          active
+                            ? "border-orange-500 bg-orange-50"
+                            : "border-gray-200 bg-white hover:border-orange-300"
+                        }`}
+                      >
+                        <div className="text-sm font-semibold text-gray-900">
+                          {ROLE_COPY[r].label}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-0.5">
+                          {ROLE_COPY[r].blurb}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <PermissionPicker value={permissions} onChange={setPermissions} />
+
+              {/* A disabled permission tree would imply the grants still matter
+                  for a marketer, so it is replaced rather than greyed out. */}
+              {isMarketer ? (
+                <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                  <p className="text-sm text-gray-700">
+                    Marketers get the Scholarship campaigns page and nothing
+                    else, and they only see campaigns they created themselves.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700">
+                      Choose the pages this admin can access
+                    </label>
+                    <span className="text-xs text-gray-500">
+                      {permissionLabels.length} selected
+                    </span>
+                  </div>
+                  <PermissionPicker
+                    value={permissions}
+                    onChange={setPermissions}
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -220,8 +287,15 @@ const AddAdminModal = ({
                 <div className="min-w-0">
                   <div className="font-semibold text-gray-900 truncate flex items-center gap-2">
                     {nameOf(selectedUser)}
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
-                      <ShieldCheck className="w-3 h-3" /> Admin
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        isMarketer
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-blue-100 text-blue-700"
+                      }`}
+                    >
+                      <ShieldCheck className="w-3 h-3" />{" "}
+                      {ROLE_COPY[role].label}
                     </span>
                   </div>
                   <div className="text-sm text-gray-500 truncate flex items-center gap-1">
@@ -232,12 +306,18 @@ const AddAdminModal = ({
 
               <div>
                 <div className="text-sm font-medium text-gray-700 mb-2">
-                  Page access ({permissionLabels.length})
+                  {isMarketer
+                    ? "Page access"
+                    : `Page access (${permissionLabels.length})`}
                 </div>
-                {permissionLabels.length === 0 ? (
+                {isMarketer ? (
+                  <p className="text-sm text-gray-600">
+                    Scholarship campaigns only, and only the ones they create.
+                  </p>
+                ) : permissionLabels.length === 0 ? (
                   <p className="text-sm text-gray-500 italic">
-                    No pages selected — this admin will start with no access
-                    until you grant pages later.
+                    No pages selected, so this admin starts with no access until
+                    you grant pages later.
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">
@@ -284,7 +364,7 @@ const AddAdminModal = ({
               {submitting && (
                 <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
               )}
-              {submitting ? "Adding..." : "Confirm & Add Admin"}
+              {submitting ? "Adding..." : `Confirm & add ${ROLE_COPY[role].label.toLowerCase()}`}
             </OrangeButton>
           )}
         </div>

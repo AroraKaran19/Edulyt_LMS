@@ -107,6 +107,14 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     pages: [{ key: "coupons", label: "Coupons", href: "/admin/coupons" }],
   },
   {
+    key: "scholarship",
+    label: "Scholarship",
+    pages: [
+      { key: "scholarship.tests", label: "Campaigns", href: "/admin/scholarship/tests" },
+      { key: "scholarship.analytics", label: "Analytics", href: "/admin/scholarship/analytics" },
+    ],
+  },
+  {
     key: "reports",
     label: "Reports",
     pages: [
@@ -191,6 +199,29 @@ export const canAccessPage = (
   isSuperAdmin: boolean,
   pageKey: string,
 ): boolean => isSuperAdmin || hasPageAccess(permissions, pageKey);
+
+/**
+ * Pages a marketer may reach. Mirrors `MARKETER_PAGE_KEYS` in
+ * `backend/src/middlewares/scholarship.middleware.ts`; keep the two in sync.
+ */
+export const MARKETER_PAGE_KEYS: readonly string[] = ["scholarship.tests"];
+
+/**
+ * Access check that understands roles, not just permission arrays.
+ *
+ * A marketer holds no permissions at all: the role itself is the grant, so
+ * `canAccessPage` would deny it every page. Anything that gates an admin route
+ * for a possibly-marketer viewer must use this instead.
+ */
+export const canAccessPageAsRole = (
+  userType: string | undefined,
+  permissions: readonly string[],
+  pageKey: string,
+): boolean => {
+  if (userType === "super-admin") return true;
+  if (userType === "marketer") return MARKETER_PAGE_KEYS.includes(pageKey);
+  return hasPageAccess(permissions, pageKey);
+};
 
 /** True when the holder can see at least one page in the section. */
 export const canAccessSection = (

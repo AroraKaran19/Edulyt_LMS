@@ -18,6 +18,12 @@ export interface Coupon {
   validUntil: Date | string;
   isActive: boolean;
   createdBy: string | User;
+  /**
+   * Set when a scholarship campaign owns this coupon. Every qualifier redeems
+   * the same code, so editing or deleting it here would break the reward for all
+   * of them: the API refuses, and the row is locked to match.
+   */
+  sourceScholarshipTestId?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }

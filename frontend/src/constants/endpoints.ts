@@ -126,6 +126,44 @@ export const ENDPOINTS = {
     create: "/internship-questions",
   },
 
+  /** Scholarship campaigns (marketer + admin CRUD). */
+  scholarshipTests: {
+    adminList: "/scholarship-tests/admin",
+    create: "/scholarship-tests/admin",
+    adminById: (testId: string) =>
+      `/scholarship-tests/admin/${encodeURIComponent(testId)}`,
+    adminDeletionPreview: (testId: string) =>
+      `/scholarship-tests/admin/${encodeURIComponent(testId)}/deletion-preview`,
+  },
+
+  /**
+   * Public scholarship campaign flow. Every route is unauthenticated; the
+   * attempt and result routes carry the token from `verifyOtp` as a bearer.
+   */
+  scholarshipPublic: {
+    campaign: (slug: string) => `/scholarship/${encodeURIComponent(slug)}`,
+    view: (slug: string) => `/scholarship/${encodeURIComponent(slug)}/view`,
+    otp: (slug: string) => `/scholarship/${encodeURIComponent(slug)}/otp`,
+    verifyOtp: (slug: string) =>
+      `/scholarship/${encodeURIComponent(slug)}/otp/verify`,
+    /** Signed-in shortcut past the email gate. */
+    session: (slug: string) => `/scholarship/${encodeURIComponent(slug)}/session`,
+    /**
+     * Books an SMS before the MSG91 widget sends one from the browser. Skipping
+     * it is not an option: it is the only thing metering the SMS bill.
+     */
+    phoneOtpRequest: (slug: string) =>
+      `/scholarship/${encodeURIComponent(slug)}/phone/otp-request`,
+    phoneVerify: (slug: string) =>
+      `/scholarship/${encodeURIComponent(slug)}/phone/verify`,
+    attempt: (slug: string) => `/scholarship/${encodeURIComponent(slug)}/attempt`,
+    answer: (slug: string) =>
+      `/scholarship/${encodeURIComponent(slug)}/attempt/answer`,
+    submit: (slug: string) =>
+      `/scholarship/${encodeURIComponent(slug)}/attempt/submit`,
+    result: (slug: string) => `/scholarship/${encodeURIComponent(slug)}/result`,
+  },
+
   /** Internship programs sold as a course add-on (admin CRUD). */
   courseInternships: {
     all: "/course-internships",

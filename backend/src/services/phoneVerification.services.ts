@@ -333,6 +333,57 @@ export interface VerifiedPhone {
  * sets `phone` for a learner, so a number on a profile is a number its owner
  * demonstrated control of.
  */
+/**
+ * Proves a widget token really belongs to `phone`, with no account involved.
+ *
+ * Extracted so the public scholarship flow can prove a number for someone who
+ * has no account at all. Everything account-shaped (the send claim, the
+ * uniqueness check, the profile write) stays with the caller, because those
+ * only make sense when there is a user.
+ */
+export const assertPhoneTokenValid = async (
+  phone: string,
+  msg91Token: unknown,
+): Promise<void> => {
+  if (skipTokenCheck()) return;
+
+  const authKey = process.env.MSG91_AUTHKEY?.trim();
+  if (!authKey) {
+    throw new AppError(
+      PHONE_MESSAGES.OTP_PROVIDER_UNCONFIGURED,
+      503,
+      PHONE_ERROR_CODES.OTP_PROVIDER_UNCONFIGURED,
+    );
+  }
+
+  const token = String(msg91Token ?? "").trim();
+  if (!token) {
+    throw new AppError(
+      PHONE_MESSAGES.TOKEN_REQUIRED,
+      400,
+      PHONE_ERROR_CODES.OTP_TOKEN_INVALID,
+    );
+  }
+
+  const check = await checkAccessToken(token, authKey);
+  if (!check.ok) {
+    throw new AppError(
+      check.error || PHONE_MESSAGES.OTP_TOKEN_INVALID,
+      400,
+      PHONE_ERROR_CODES.OTP_TOKEN_INVALID,
+    );
+  }
+  // MSG91 does not echo the number on every widget config, so a mismatch is
+  // fatal but a missing echo is not.
+  if (check.verifiedPhone && check.verifiedPhone !== phone) {
+    throw new AppError(
+      PHONE_MESSAGES.PHONE_MISMATCH,
+      400,
+      PHONE_ERROR_CODES.PHONE_MISMATCH,
+    );
+  }
+};
+
 export const verifyPhoneForUser = async (
   userId: string,
   rawPhone: unknown,

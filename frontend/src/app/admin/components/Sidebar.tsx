@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileBarChart,
+  GraduationCap,
   HelpCircle,
   KeyRound,
   MessageSquare,
@@ -18,7 +19,7 @@ import SidebarMenuItem from "./SidebarMenuItem";
 import { cn } from "@/lib/utils";
 import useAuth from "@/hooks/useAuth";
 import {
-  canAccessPage,
+  canAccessPageAsRole,
   resolvePageKeyFromPath,
 } from "@/config/adminPermissions";
 import Link from "next/link";
@@ -30,6 +31,14 @@ interface MenuItem {
   href: string;
   submenu?: MenuItem[];
 }
+
+/**
+ * Admin pages intentionally absent from `ADMIN_PERMISSION_CATALOG`, because the
+ * endpoints behind them are super-admin-only. Cataloguing them would let a
+ * super-admin grant an admin a page whose every request returns 403.
+ * `RequirePageAccess` gates the same paths server-side of the router.
+ */
+const SUPER_ADMIN_ONLY_HREFS = new Set(["/admin/users/create-marketer"]);
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -49,8 +58,14 @@ const AdminSidebar = ({
   const permissions = user?.permissions ?? [];
 
   const canSeeHref = (href: string): boolean => {
+    // Pages kept out of the permission catalog on purpose, because the API
+    // behind them is super-admin-only and so must never be grantable.
+    if (SUPER_ADMIN_ONLY_HREFS.has(href)) return isSuperAdmin;
+
     const key = resolvePageKeyFromPath(href);
-    return key ? canAccessPage(permissions, isSuperAdmin, key) : false;
+    // Role-aware: a marketer has an empty permissions array, so the
+    // permission-only check would leave it with a completely blank sidebar.
+    return key ? canAccessPageAsRole(user?.userType, permissions, key) : false;
   };
 
   const menuItems: MenuItem[] = [
@@ -154,6 +169,14 @@ const AdminSidebar = ({
           label: "Create Instructor",
           href: "/admin/users/create-instructor",
         },
+        ...(isSuperAdmin
+          ? [
+              {
+                label: "Create Marketer",
+                href: "/admin/users/create-marketer",
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -191,6 +214,11 @@ const AdminSidebar = ({
       icon: <Tag className="size-6" />,
       label: "Coupons",
       href: "/admin/coupons",
+    },
+    {
+      icon: <GraduationCap className="size-6" />,
+      label: "Scholarship",
+      href: "/admin/scholarship/tests",
     },
     {
       icon: <FileBarChart className="size-6" />,

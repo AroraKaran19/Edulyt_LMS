@@ -20,4 +20,5 @@ export * from "./passwordReset.mail";
 export * from "./purchaseConfirmation.mail";
 export * from "./referralUsed.mail";
 export * from "./reviewPosted.mail";
+export * from "./verificationCode.mail";
 export * from "./signupVerification.mail";

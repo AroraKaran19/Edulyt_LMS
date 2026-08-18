@@ -12,6 +12,8 @@ import {
   orderRoutes,
   faqRoutes,
   leadRoutes,
+  scholarshipTestRoutes,
+  scholarshipPublicRoutes,
   testimonialRoutes,
   categoryRoutes,
   qnaRoutes,
@@ -94,6 +96,8 @@ app.use("/api/email-preferences", emailPreferencesRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/leads", leadRoutes);
+app.use("/api/scholarship-tests", scholarshipTestRoutes);
+app.use("/api/scholarship", scholarshipPublicRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/qna", qnaRoutes);

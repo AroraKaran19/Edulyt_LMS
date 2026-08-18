@@ -45,6 +45,8 @@ import communityReviewRoutes from "./community-review.routes";
 import successPointsRoutes from "./successPoints.routes";
 import reportRoutes from "./report.routes";
 import leadRoutes from "./lead.routes";
+import scholarshipTestRoutes from "./scholarshipTest.routes";
+import scholarshipPublicRoutes from "./scholarshipPublic.routes";
 
 export {
   authRoutes,
@@ -94,4 +96,6 @@ export {
   successPointsRoutes,
   reportRoutes,
   leadRoutes,
+  scholarshipTestRoutes,
+  scholarshipPublicRoutes,
 };

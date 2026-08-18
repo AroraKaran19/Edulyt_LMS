@@ -165,6 +165,7 @@ export interface User {
     | "instructor"
     | "collaborator"
     | "partner"
+    | "marketer"
     | "admin"
     | "super-admin";
   provider: "credentials" | "google" | "linkedin";

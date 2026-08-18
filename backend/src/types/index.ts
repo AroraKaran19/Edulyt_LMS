@@ -68,3 +68,4 @@ export * from "./internship-meet";
 export * from "./internship-live-meeting";
 export * from "./question";
 export * from "./announcement";
+export * from "./scholarship";
