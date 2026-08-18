@@ -225,11 +225,18 @@ export const STEPS = [
   },
 ];
 
-export const STATS = [
-  { value: "36", label: "Courses built for college students" },
-  { value: "4", label: "MNC certification partners" },
-  { value: "15+", label: "Hours of live mentorship" },
-];
+/**
+ * The three ways a certificate can be earned. Shared by the certificate cards
+ * and the summary above them, so the summary cannot claim something the list
+ * contradicts.
+ */
+export const AVAILABILITY = {
+  everyPlan: "Every plan, on completion",
+  topPlan: "Plan 03, on completion",
+  mnc: "Free on Plan 03, add-on elsewhere",
+} as const;
+
+export type Availability = (typeof AVAILABILITY)[keyof typeof AVAILABILITY];
 
 /**
  * The documents a student walks away with.
@@ -244,7 +251,7 @@ export type Certificate = {
   blurb: string;
   src: string;
   /** Which plans this comes with. */
-  availability: string;
+  availability: Availability;
 };
 
 export const CERTIFICATES: Certificate[] = [
@@ -254,7 +261,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Sat and passed with Certiport and Pearson VUE. Verifiable by certificate ID.",
     src: "/enquiry/certificates/mnc-meta.jpg",
-    availability: "Free on Plan 03, add-on elsewhere",
+    availability: AVAILABILITY.mnc,
   },
   {
     title: "Azure AI Fundamentals",
@@ -262,7 +269,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Microsoft Certified credential, signed off by the exam body and listed on your transcript.",
     src: "/enquiry/certificates/mnc-microsoft.jpg",
-    availability: "Free on Plan 03, add-on elsewhere",
+    availability: AVAILABILITY.mnc,
   },
   {
     title: "Adobe Certified Professional",
@@ -270,7 +277,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Industry credential for creative and design tooling, verifiable through Certiport.",
     src: "/enquiry/certificates/mnc-adobe.jpg",
-    availability: "Free on Plan 03, add-on elsewhere",
+    availability: AVAILABILITY.mnc,
   },
   {
     title: "Support Technician, Cybersecurity",
@@ -278,7 +285,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "CCST Cybersecurity, the entry credential recruiters look for in security roles.",
     src: "/enquiry/certificates/mnc-cisco.jpg",
-    availability: "Free on Plan 03, add-on elsewhere",
+    availability: AVAILABILITY.mnc,
   },
   {
     title: "Internship offer letter",
@@ -286,7 +293,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Issued on company letterhead with your intern ID, domain and duration.",
     src: "/enquiry/certificates/doc-offer-letter.jpg",
-    availability: "Every plan, on completion",
+    availability: AVAILABILITY.everyPlan,
   },
   {
     title: "Internship certificate",
@@ -294,7 +301,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Confirms the domain you worked in, the period, and the live projects you shipped.",
     src: "/enquiry/certificates/doc-internship-certificate.jpg",
-    availability: "Every plan, on completion",
+    availability: AVAILABILITY.everyPlan,
   },
   {
     title: "Training certificate",
@@ -302,7 +309,7 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Names the course and the skills covered, with a QR code for instant verification.",
     src: "/enquiry/certificates/doc-training-certificate.jpg",
-    availability: "Every plan, on completion",
+    availability: AVAILABILITY.everyPlan,
   },
   {
     title: "Letter of Recommendation",
@@ -310,22 +317,122 @@ export const CERTIFICATES: Certificate[] = [
     blurb:
       "Written about your actual performance in sessions and project work, signed by HR.",
     src: "/enquiry/certificates/doc-recommendation.jpg",
-    availability: "Plan 03, on completion",
+    availability: AVAILABILITY.topPlan,
   },
 ];
 
-/** Career stage, asked on the lead form so counsellors can qualify the call. */
-export const CAREER_STAGES = [
-  "Student - 1st Year",
-  "Student - 2nd Year",
-  "Student - 3rd Year",
-  "Student - 4th Year",
-  "Passed Out and Unemployed",
-  "Working Professional - Non Tech Roles",
-  "Working Professional - Tech Roles",
-] as const;
+export type Badge = {
+  /** What the badge certifies. The artwork already spells this out. */
+  name: string;
+  issuer: "Microsoft" | "Pearson";
+  /** Microsoft Office Specialist tier. The Pearson badges carry no tier. */
+  level?: "Associate" | "Expert";
+  src: string;
+};
 
-export type CareerStage = (typeof CAREER_STAGES)[number];
+/**
+ * `.webp` rather than the `.svg` masters beside them: the source files are
+ * traced vectors totalling 3MB, one of them 2MB alone, against 53KB for the set
+ * at display size.
+ *
+ * Two badges in `/public/badges` are deliberately absent:
+ * `instructor-cybersecurity.svg` is an Authorized Instructor credential, which
+ * belongs to a trainer rather than a student, and `mos-expert-generic.svg`
+ * names no application.
+ */
+export const BADGES: Badge[] = [
+  {
+    name: "Python",
+    issuer: "Pearson",
+    src: "/badges/it-specialist-python.webp",
+  },
+  {
+    name: "Data Analytics",
+    issuer: "Pearson",
+    src: "/badges/it-specialist-data-analytics.webp",
+  },
+  {
+    name: "Excel",
+    issuer: "Microsoft",
+    level: "Expert",
+    src: "/badges/mos-excel-expert.webp",
+  },
+  {
+    name: "Excel",
+    issuer: "Microsoft",
+    level: "Associate",
+    src: "/badges/mos-excel-associate.webp",
+  },
+  {
+    name: "Word",
+    issuer: "Microsoft",
+    level: "Associate",
+    src: "/badges/mos-word-associate.webp",
+  },
+  {
+    name: "PowerPoint",
+    issuer: "Microsoft",
+    level: "Associate",
+    src: "/badges/mos-powerpoint-associate.webp",
+  },
+];
+
+/**
+ * The offer strip above the hero.
+ *
+ * Deliberately no countdown and no figure. A clock that restarts each visit is
+ * false urgency, and a number here would contradict the counsellor, who is the
+ * one who settles the price.
+ */
+export const OFFER = {
+  label: "Admissions open",
+  headline: "Talk to a counsellor before this intake closes",
+  body: "Plan pricing and any discount that applies are confirmed on the call, usually within one working day.",
+};
+
+/**
+ * The same mock CV with a different partner badge on each, which is why the
+ * copy says so rather than implying four different students.
+ */
+export const SAMPLE_RESUMES = [
+  {
+    partner: "Meta",
+    credential: "Digital Marketing Associate",
+    src: "/sample_resumes/resume-meta-digital-marketing.webp",
+  },
+  {
+    partner: "Microsoft",
+    credential: "Office Specialist, PowerPoint",
+    src: "/sample_resumes/resume-microsoft-powerpoint.webp",
+  },
+  {
+    partner: "Cisco",
+    credential: "CCST Cybersecurity",
+    src: "/sample_resumes/resume-cisco-cybersecurity.webp",
+  },
+  {
+    partner: "Adobe",
+    credential: "Certified Professional",
+    src: "/sample_resumes/resume-adobe-professional.webp",
+  },
+];
+
+/**
+ * English is the only language the whole catalogue is taught in. Every other
+ * language here, Hindi included, covers select courses only, which is what the
+ * section copy has to say rather than the list implying parity.
+ *
+ * Nothing on a course record marks which of these a given course is available
+ * in, so the copy cannot name a count or point at specific courses.
+ */
+export const COURSE_LANGUAGES = [
+  { label: "English", native: "English", code: "en" },
+  { label: "Hindi", native: "हिन्दी", code: "hi" },
+  { label: "Tamil", native: "தமிழ்", code: "ta" },
+  { label: "Marathi", native: "मराठी", code: "mr" },
+  { label: "Telugu", native: "తెలుగు", code: "te" },
+  { label: "Kannada", native: "ಕನ್ನಡ", code: "kn" },
+];
 
 /** Google Business rating, shown as social proof in the hero. */
 export const RATING = {

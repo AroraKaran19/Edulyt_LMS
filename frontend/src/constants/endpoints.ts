@@ -137,6 +137,25 @@ export const ENDPOINTS = {
   },
 
   /**
+   * Enquiry form verification. Public: most visitors arrive from an ad with no
+   * account, and both codes prove the details handed to the sales team.
+   */
+  enquiry: {
+    otp: "/enquiry/otp",
+    verifyOtp: "/enquiry/otp/verify",
+    session: "/enquiry/session",
+    phoneOtpRequest: "/enquiry/phone/otp-request",
+    phoneVerify: "/enquiry/phone/verify",
+  },
+
+  /** A signed-in learner changing their own number. Writes to the profile. */
+  users: {
+    phoneOtpStatus: "/users/me/phone/otp-status",
+    phoneOtpRequest: "/users/me/phone/otp-request",
+    phoneVerify: "/users/me/phone/verify",
+  },
+
+  /**
    * Public scholarship campaign flow. Every route is unauthenticated; the
    * attempt and result routes carry the token from `verifyOtp` as a bearer.
    */

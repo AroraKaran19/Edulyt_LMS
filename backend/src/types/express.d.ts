@@ -10,6 +10,17 @@ declare global {
        * Set by `requireScholarshipSession` on public campaign routes. Distinct
        * from `user`: that flow has no account, only a verified email.
        */
+      enquirySession?: {
+        id: string;
+        email: string;
+        phoneVerified: boolean;
+      };
+      /** Email and phone proved by `requireVerifiedLeadContact`. */
+      verifiedContact?: {
+        email: string;
+        phone: string;
+        userId?: string;
+      };
       scholarshipSession?: {
         id: string;
         testId: string;

@@ -21,6 +21,14 @@ const VARIANTS: Record<Variant, string> = {
     "h-12 bg-white text-[#c4551a] shadow-[0_12px_26px_-12px_rgba(43,21,8,0.5)] hover:-translate-y-0.5 hover:shadow-[0_18px_32px_-14px_rgba(43,21,8,0.6)]",
 };
 
+/** Same styling for anything that has to be an anchor rather than a button. */
+export const enquiryButtonClass = (
+  variant: Variant = "primary",
+  block?: boolean,
+  className?: string
+) =>
+  cn(BASE, VARIANTS[variant], block && "h-[46px] w-full text-[14.5px]", className);
+
 export default function EnquiryButton({
   variant = "primary",
   block,

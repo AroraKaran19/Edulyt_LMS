@@ -6,15 +6,16 @@ import Link from "next/link";
 import { ArrowDown, ArrowRight, Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import useAuth from "@/hooks/useAuth";
+import type { Student } from "@/types";
 import { signInWithOAuthProvider } from "@/lib/oauthSignInClient";
+import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
+import apiClient from "@/configs/apiConfig";
+import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
+import { ENDPOINTS } from "@/constants/endpoints";
+import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
 import EnquiryButton from "./EnquiryButton";
-import {
-  CAREER_STAGES,
-  ISSUERS,
-  MNC_ADDON_PRICE,
-  PLANS,
-  type PlanId,
-} from "./plans";
+import OtpBoxes from "./OtpBoxes";
+import { ISSUERS, MNC_ADDON_PRICE, PLANS, type PlanId } from "./plans";
 
 type Props = {
   selected: PlanId;
@@ -23,13 +24,26 @@ type Props = {
   cert: string | null;
   onCert: (cert: string | null) => void;
   onCompare: () => void;
-  /** Career stage carried back through the Google round trip, if any. */
-  initialStage?: string;
+  /** College carried back through the Google round trip, if any. */
+  initialCollege?: string;
+  initialCollegeId?: string;
 };
 
 type Errors = Partial<
-  Record<"name" | "email" | "phone" | "stage" | "form", string>
+  Record<"name" | "email" | "phone" | "college" | "code" | "form", string>
 >;
+
+/** Which proof the form is currently collecting. */
+type Step = "form" | "emailOtp" | "phoneOtp";
+
+const apiMessage = (error: unknown, fallback: string): string => {
+  const e = error as {
+    response?: { data?: { error?: { message?: string }; message?: string } };
+  };
+  return (
+    e?.response?.data?.error?.message || e?.response?.data?.message || fallback
+  );
+};
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -39,9 +53,11 @@ export default function LeadForm({
   cert,
   onCert,
   onCompare,
-  initialStage = "",
+  initialCollege = "",
+  initialCollegeId = "",
 }: Props) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, accessToken, handleSignOut } = useAuth();
+  const { ready, loadError, sendOtp, verifyOtp } = useMSG91OTP();
 
   /*
    * Signed-in students get their profile as the default for each field, but
@@ -55,11 +71,24 @@ export default function LeadForm({
     .join(" ")
     .trim();
   const profilePhone = (profile?.phone ?? "").replace(/\D/g, "").slice(-10);
+  const student = profile as Student | undefined;
+  const profileCollege = (student?.collegeName ?? "").trim();
+  const profileCollegeId = student?.college ?? "";
 
   const [nameInput, setNameInput] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState<string | null>(null);
   const [phoneInput, setPhoneInput] = useState<string | null>(null);
-  const [stage, setStage] = useState(initialStage);
+  const [collegeInput, setCollegeInput] = useState<string | null>(
+    initialCollege || null
+  );
+  const [collegeIdInput, setCollegeIdInput] = useState<string | null>(
+    initialCollegeId || null
+  );
+  const [step, setStep] = useState<Step>("form");
+  const [digits, setDigits] = useState<string[]>([]);
+  const [reqId, setReqId] = useState<string | null>(null);
+  /** Proof of the verified email, and what authorises the lead afterwards. */
+  const [sessionToken, setSessionToken] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   const [sending, setSending] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
@@ -68,6 +97,8 @@ export default function LeadForm({
   const name = nameInput ?? profileName;
   const email = emailInput ?? profile?.email ?? "";
   const phone = phoneInput ?? profilePhone;
+  const college = collegeInput ?? profileCollege;
+  const collegeId = collegeIdInput ?? profileCollegeId;
 
   const setName = setNameInput;
   const setEmail = setEmailInput;
@@ -78,7 +109,8 @@ export default function LeadForm({
     setOauthLoading(true);
     const back = new URLSearchParams({ plan: String(selected) });
     if (cert) back.set("cert", cert);
-    if (stage) back.set("stage", stage);
+    if (college) back.set("college", college);
+    if (collegeId) back.set("collegeId", collegeId);
 
     try {
       const out = await signInWithOAuthProvider(
@@ -101,6 +133,11 @@ export default function LeadForm({
     setOauthLoading(false);
   };
 
+  const hideName =
+    isAuthenticated && nameInput === null && profileName.trim().length >= 2;
+  const hideEmail =
+    isAuthenticated && emailInput === null && EMAIL.test(email.trim());
+
   const chosenPlan = PLANS.find((p) => p.id === selected)!;
   const freeCert = selected === 3;
   const addonCost = cert && !freeCert ? MNC_ADDON_PRICE : 0;
@@ -115,16 +152,17 @@ export default function LeadForm({
     } else if (!/^[6-9]/.test(phone)) {
       next.phone = "Indian mobile numbers start with 6, 7, 8 or 9";
     }
-    if (!stage) next.stage = "Pick where you are right now";
+    if (!college.trim()) next.college = "Select your college";
     return next;
   };
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const found = validate();
-    setErrors(found);
-    if (Object.keys(found).length > 0) return;
-
+  /**
+   * Sends the lead once both channels are proved. `authToken` is the whole
+   * authorisation story: the contact-session token for a visitor with no
+   * account, or the signed-in access token, and the backend reads the verified
+   * email and phone from whichever it turns out to be.
+   */
+  const sendLead = async (authToken: string) => {
     setSending(true);
     try {
       const response = await fetch("/api/enquiry-lead", {
@@ -134,8 +172,8 @@ export default function LeadForm({
           name: name.trim(),
           email: email.trim().toLowerCase(),
           phone,
-          careerStage: stage,
-          userId: profile?._id,
+          college: college.trim(),
+          authToken,
           plan: selected,
           certification: cert,
           total,
@@ -150,6 +188,204 @@ export default function LeadForm({
       setSending(false);
     }
   };
+
+  /** Books an SMS on the right endpoint, then lets the widget dispatch it. */
+  const startPhoneVerification = async (sessionToken: string | null) => {
+    if (!ready) {
+      setErrors({ form: loadError || "Verification is still loading." });
+      return;
+    }
+    setSending(true);
+    setErrors({});
+    try {
+      if (sessionToken) {
+        await publicClient.post(
+          ENDPOINTS.enquiry.phoneOtpRequest,
+          { phone },
+          schAuth(sessionToken),
+        );
+      } else {
+        // Signed in and changing their number: this path writes the proved
+        // number to the profile, which is what the lead gate compares against.
+        await apiClient.post(ENDPOINTS.users.phoneOtpRequest, { phone });
+      }
+      setReqId(await sendOtp(phone));
+      setDigits([]);
+      setStep("phoneOtp");
+    } catch (error) {
+      setErrors({ form: apiMessage(error, "Could not send the code") });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const found = validate();
+    setErrors(found);
+    if (Object.keys(found).length > 0) return;
+
+    // Signed in, number unchanged: the account settled the email and the
+    // profile already holds this proved number, so there is nothing to re-prove.
+    if (isAuthenticated && accessToken && phone === profilePhone) {
+      await sendLead(accessToken);
+      return;
+    }
+
+    // Signed in, number changed: only the phone needs proving.
+    if (isAuthenticated) {
+      await startPhoneVerification(null);
+      return;
+    }
+
+    setSending(true);
+    setErrors({});
+    try {
+      await publicClient.post(ENDPOINTS.enquiry.otp, {
+        email: email.trim().toLowerCase(),
+      });
+      setDigits([]);
+      setStep("emailOtp");
+    } catch (error) {
+      setErrors({ form: apiMessage(error, "Could not send the code") });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const confirmEmailOtp = async (code: string) => {
+    setSending(true);
+    setErrors({});
+    try {
+      const res = await publicClient.post(
+        ENDPOINTS.enquiry.verifyOtp,
+        { email: email.trim().toLowerCase(), otp: code },
+      );
+      const token = String(res.data?.data?.sessionToken ?? "");
+      setSessionToken(token);
+      // A number proved on an earlier session for this address carries over, so
+      // a reload does not cost another SMS.
+      if (res.data?.data?.phoneVerified) {
+        await sendLead(token);
+        return;
+      }
+      await startPhoneVerification(token);
+    } catch (error) {
+      setErrors({ code: apiMessage(error, "That code did not work") });
+      setDigits([]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const confirmPhoneOtp = async (code: string) => {
+    setSending(true);
+    setErrors({});
+    try {
+      // The widget checks the digits and hands back a signed token. Only that
+      // token is worth anything to the backend.
+      const accessTokenMsg91 = await verifyOtp(code, reqId);
+      if (sessionToken) {
+        await publicClient.post(
+          ENDPOINTS.enquiry.phoneVerify,
+          { phone, accessToken: accessTokenMsg91 },
+          schAuth(sessionToken),
+        );
+        await sendLead(sessionToken);
+        return;
+      }
+      await apiClient.post(ENDPOINTS.users.phoneVerify, {
+        phone,
+        msg91Token: accessTokenMsg91,
+      });
+      if (accessToken) await sendLead(accessToken);
+    } catch (error) {
+      setErrors({
+        code: (error as { response?: unknown })?.response
+          ? apiMessage(error, "That code did not work")
+          : "Incorrect code. Check it and try again.",
+      });
+      setDigits([]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  // `sent` wins: the lead is posted from inside the phone step, so `step` is
+  // still on a code panel at the moment it succeeds.
+  if (step !== "form" && !sent) {
+    const onEmail = step === "emailOtp";
+    // A signed-in visitor only ever proves the phone, so numbering the steps
+    // would promise a second one that never comes.
+    const showsBothSteps = !isAuthenticated;
+
+    return (
+      <div
+        className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]"
+        id="eq-form"
+      >
+        <div className="px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-5">
+          <button
+            type="button"
+            onClick={() => {
+              setStep("form");
+              setDigits([]);
+              setErrors({});
+            }}
+            className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#8c7a70] transition-colors hover:text-[#c4551a]"
+          >
+            <ArrowDown size={13} strokeWidth={2.8} className="rotate-90" />
+            Back to your details
+          </button>
+
+          {showsBothSteps && (
+            <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a]">
+              Step {onEmail ? 1 : 2} of 2
+            </p>
+          )}
+
+          <h2 className="text-[1.15rem] font-extrabold leading-[1.2] tracking-[-0.02em] text-text-primary">
+            {onEmail ? "Check your inbox" : "Check your messages"}
+          </h2>
+          <p className="mt-1.5 mb-4 text-[13px] leading-[1.5] text-text-secondary">
+            We sent a {OTP_LENGTH}-digit code to{" "}
+            <b className="font-bold text-text-primary">
+              {onEmail ? email.trim().toLowerCase() : `+91 ${phone}`}
+            </b>
+            .
+          </p>
+
+          <OtpBoxes
+            length={OTP_LENGTH}
+            digits={digits}
+            onChange={setDigits}
+            onComplete={onEmail ? confirmEmailOtp : confirmPhoneOtp}
+            disabled={sending}
+            invalid={Boolean(errors.code)}
+          />
+
+          {errors.code && (
+            <span className="mt-2 block text-xs font-semibold text-[#c03c19]">
+              {errors.code}
+            </span>
+          )}
+          {errors.form && (
+            <span className="mt-2 block text-xs font-semibold text-[#c03c19]">
+              {errors.form}
+            </span>
+          )}
+
+          <p className="mt-4 text-[11.5px] leading-[1.45] text-[#8c7a70]">
+            {sending
+              ? "Checking…"
+              : onEmail
+                ? "Enter the code and we will move straight on to your number."
+                : "Enter the code and your details go to our counselling team."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (sent) {
     const plan = PLANS.find((p) => p.id === selected)!;
@@ -168,16 +404,17 @@ export default function LeadForm({
           </p>
           <ul className="mt-6 grid gap-3 border-t border-[#fbe3d2] pt-5 text-left text-sm leading-[1.5] text-text-secondary">
             <li>
-              <b className="text-[#c4551a]">Now:</b> plan breakdown and fees land
-              in your inbox at {email}.
+              <b className="text-[#c4551a]">Nothing charged:</b> this is an
+              enquiry, not an enrolment. No payment has been taken.
             </li>
             <li>
-              <b className="text-[#c4551a]">Within a day:</b> a call to confirm
-              your batch and start date.
+              <b className="text-[#c4551a]">On the call:</b> your counsellor takes
+              you through the {plan.name} plan, what it covers and the fees.
             </li>
             <li>
-              <b className="text-[#c4551a]">After that:</b> your login, and all 36
-              courses open up.
+              <b className="text-[#c4551a]">You pick the course:</b> the plan
+              applies to one course you choose from our catalogue, so you decide
+              what you want to learn.
             </li>
           </ul>
         </div>
@@ -202,11 +439,27 @@ export default function LeadForm({
         </div>
 
         {isAuthenticated ? (
-          <div className="mb-3 flex items-center gap-2 rounded-lg bg-[#3aa544]/[0.08] px-3 py-2">
-            <Check size={13} strokeWidth={3.4} className="flex-none text-[#2c7f34]" />
-            <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-[#2c7f34]">
-              Signed in as {profileName || profile?.email}
-            </span>
+          <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#3aa544]/[0.08] px-3 py-2">
+            <Check size={13} strokeWidth={3.4} className="mt-[3.5px] flex-none text-[#2c7f34]" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[11.5px] font-semibold text-[#2c7f34]">
+                Signed in as {profileName || profile?.email}
+              </p>
+              {hideEmail && profileName ? (
+                <p className="truncate text-[10.5px] leading-[1.4] text-[#2c7f34]/75">
+                  {profile?.email}
+                </p>
+              ) : null}
+            </div>
+            {/* `redirect: false` keeps them on the page. Bouncing a lead to
+                /login to sign out would end the visit. */}
+            <button
+              type="button"
+              onClick={() => void handleSignOut({ redirect: false })}
+              className="mt-[1px] flex-none rounded px-1 text-[11px] font-bold text-[#2c7f34]/80 underline underline-offset-2 transition-colors hover:text-[#2c7f34] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2c7f34]"
+            >
+              Log out
+            </button>
           </div>
         ) : (
           <>
@@ -229,40 +482,44 @@ export default function LeadForm({
           </>
         )}
 
-        <div className="mb-2.5">
-          <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-name">
-            Full name
-          </label>
-          <input
-            id="eq-name"
-            className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
-            type="text"
-            autoComplete="name"
-            placeholder="Ananya Sharma"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            aria-invalid={!!errors.name}
-          />
-          {errors.name && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.name}</span>}
-        </div>
+        {!hideName && (
+          <div className="mb-2.5">
+            <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-name">
+              Full name
+            </label>
+            <input
+              id="eq-name"
+              className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
+              type="text"
+              autoComplete="name"
+              placeholder="Ananya Sharma"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              aria-invalid={!!errors.name}
+            />
+            {errors.name && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.name}</span>}
+          </div>
+        )}
 
-        <div className="mb-2.5">
-          <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-email">
-            Email
-          </label>
-          <input
-            id="eq-email"
-            className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            placeholder="you@college.edu"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            aria-invalid={!!errors.email}
-          />
-          {errors.email && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.email}</span>}
-        </div>
+        {!hideEmail && (
+          <div className="mb-2.5">
+            <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-email">
+              Email
+            </label>
+            <input
+              id="eq-email"
+              className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="you@college.edu"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!errors.email}
+            />
+            {errors.email && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.email}</span>}
+          </div>
+        )}
 
         <div className="mb-2.5">
           <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-phone">
@@ -291,34 +548,21 @@ export default function LeadForm({
         </div>
 
         <div className="mb-2.5">
-          <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-stage">
-            Career stage
-          </label>
-          <div className="relative">
-            <select
-              id="eq-stage"
-              className="h-[42px] w-full appearance-none rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] pr-9 pl-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
-              value={stage}
-              onChange={(e) => setStage(e.target.value)}
-              aria-invalid={!!errors.stage}
-            >
-              <option value="" disabled>
-                Where are you right now?
-              </option>
-              {CAREER_STAGES.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={16}
-              strokeWidth={2.6}
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
-            />
-          </div>
-          {errors.stage && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.stage}</span>}
+          <CollegeSelect
+            label="University / College"
+            labelClassName="text-[11.5px] font-bold text-text-primary mb-1"
+            placeholder="Search and select your college"
+            value={college}
+            onChange={(value) => {
+              setCollegeInput(value);
+              setCollegeIdInput(null);
+            }}
+            onSelect={(picked) => {
+              setCollegeInput(picked.display);
+              setCollegeIdInput(picked._id);
+            }}
+            error={errors.college}
+          />
         </div>
 
         <div className="mb-2.5">

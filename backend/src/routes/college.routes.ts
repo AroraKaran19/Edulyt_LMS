@@ -12,15 +12,17 @@ import {
 
 const router = Router();
 
-router.use(verifyUser);
-
 /**
  * @route   GET /api/colleges
- * @desc    List active colleges (for dropdowns; authenticated users)
- * @access  Private
+ * @desc    List active colleges, for the college pickers
+ * @access  Public
+ *
+ * Above `verifyUser` because the enquiry page asks anonymous visitors for their
+ * college, and a 401 through `apiClient` redirects them to /login.
  */
 router.get("/", listCollegesPublic);
 
+router.use(verifyUser);
 router.use(verifyAdmin);
 // Everything below is admin college management.
 router.use(requirePermission("settings.colleges"));

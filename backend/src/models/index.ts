@@ -43,8 +43,8 @@ import { ScholarshipTestModel } from "./scholarshipTest.schema";
 import { ScholarshipAttemptModel } from "./scholarshipAttempt.schema";
 import { ScholarshipCouponEntitlementModel } from "./scholarshipCouponEntitlement.schema";
 import { ScholarshipTestDailyStatModel } from "./scholarshipTestDailyStat.schema";
-import { ScholarshipEmailOtpModel } from "./scholarshipEmailOtp.schema";
-import { ScholarshipSessionModel } from "./scholarshipSession.schema";
+import { ContactEmailOtpModel } from "./contactEmailOtp.schema";
+import { ContactSessionModel } from "./contactSession.schema";
 
 export {
   UserModel,
@@ -90,6 +90,6 @@ export {
   ScholarshipAttemptModel,
   ScholarshipCouponEntitlementModel,
   ScholarshipTestDailyStatModel,
-  ScholarshipEmailOtpModel,
-  ScholarshipSessionModel,
+  ContactEmailOtpModel,
+  ContactSessionModel,
 };

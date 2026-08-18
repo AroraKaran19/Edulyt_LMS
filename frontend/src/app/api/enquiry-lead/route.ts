@@ -9,16 +9,14 @@ const leadSchema = z.object({
     .max(160)
     .regex(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/),
   phone: z.string().regex(/^[6-9]\d{9}$/),
-  userId: z.string().trim().max(64).optional(),
-  careerStage: z.enum([
-    "Student - 1st Year",
-    "Student - 2nd Year",
-    "Student - 3rd Year",
-    "Student - 4th Year",
-    "Passed Out and Unemployed",
-    "Working Professional - Non Tech Roles",
-    "Working Professional - Tech Roles",
-  ]),
+  college: z.string().trim().min(2).max(240),
+  /**
+   * Either the contact-session token from the anonymous OTP flow, or a
+   * signed-in user's access token. The backend decides which it is and reads
+   * the proved email and phone from that, so `email` above is only used to
+   * spot a payload that never got verified.
+   */
+  authToken: z.string().trim().min(20).max(4096),
   plan: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   certification: z
     .enum(["Meta", "Microsoft", "Adobe", "Cisco"])
@@ -60,7 +58,7 @@ export async function POST(request: Request) {
   }
 
   const answers = [
-    { key: "careerStage", label: "Career stage", value: lead.careerStage },
+    { key: "college", label: "College", value: lead.college },
     {
       key: "plan",
       label: "Plan you are interested in",
@@ -89,14 +87,19 @@ export async function POST(request: Request) {
   try {
     const response = await fetch(`${apiBase}/leads`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        // Forwarded so the backend can resolve which of the two verification
+        // paths this lead came through.
+        Authorization: `Bearer ${lead.authToken}`,
+      },
       body: JSON.stringify({
         source: "enquiry-form",
         name: lead.name,
-        email: lead.email,
+        // `phone` is compared against the signed-in profile; the anonymous path
+        // ignores it and uses the session. Neither path trusts it as the value.
         phone: lead.phone,
         answers,
-        submittedByUserId: lead.userId,
         pageQuery: lead.source,
       }),
     });

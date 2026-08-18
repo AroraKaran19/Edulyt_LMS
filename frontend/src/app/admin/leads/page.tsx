@@ -34,6 +34,10 @@ const formatDate = (value: string) =>
 const answerFor = (lead: Lead, key: string) =>
   lead.answers.find((a) => a.key === key)?.value ?? "—";
 
+const answerForAny = (lead: Lead, ...keys: string[]) =>
+  keys.map((k) => lead.answers.find((a) => a.key === k)?.value).find(Boolean) ??
+  "—";
+
 export default function LeadsPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.userType === "super-admin";
@@ -148,7 +152,7 @@ export default function LeadsPage() {
               <tr className="text-left text-xs font-semibold tracking-wide text-gray-500 uppercase">
                 <th className="px-4 py-3 sm:px-6">Lead</th>
                 <th className="px-4 py-3 sm:px-6">Plan</th>
-                <th className="px-4 py-3 sm:px-6">Career stage</th>
+                <th className="px-4 py-3 sm:px-6">College</th>
                 <th className="px-4 py-3 sm:px-6">On platform</th>
                 <th className="px-4 py-3 sm:px-6">Status</th>
                 <th className="px-4 py-3 sm:px-6">Received</th>
@@ -191,7 +195,9 @@ export default function LeadsPage() {
                       {answerFor(lead, "plan")}
                     </td>
                     <td className="min-w-[150px] px-4 py-4 text-sm text-gray-700 sm:px-6">
-                      {answerFor(lead, "careerStage")}
+                      {/* Leads captured before the college field still carry
+                          careerStage here, so keep showing it. */}
+                      {answerForAny(lead, "college", "careerStage")}
                     </td>
                     <td className="px-4 py-4 sm:px-6">
                       {lead.emailOnPlatform === true ? (

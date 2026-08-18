@@ -78,26 +78,29 @@ async function resolveEmailsOnPlatform(leads: Lead[]): Promise<void> {
 }
 
 /**
- * @desc  Capture a lead from any public form
+ * @desc  Capture a lead from the enquiry form
  * @route POST /api/leads
- * @access Public
+ * @access Proved email and phone (see `requireVerifiedLeadContact`)
+ *
+ * The address and number come from `req.verifiedContact`, never from the body.
+ * Reading them from the body would make both verification paths decoration,
+ * since a lead could then be posted straight here with anything in it.
  */
 export const createLead = asyncHandler(async (req: Request, res: Response) => {
-  const {
-    source = "enquiry-form",
-    name,
-    email,
-    phone,
-    answers = [],
-    submittedByUserId,
-    pageQuery,
-  } = req.body ?? {};
+  const { source = "enquiry-form", name, answers = [], pageQuery } =
+    req.body ?? {};
+
+  const proved = req.verifiedContact;
+  if (!proved) {
+    throw new AppError(
+      "Verify your email and mobile number before sending your details",
+      401
+    );
+  }
 
   const cleanName = String(name ?? "").trim();
-  const cleanEmail = String(email ?? "")
-    .trim()
-    .toLowerCase();
-  const cleanPhone = String(phone ?? "").trim();
+  const cleanEmail = proved.email.trim().toLowerCase();
+  const cleanPhone = proved.phone.trim();
 
   if (cleanName.length < 2) {
     throw new AppError("Name is required", 400);
@@ -114,6 +117,8 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
   if (source !== "enquiry-form") {
     throw new AppError("Unknown lead source", 400);
   }
+
+  const submittedByUserId = proved.userId;
 
   const cleanAnswers: LeadAnswer[] = (Array.isArray(answers) ? answers : [])
     .slice(0, 40)

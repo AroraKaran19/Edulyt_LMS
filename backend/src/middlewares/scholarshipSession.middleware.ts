@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { ScholarshipSessionModel } from "../models";
 import { AppError } from "./error.middleware";
-import { hashSessionToken } from "../services/scholarshipOtp.services";
+import { loadSessionByToken } from "../services/publicContactVerification.services";
+import { testIdFromScope } from "../services/scholarshipOtp.services";
 
 const UNAUTHORIZED = "Verify your email again to continue";
 
@@ -10,9 +10,9 @@ const UNAUTHORIZED = "Verify your email again to continue";
  * email.
  *
  * This is the whole authorization story for the public flow: there is no
- * account, so `testId` and `email` are read from the session document and every
- * downstream service takes them from `req.scholarshipSession` rather than from
- * the request body. A body-supplied email would let anyone claim anyone's
+ * account, so the campaign and email are read from the session document and
+ * every downstream service takes them from `req.scholarshipSession` rather than
+ * from the request body. A body-supplied email would let anyone claim anyone's
  * coupon.
  */
 export const requireScholarshipSession = async (
@@ -26,10 +26,16 @@ export const requireScholarshipSession = async (
     return next(new AppError(UNAUTHORIZED, 401));
   }
 
-  const session = await ScholarshipSessionModel.findOne({
-    tokenHash: hashSessionToken(token),
-  }).lean();
+  const session = await loadSessionByToken(token);
   if (!session) {
+    return next(new AppError(UNAUTHORIZED, 401));
+  }
+
+  // Public forms share one session collection, so a token is only good for the
+  // flow that issued it. Without this an enquiry session would open these
+  // routes.
+  const testId = testIdFromScope(session.scope);
+  if (!testId) {
     return next(new AppError(UNAUTHORIZED, 401));
   }
 
@@ -44,7 +50,7 @@ export const requireScholarshipSession = async (
     // one (campaign, email) pair, so anything writing back to "the session"
     // must address the one this token names.
     id: String(session._id),
-    testId: String(session.testId),
+    testId,
     email: String(session.email),
     phoneVerified: Boolean(session.phoneVerifiedAt),
   };

@@ -81,6 +81,24 @@ export const optionalVerifyUser = async (
   next();
 };
 
+/**
+ * Populates `req.user` when the caller holds a valid user token, and does
+ * nothing at all when they do not.
+ *
+ * For routes open both to a signed-in user and to an anonymous visitor carrying
+ * some other proof, where `verifyUser` would reject the second group outright.
+ */
+export const attachUserIfPresent = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  // The error `verifyUser` reports is the "not signed in" case, which is fine
+  // here; whatever runs next decides whether that is acceptable.
+  await verifyUser(req, res, () => {});
+  next();
+};
+
 export const verifyUser = async (
   req: Request,
   res: Response,

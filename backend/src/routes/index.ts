@@ -20,6 +20,7 @@ import liveClassesRoutes from "./live-classes.routes";
 import authenticationMediaRoutes from "./authentication-media.routes";
 import certificateRoutes from "./certificate.routes";
 import couponRoutes from "./coupon.routes";
+import enquiryPublicRoutes from "./enquiryPublic.routes";
 import collaborationDomainRoutes from "./collaborationDomain.routes";
 import partnershipImportRoutes from "./partnershipImport.routes";
 import instructorDashboardRoutes from "./instructor-dashboard.routes";
@@ -71,6 +72,7 @@ export {
   authenticationMediaRoutes,
   certificateRoutes,
   couponRoutes,
+  enquiryPublicRoutes,
   collaborationDomainRoutes,
   partnershipImportRoutes,
   instructorDashboardRoutes,
