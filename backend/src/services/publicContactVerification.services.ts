@@ -69,6 +69,45 @@ const isDuplicateKeyError = (error: unknown): boolean =>
   error !== null &&
   (error as { code?: number }).code === 11000;
 
+/**
+ * Explains a refused email send, carrying the code and the real remaining wait
+ * so the UI can count a button down rather than print a dead sentence.
+ */
+const refusedEmailSend = async (
+  scope: string,
+  email: string,
+): Promise<AppError> => {
+  const doc = await ContactEmailOtpModel.findOne({ scope, email })
+    .select("sendCount lastSentAt expiresAt")
+    .lean();
+
+  if (doc && (doc.sendCount ?? 0) >= MAX_SENDS_PER_WINDOW) {
+    const remainingMs = new Date(doc.expiresAt).getTime() - Date.now();
+    const retryAfterMinutes = Math.max(1, Math.ceil(remainingMs / 60_000));
+    return new AppError(
+      `You have used every code this window allows. Try again in ${retryAfterMinutes} minute${
+        retryAfterMinutes === 1 ? "" : "s"
+      }.`,
+      429,
+      PHONE_ERROR_CODES.OTP_SEND_LIMIT,
+      { retryAfterMinutes },
+    );
+  }
+
+  const elapsed =
+    (Date.now() - new Date(doc?.lastSentAt ?? 0).getTime()) / 1000;
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil(RESEND_COOLDOWN_SECONDS - elapsed),
+  );
+  return new AppError(
+    otpThrottledMessage(retryAfterSeconds),
+    429,
+    PHONE_ERROR_CODES.OTP_THROTTLED,
+    { retryAfterSeconds },
+  );
+};
+
 export interface EmailOtpRequest {
   scope: string;
   email: string;
@@ -125,10 +164,10 @@ export const requestEmailOtp = async ({
     );
   } catch (error) {
     if (!isDuplicateKeyError(error)) throw error;
-    throw new AppError(
-      `Please wait ${RESEND_COOLDOWN_SECONDS} seconds before asking for another code.`,
-      429,
-    );
+    // The insert lost to an existing row, so a guard in the filter rejected it.
+    // Read back what the real wait is: quoting the full cooldown would tell
+    // someone 60 seconds when 3 are left, and the UI counts down on this.
+    throw await refusedEmailSend(scope, email);
   }
 
   const [d1, d2, d3, d4, d5, d6] = otp.split("");

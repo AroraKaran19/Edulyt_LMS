@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Check, ChevronDown } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  TriangleAlert,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import useAuth from "@/hooks/useAuth";
 import type { Student } from "@/types";
@@ -13,6 +19,7 @@ import apiClient from "@/configs/apiConfig";
 import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
+import { PHONE_ERROR_CODES } from "@/constants/authErrorCodes";
 import EnquiryButton from "./EnquiryButton";
 import OtpBoxes from "./OtpBoxes";
 import { ISSUERS, MNC_ADDON_PRICE, PLANS, type PlanId } from "./plans";
@@ -45,6 +52,9 @@ const apiMessage = (error: unknown, fallback: string): string => {
   );
 };
 
+/** Matches the server's cooldown, and only used until it reports the real one. */
+const RESEND_COOLDOWN_SECONDS = 60;
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export default function LeadForm({
@@ -57,7 +67,7 @@ export default function LeadForm({
   initialCollegeId = "",
 }: Props) {
   const { user, isAuthenticated, accessToken, handleSignOut } = useAuth();
-  const { ready, loadError, sendOtp, verifyOtp } = useMSG91OTP();
+  const { ready, loadError, sendOtp, retryOtp, verifyOtp } = useMSG91OTP();
 
   /*
    * Signed-in students get their profile as the default for each field, but
@@ -90,6 +100,14 @@ export default function LeadForm({
   /** Proof of the verified email, and what authorises the lead afterwards. */
   const [sessionToken, setSessionToken] = useState("");
   const [errors, setErrors] = useState<Errors>({});
+  /** Seconds until another code may be asked for. Drives the button, not a toast. */
+  const [cooldown, setCooldown] = useState(0);
+  /**
+   * Set once every code this window allows is spent. Distinct from `cooldown`:
+   * that one clears itself, this one has to retire the button, because
+   * re-arming it would only dead-end them again.
+   */
+  const [sendLimitMinutes, setSendLimitMinutes] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -142,6 +160,45 @@ export default function LeadForm({
   const freeCert = selected === 3;
   const addonCost = cert && !freeCert ? MNC_ADDON_PRICE : 0;
   const total = chosenPlan.price + addonCost;
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  /**
+   * Turns a refused send into something the UI can act on.
+   *
+   * A throttle is a known state, not a failure: the server says when the next
+   * code is allowed, so the button counts down instead of inviting a click that
+   * would only bounce again.
+   */
+  const handleSendRefusal = (error: unknown, fallback: string) => {
+    const detail = (
+      error as {
+        response?: {
+          data?: { error?: { code?: string; meta?: Record<string, unknown> } };
+        };
+      }
+    )?.response?.data?.error;
+
+    if (detail?.code === PHONE_ERROR_CODES.OTP_SEND_LIMIT) {
+      setSendLimitMinutes(Number(detail?.meta?.retryAfterMinutes) || null);
+      setCooldown(0);
+      setErrors({ form: apiMessage(error, fallback) });
+      return;
+    }
+
+    const seconds = Number(detail?.meta?.retryAfterSeconds);
+    if (detail?.code === PHONE_ERROR_CODES.OTP_THROTTLED && seconds > 0) {
+      setCooldown(Math.ceil(seconds));
+      setErrors({});
+      return;
+    }
+
+    setErrors({ form: apiMessage(error, fallback) });
+  };
 
   const validate = (): Errors => {
     const next: Errors = {};
@@ -211,9 +268,10 @@ export default function LeadForm({
       }
       setReqId(await sendOtp(phone));
       setDigits([]);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
       setStep("phoneOtp");
     } catch (error) {
-      setErrors({ form: apiMessage(error, "Could not send the code") });
+      handleSendRefusal(error, "Could not send the code");
     } finally {
       setSending(false);
     }
@@ -245,9 +303,52 @@ export default function LeadForm({
         email: email.trim().toLowerCase(),
       });
       setDigits([]);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
       setStep("emailOtp");
     } catch (error) {
-      setErrors({ form: apiMessage(error, "Could not send the code") });
+      handleSendRefusal(error, "Could not send the code");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const resendCode = async () => {
+    if (sending || cooldown > 0 || sendLimitMinutes !== null) return;
+
+    if (step === "phoneOtp") {
+      setSending(true);
+      setErrors({});
+      try {
+        if (sessionToken) {
+          await publicClient.post(
+            ENDPOINTS.enquiry.phoneOtpRequest,
+            { phone },
+            schAuth(sessionToken),
+          );
+        } else {
+          await apiClient.post(ENDPOINTS.users.phoneOtpRequest, { phone });
+        }
+        setReqId(await retryOtp(reqId));
+        setDigits([]);
+        setCooldown(RESEND_COOLDOWN_SECONDS);
+      } catch (error) {
+        handleSendRefusal(error, "Could not resend the code");
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    setSending(true);
+    setErrors({});
+    try {
+      await publicClient.post(ENDPOINTS.enquiry.otp, {
+        email: email.trim().toLowerCase(),
+      });
+      setDigits([]);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (error) {
+      handleSendRefusal(error, "Could not resend the code");
     } finally {
       setSending(false);
     }
@@ -375,13 +476,35 @@ export default function LeadForm({
             </span>
           )}
 
-          <p className="mt-4 text-[11.5px] leading-[1.45] text-[#8c7a70]">
-            {sending
-              ? "Checking…"
-              : onEmail
-                ? "Enter the code and we will move straight on to your number."
-                : "Enter the code and your details go to our counselling team."}
-          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {sendLimitMinutes !== null ? (
+              <p className="text-[11.5px] leading-[1.45] font-semibold text-[#a8401a]">
+                You have requested the maximum number of codes. You can start
+                over in {sendLimitMinutes} minute
+                {sendLimitMinutes === 1 ? "" : "s"}.
+              </p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void resendCode()}
+                  disabled={cooldown > 0 || sending}
+                  className="text-[12.5px] font-bold text-[#c4551a] hover:underline disabled:cursor-not-allowed disabled:text-[#a3928a] disabled:no-underline"
+                >
+                  {sending
+                    ? "Sending…"
+                    : cooldown > 0
+                      ? `Resend code in ${cooldown}s`
+                      : "Resend code"}
+                </button>
+                <span className="text-[11.5px] leading-[1.45] text-[#8c7a70]">
+                  {onEmail
+                    ? "Then we move straight on to your number."
+                    : "Then your details go to our counselling team."}
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -666,10 +789,37 @@ export default function LeadForm({
           </div>
         </div>
 
-        {errors.form && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.form}</span>}
+        {(errors.form || cooldown > 0 || sendLimitMinutes !== null) && (
+          <p
+            role="alert"
+            className="mt-3 flex items-start gap-2 rounded-xl border border-[#f0b9a2] bg-[#fff4ef] px-3 py-2.5 text-[12.5px] leading-[1.45] font-semibold text-[#a8401a]"
+          >
+            <TriangleAlert
+              size={14}
+              strokeWidth={2.6}
+              className="mt-[1px] flex-none"
+            />
+            <span>
+              {sendLimitMinutes !== null
+                ? `You have requested the maximum number of codes. You can start over in ${sendLimitMinutes} minute${sendLimitMinutes === 1 ? "" : "s"}.`
+                : cooldown > 0
+                  ? `A code was just sent. You can ask for another in ${cooldown}s.`
+                  : errors.form}
+            </span>
+          </p>
+        )}
 
-        <EnquiryButton type="submit" block disabled={sending}>
-          {sending ? "Sending" : "Send me the details"}
+        <EnquiryButton
+          type="submit"
+          block
+          disabled={sending || cooldown > 0 || sendLimitMinutes !== null}
+          className="mt-3"
+        >
+          {sending
+            ? "Sending"
+            : cooldown > 0
+              ? `Wait ${cooldown}s`
+              : "Send me the details"}
           {!sending && <ArrowRight size={15} strokeWidth={2.5} />}
         </EnquiryButton>
 
