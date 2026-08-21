@@ -22,7 +22,8 @@ import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
 import { PHONE_ERROR_CODES } from "@/constants/authErrorCodes";
 import EnquiryButton from "./EnquiryButton";
 import OtpBoxes from "./OtpBoxes";
-import { ISSUERS, MNC_ADDON_PRICE, PLANS, type PlanId } from "./plans";
+import { ISSUERS, type PlanId } from "./plans";
+import { usePlanData } from "./usePlanData";
 
 type Props = {
   selected: PlanId;
@@ -156,9 +157,10 @@ export default function LeadForm({
   const hideEmail =
     isAuthenticated && emailInput === null && EMAIL.test(email.trim());
 
-  const chosenPlan = PLANS.find((p) => p.id === selected)!;
+  const { plans, mncAddonPrice, planById } = usePlanData();
+  const chosenPlan = planById(selected);
   const freeCert = selected === 3;
-  const addonCost = cert && !freeCert ? MNC_ADDON_PRICE : 0;
+  const addonCost = cert && !freeCert ? mncAddonPrice : 0;
   const total = chosenPlan.price + addonCost;
 
   useEffect(() => {
@@ -511,7 +513,7 @@ export default function LeadForm({
   }
 
   if (sent) {
-    const plan = PLANS.find((p) => p.id === selected)!;
+    const plan = planById(selected);
     return (
       <div className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]" id="eq-form">
         <div className="px-[26px] pt-10 pb-[34px] text-center">
@@ -701,7 +703,7 @@ export default function LeadForm({
             </button>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
-            {PLANS.map((plan) => (
+            {plans.map((plan) => (
               <label
                 key={plan.id}
                 className={cn(
@@ -739,7 +741,7 @@ export default function LeadForm({
                 MNC certification
               </label>
               <span className="flex-none text-[10.5px] font-bold whitespace-nowrap text-[#c4551a]">
-                {freeCert ? "1 included free" : `+₹${MNC_ADDON_PRICE.toLocaleString("en-IN")} each`}
+                {freeCert ? "1 included free" : `+₹${mncAddonPrice.toLocaleString("en-IN")} each`}
               </span>
             </div>
             <div className="relative">
@@ -757,7 +759,7 @@ export default function LeadForm({
                     {issuer.name}
                     {freeCert
                       ? " (free)"
-                      : ` (+₹${MNC_ADDON_PRICE.toLocaleString("en-IN")})`}
+                      : ` (+₹${mncAddonPrice.toLocaleString("en-IN")})`}
                   </option>
                 ))}
               </select>

@@ -282,15 +282,19 @@ export function ItemListField<T>({
   newItem,
   addLabel = "Add item",
   itemTitle,
+  fixed = false,
 }: {
   label?: string;
   description?: string;
   items: T[];
   onChange: (next: T[]) => void;
   renderItem: (item: T, update: (next: T) => void, idx: number) => React.ReactNode;
-  newItem: () => T;
+  newItem?: () => T;
   addLabel?: string;
   itemTitle?: (item: T, idx: number) => string;
+  /** For lists whose length and order the code depends on: edit only, no add,
+   *  remove or reorder. */
+  fixed?: boolean;
 }) {
   const updateAt = useCallback(
     (idx: number, val: T) => {
@@ -342,6 +346,7 @@ export function ItemListField<T>({
               <span className="text-xs font-semibold text-stone-600 uppercase tracking-wide">
                 {itemTitle ? itemTitle(item, idx) : `Item ${idx + 1}`}
               </span>
+              {!fixed && (
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -370,6 +375,7 @@ export function ItemListField<T>({
                   <Trash2Icon className="size-4" />
                 </button>
               </div>
+              )}
             </div>
             <div className="flex flex-col gap-3">
               {renderItem(item, (next) => updateAt(idx, next), idx)}
@@ -377,14 +383,16 @@ export function ItemListField<T>({
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={() => onChange([...items, newItem()])}
-        className="self-start inline-flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 font-medium"
-      >
-        <PlusIcon className="size-4" />
-        {addLabel}
-      </button>
+      {!fixed && newItem && (
+        <button
+          type="button"
+          onClick={() => onChange([...items, newItem()])}
+          className="self-start inline-flex items-center gap-1.5 text-sm text-orange-600 hover:text-orange-700 font-medium"
+        >
+          <PlusIcon className="size-4" />
+          {addLabel}
+        </button>
+      )}
     </div>
   );
 }

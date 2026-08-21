@@ -35,6 +35,8 @@
     "scripts:export-internship-applications": "ts-node src/scripts/export-internship-applications.ts",
     "scripts:remove-enrollments-window": "ts-node src/scripts/remove-enrollments-by-enrolledAt-window.ts",
     "scripts:seed-home-page": "ts-node src/scripts/seed-home-page-settings.ts",
+    "scripts:seed-enquiry-page": "ts-node src/scripts/seed-enquiry-page-settings.ts",
+    "scripts:seed-enquiry-page:apply": "ts-node src/scripts/seed-enquiry-page-settings.ts --apply",
     "scripts:wipe-questions": "ts-node src/scripts/wipe-internship-questions.ts",
     "scripts:wipe-questions:confirm": "ts-node src/scripts/wipe-internship-questions.ts --confirm",
     "scripts:migrate-task-due-days": "ts-node src/scripts/migrate-task-due-days.ts",

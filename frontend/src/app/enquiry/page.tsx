@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
 import EnquiryLanding from "./EnquiryLanding";
+import { getEnquiryPageSettings } from "@/lib/enquiry-page/getEnquiryPageSettings";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,13 +30,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function EnquiryPage() {
+export default async function EnquiryPage() {
+  const settings = await getEnquiryPageSettings();
+
   // EnquiryLanding reads the query string to restore the plan and certification a
   // student picked before the Google round trip, so it needs a boundary here.
   return (
     <div className={`${inter.variable} ${poppins.variable}`}>
       <Suspense fallback={<div className="min-h-dvh bg-[#fff6f1]" />}>
-        <EnquiryLanding />
+        <EnquiryLanding settings={settings} />
       </Suspense>
     </div>
   );

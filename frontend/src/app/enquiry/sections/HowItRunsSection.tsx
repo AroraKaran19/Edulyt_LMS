@@ -1,28 +1,34 @@
 import { cn } from "@/lib/utils";
 import { STEPS } from "../plans";
+import { listOr, useSection } from "../settings";
 import { CARD, CONTAINER, EYEBROW, H2, LEAD, REVEAL, SECTION } from "./shared";
 
 export default function HowItRunsSection() {
+  const cms = useSection("howItRuns");
+  const steps = listOr(cms.steps, STEPS);
+
   return (
     <section className={SECTION}>
       <div className={CONTAINER}>
         <div data-reveal className={REVEAL}>
           <span className={EYEBROW}>
             <i className="size-1.5 flex-none rounded-full bg-primary" />
-            How it runs
+            {cms.eyebrow || "How it runs"}
           </span>
           <h2 className={`${H2} mt-[18px]`}>
-            Learn, get mentored,{" "}
-            <em className="not-italic text-primary">get placed</em>
+            {cms.heading || "Learn, get mentored,"}{" "}
+            <em className="not-italic text-primary">
+              {cms.headingHighlight || "get placed"}
+            </em>
           </h2>
           <p className={LEAD}>
-            Three stages, in order. Every plan covers the first, Mentor-Led adds
-            the second, Mentor-to-Placement carries you through all three.
+            {cms.lead ||
+              "Three stages, in order. Every plan covers the first, Mentor-Led adds the second, Mentor-to-Placement carries you through all three."}
           </p>
         </div>
 
         <div className="mt-10 grid gap-[18px] sm:grid-cols-3">
-          {STEPS.map((step, i) => (
+          {steps.map((step, i) => (
             <article
               key={step.no}
               data-reveal

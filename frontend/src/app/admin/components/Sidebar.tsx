@@ -194,6 +194,16 @@ const AdminSidebar = ({
       icon: <UserPlus className="size-6" />,
       label: "Leads",
       href: "/admin/leads",
+      submenu: [
+        {
+          label: "Leads submission",
+          href: "/admin/leads",
+        },
+        {
+          label: "Configure Enquiry Page",
+          href: "/admin/enquiry-page",
+        },
+      ],
     },
     {
       icon: <HelpCircle className="size-6" />,

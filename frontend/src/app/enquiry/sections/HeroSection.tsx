@@ -1,8 +1,10 @@
 import Image from "next/image";
-import EnquiryButton from "../EnquiryButton";
+import EnquiryButton, { enquiryButtonClass } from "../EnquiryButton";
 import LeadForm from "../LeadForm";
 import { ISSUERS, RATING, type PlanId } from "../plans";
+import { listOr, useSection, withSrc } from "../settings";
 import { CARD, CONTAINER, EYEBROW } from "./shared";
+import type { EnquiryCta } from "@/types/enquiry-page-settings";
 
 type Props = {
   plan: PlanId;
@@ -14,6 +16,39 @@ type Props = {
   initialCollegeId: string;
 };
 
+/**
+ * A hero button. With no target configured it stays an inert button rather than
+ * an anchor to nowhere, so an unconfigured slot cannot 404 a visitor.
+ */
+function HeroCta({
+  cta,
+  fallbackLabel,
+  variant = "primary",
+}: {
+  cta: EnquiryCta;
+  fallbackLabel: string;
+  variant?: "primary" | "ghost";
+}) {
+  const label = cta.label || fallbackLabel;
+  if (!cta.href) {
+    return <EnquiryButton variant={variant}>{label}</EnquiryButton>;
+  }
+
+  // Uploaded documents and off-site links both open away from the funnel.
+  const external = cta.source === "upload" || /^https?:\/\//i.test(cta.href);
+  return (
+    <a
+      href={cta.href}
+      className={enquiryButtonClass(variant)}
+      {...(external
+        ? { target: "_blank", rel: "noopener noreferrer" }
+        : {})}
+    >
+      {label}
+    </a>
+  );
+}
+
 export default function HeroSection({
   plan,
   onPlan,
@@ -23,6 +58,12 @@ export default function HeroSection({
   initialCollege,
   initialCollegeId,
 }: Props) {
+  const cms = useSection("hero");
+  const partners = withSrc(listOr(cms.partners, ISSUERS));
+  const score = cms.ratingScore || RATING.score;
+  const primary = cms.primaryCta ?? {};
+  const secondary = cms.secondaryCta ?? {};
+
   return (
     <section className="relative z-[1] py-[72px] lg:py-[104px] pt-9 pb-[60px] lg:pt-[52px] lg:pb-[88px]">
       <div
@@ -35,13 +76,13 @@ export default function HeroSection({
           >
             <span className={EYEBROW}>
               <i className="size-1.5 flex-none rounded-full bg-primary" />
-              Career Acceleration Program
+              {cms.eyebrow || "Career Acceleration Program"}
             </span>
 
             <span className="inline-flex items-center gap-3 rounded-[18px] border-[1.5px] border-[#fbe3d2] bg-white py-2 pr-5 pl-3 shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]">
               <span className="sr-only">
-                Rated {RATING.score} out of 5 from {RATING.count}{" "}
-                {RATING.source}
+                Rated {score} out of 5 from {cms.ratingCount || RATING.count}{" "}
+                {cms.ratingSource || RATING.source}
               </span>
               <span
                 aria-hidden="true"
@@ -57,10 +98,10 @@ export default function HeroSection({
               </span>
               <span aria-hidden="true" className="flex flex-col gap-0.5">
                 <span className="text-[11.5px] leading-none font-semibold text-[#8c7a70]">
-                  Trusted learners
+                  {cms.ratingLabel || "Trusted learners"}
                 </span>
                 <span className="text-[17px] leading-none font-extrabold tracking-[-0.015em] text-text-primary">
-                  {RATING.score}/5 Rating on Google
+                  {score}/5 Rating on Google
                 </span>
               </span>
             </span>
@@ -70,13 +111,13 @@ export default function HeroSection({
           <h1 className="mt-5 font-[family-name:var(--font-eq-display)] text-[clamp(2rem,6.4vw,4.05rem)] font-extrabold leading-[1.04] tracking-[-0.03em] text-text-primary">
             <span className="block overflow-hidden pb-[0.06em]">
               <span className="block animate-eq-rise [animation-delay:50ms]">
-                Don&apos;t just learn.
+                {cms.headingLine1 || "Don't just learn."}
               </span>
             </span>
             <span className="block overflow-hidden pb-[0.06em]">
               <span className="block animate-eq-rise [animation-delay:130ms]">
                 <em className="not-italic text-primary">
-                  Get placed at a top MNC.
+                  {cms.headingLine2 || "Get placed at a top MNC."}
                 </em>
               </span>
             </span>
@@ -86,21 +127,26 @@ export default function HeroSection({
             data-fade
             className="mt-5 max-w-[50ch] animate-eq-fade-up text-[1.0625rem] leading-[1.62] text-text-secondary [animation-delay:300ms]"
           >
-            India&apos;s first edtech collaborating with{" "}
-            <strong className="font-bold text-text-primary">
-              Meta, Microsoft, Adobe and Cisco
-            </strong>{" "}
-            for certifications. Learn, get mentored, get placed. Pick the plan
-            that matches how much support you want.
+            {cms.introHtml ? (
+              <span dangerouslySetInnerHTML={{ __html: cms.introHtml }} />
+            ) : (
+              <>
+                India&apos;s first edtech collaborating with{" "}
+                <strong className="font-bold text-text-primary">
+                  Meta, Microsoft, Adobe and Cisco
+                </strong>{" "}
+                for certifications. Learn, get mentored, get placed. Pick the
+                plan that matches how much support you want.
+              </>
+            )}
           </p>
 
-          {/* Placeholders. Labels and destinations still to be decided. */}
           <div
             data-fade
             className="mt-7 flex animate-eq-fade-up flex-wrap gap-3 [animation-delay:300ms]"
           >
-            <EnquiryButton>Click me</EnquiryButton>
-            <EnquiryButton variant="ghost">Click me</EnquiryButton>
+            <HeroCta cta={primary} fallbackLabel="Click me" />
+            <HeroCta cta={secondary} fallbackLabel="Click me" variant="ghost" />
           </div>
 
           <div
@@ -108,20 +154,20 @@ export default function HeroSection({
             className="mt-[30px] animate-eq-fade-up border-t border-[#fbe3d2] pt-[22px] [animation-delay:420ms]"
           >
             <span className="text-[11.5px] font-bold uppercase tracking-[0.12em] text-[#8c7a70]">
-              Certification partners (CATC)
+              {cms.partnersHeading || "Certification partners (CATC)"}
             </span>
             <ul className="mt-3.5 grid max-w-[560px] grid-cols-2 gap-2.5 sm:grid-cols-4">
-              {ISSUERS.map((issuer) => (
+              {partners.map((issuer) => (
                 <li
-                  key={issuer.name}
+                  key={issuer.src}
                   className={`${CARD} grid min-h-[58px] place-items-center px-[18px] py-3`}
                 >
                   <Image
                     src={issuer.src}
-                    alt={issuer.name}
-                    height={issuer.height}
-                    width={Math.round(issuer.height * issuer.ratio)}
-                    style={{ height: issuer.height, width: "auto" }}
+                    alt={issuer.name ?? ""}
+                    height={issuer.height ?? 24}
+                    width={Math.round((issuer.height ?? 24) * (issuer.ratio ?? 1))}
+                    style={{ height: issuer.height ?? 24, width: "auto" }}
                     unoptimized
                     className="block max-w-full object-contain"
                   />

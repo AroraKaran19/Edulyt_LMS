@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import EnquiryButton from "../EnquiryButton";
+import { useSection } from "../settings";
 import { CONTAINER, REVEAL, SECTION } from "./shared";
 
 type Props = {
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export default function ClosingSection({ planName, onCta }: Props) {
+  const cms = useSection("closing");
+
   return (
     <section className={`${SECTION} pb-20 lg:pb-24`}>
       <div className={CONTAINER}>
@@ -25,14 +28,14 @@ export default function ClosingSection({ planName, onCta }: Props) {
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.22)_1.2px,transparent_1.2px)] bg-[size:22px_22px] [mask-image:radial-gradient(70%_70%_at_50%_0%,#000,transparent)]"
           />
           <h2 className="relative mb-3 text-[clamp(1.8rem,4.6vw,2.7rem)] font-extrabold leading-[1.12] tracking-[-0.025em] text-white">
-            Three plans. One short form.
+            {cms.heading || "Three plans. One short form."}
           </h2>
           <p className="relative mx-auto mb-[26px] max-w-[50ch] text-base leading-[1.6] text-white/[0.92]">
-            Share your name, email and number. A counsellor calls you back to
-            walk through the plan, the fees and the MNC certification add-on.
+            {cms.body ||
+              "Share your name, email and number. A counsellor calls you back to walk through the plan, the fees and the MNC certification add-on."}
           </p>
           <EnquiryButton variant="onColor" className="relative" onClick={onCta}>
-            Get {planName} details
+            {cms.ctaLabel || `Get ${planName} details`}
             <ArrowRight size={16} strokeWidth={2.6} />
           </EnquiryButton>
         </div>

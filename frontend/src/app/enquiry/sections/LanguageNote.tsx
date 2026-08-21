@@ -1,8 +1,12 @@
 import { cn } from "@/lib/utils";
 import { COURSE_LANGUAGES } from "../plans";
+import { listOr, useSection } from "../settings";
 import { CONTAINER, REVEAL } from "./shared";
 
 export default function LanguageNote() {
+  const cms = useSection("languages");
+  const languages = listOr(cms.items, COURSE_LANGUAGES);
+
   return (
     <div className={`${CONTAINER} pb-12 lg:pb-14`}>
       <div
@@ -19,18 +23,19 @@ export default function LanguageNote() {
 
         <div className="relative mx-auto max-w-[54ch] text-center">
           <h2 className="text-[clamp(1.5rem,3.1vw,2.15rem)] font-extrabold leading-[1.12] tracking-[-0.02em] text-balance text-text-primary">
-            Learn in the language{" "}
-            <em className="not-italic text-primary">you think in</em>
+            {cms.heading || "Learn in the language"}{" "}
+            <em className="not-italic text-primary">
+              {cms.headingHighlight || "you think in"}
+            </em>
           </h2>
           <p className="mt-3.5 text-[0.9375rem] leading-[1.6] text-text-secondary">
-            English is the default, not the requirement. Select courses also run
-            in Hindi, Tamil, Marathi, Telugu and Kannada, so a concept lands the
-            first time you hear it.
+            {cms.lead ||
+              "English is the default, not the requirement. Select courses also run in Hindi, Tamil, Marathi, Telugu and Kannada, so a concept lands the first time you hear it."}
           </p>
         </div>
 
         <ul className="relative mt-8 flex flex-wrap items-center justify-center gap-x-7 gap-y-4 sm:mt-9 sm:gap-x-10">
-          {COURSE_LANGUAGES.map((language) => (
+          {languages.map((language) => (
             <li
               key={language.code}
               lang={language.code}

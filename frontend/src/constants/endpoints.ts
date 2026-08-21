@@ -527,6 +527,7 @@ export const ENDPOINTS = {
 
   /** Public marketing home page CMS — read-only. */
   homePageSettings: "/home-page-settings",
+  enquiryPageSettings: "/enquiry-page-settings",
 
   /** Public legal documents (course + internship T&C) — read-only. */
   legalSettings: "/legal-settings",
@@ -535,6 +536,7 @@ export const ENDPOINTS = {
   admin: {
     pointsSettings: "/admin/points-settings",
     homePageSettings: "/admin/home-page-settings",
+    enquiryPageSettings: "/admin/enquiry-page-settings",
     legalSettings: "/admin/legal-settings",
   },
 };

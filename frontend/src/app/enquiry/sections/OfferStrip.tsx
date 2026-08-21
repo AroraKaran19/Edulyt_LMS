@@ -1,7 +1,11 @@
 import { OFFER } from "../plans";
+import { useSection } from "../settings";
 import { CONTAINER } from "./shared";
 
 export default function OfferStrip() {
+  const cms = useSection("offer");
+  if (cms.enabled === false) return null;
+
   return (
     <div className="relative z-[2] bg-[linear-gradient(90deg,#f77124_0%,#f7902a_52%,#f7ad24_100%)]">
       <div
@@ -16,14 +20,14 @@ export default function OfferStrip() {
             <i className="absolute inline-flex size-full animate-ping rounded-full bg-white opacity-75 motion-reduce:animate-none" />
             <i className="relative inline-flex size-1.5 rounded-full bg-white" />
           </i>
-          {OFFER.label}
+          {cms.label || OFFER.label}
         </span>
 
         <p className="text-[13px] leading-[1.4] font-bold text-white">
-          {OFFER.headline}
+          {cms.headline || OFFER.headline}
           <span className="hidden font-semibold text-white/80 md:inline">
             {" · "}
-            {OFFER.body}
+            {cms.body || OFFER.body}
           </span>
         </p>
       </div>

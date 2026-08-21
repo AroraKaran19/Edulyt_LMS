@@ -19,13 +19,29 @@ function resolveRevalidateUrl(): string | null {
 }
 
 /**
- * Busts the Next cache after a home page settings write.
+ * Cache tags the frontend knows how to bust. Sent as a body field so one route
+ * serves every CMS page; the frontend rejects anything not on its own allowlist.
+ */
+export const REVALIDATE_TAGS = {
+  homePage: "home-page-settings",
+  enquiryPage: "enquiry-page-settings",
+} as const;
+
+export type RevalidateTag =
+  (typeof REVALIDATE_TAGS)[keyof typeof REVALIDATE_TAGS];
+
+/**
+ * Busts the Next cache after a settings write.
  *
  * Deliberately fire-and-forget: the edit is already persisted, so a failure here
  * must not fail the admin's request. Worst case the change goes live when the
  * time-based revalidate expires instead of immediately.
+ *
+ * Defaults to the home page tag so the original caller keeps working unchanged.
  */
-export const triggerRevalidate = async (): Promise<void> => {
+export const triggerRevalidate = async (
+  tag: RevalidateTag = REVALIDATE_TAGS.homePage,
+): Promise<void> => {
   const url = resolveRevalidateUrl();
   const secret = process.env.REVALIDATE_SECRET;
 
@@ -37,7 +53,7 @@ export const triggerRevalidate = async (): Promise<void> => {
   try {
     await axios.post(
       url,
-      {},
+      { tag },
       {
         headers: { "x-revalidate-secret": secret },
         timeout: 5000,

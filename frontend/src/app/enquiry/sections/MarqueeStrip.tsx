@@ -1,4 +1,7 @@
+"use client";
+
 import { Fragment } from "react";
+import { listOr, useSection } from "../settings";
 
 const MARQUEE = [
   "15+ hrs live mentorship",
@@ -10,6 +13,8 @@ const MARQUEE = [
 ];
 
 export default function MarqueeStrip() {
+  const items = listOr(useSection("hero").marquee, MARQUEE);
+
   return (
     <div
       aria-hidden="true"
@@ -20,7 +25,7 @@ export default function MarqueeStrip() {
           key={copy}
           className="flex min-w-full flex-none animate-eq-slide items-center justify-around gap-[22px]"
         >
-          {MARQUEE.map((item) => (
+          {items.map((item) => (
             <Fragment key={item}>
               <span className="whitespace-nowrap text-[14.5px] font-bold text-text-primary">
                 {item}

@@ -1,17 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { Check, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CertPicker from "./CertPicker";
-import {
-  ALL_PERKS,
-  MNC_ADDON_PRICE,
-  PERK_GROUPS,
-  PLANS,
-  countIncluded,
-  type PerkState,
-  type PlanId,
-} from "./plans";
+import { type PerkState, type PlanId } from "./plans";
+import { useSection } from "./settings";
+import { usePlanData } from "./usePlanData";
 
 type Props = {
   selected: PlanId;
@@ -21,13 +16,6 @@ type Props = {
 };
 
 const inr = (value: number) => `₹${value.toLocaleString("en-IN")}`;
-
-const TOTAL_PERKS = ALL_PERKS.length;
-
-/** Flat index of each group's first perk, so rows can stagger without a counter. */
-const GROUP_OFFSETS = PERK_GROUPS.map((_, i) =>
-  PERK_GROUPS.slice(0, i).reduce((sum, g) => sum + g.perks.length, 0)
-);
 
 /**
  * Everything the programme offers on the left, the plan picker on the right.
@@ -45,11 +33,21 @@ export default function PlanMatrix({
   cert,
   onCert,
 }: Props) {
+  const { plans, perkGroups, mncAddonPrice, allPerks, countIncluded } =
+    usePlanData();
+  const promo = useSection("plans").promoImage;
+
+  const TOTAL_PERKS = allPerks.length;
+  /** Flat index of each group's first perk, so rows stagger without a counter. */
+  const GROUP_OFFSETS = perkGroups.map((_, i) =>
+    perkGroups.slice(0, i).reduce((sum, g) => sum + g.perks.length, 0)
+  );
+
   return (
     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_340px] lg:gap-8">
       {/* ---------- perks ---------- */}
       <div className="sm:columns-2 sm:gap-4">
-        {PERK_GROUPS.map((group, groupIndex) => (
+        {perkGroups.map((group, groupIndex) => (
           <section
             key={group.title}
             className="mb-4 break-inside-avoid rounded-2xl border border-[#fbe3d2] bg-white p-4 shadow-[0_10px_30px_-16px_rgba(43,21,8,0.18)]"
@@ -109,13 +107,28 @@ export default function PlanMatrix({
             </ul>
           </section>
         ))}
+
+        {/* Fills the gap the column balance leaves at the foot of the perks. */}
+        {promo?.src && (
+          <div className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-16px_rgba(43,21,8,0.18)]">
+            <div className="relative h-[264px] w-full">
+              <Image
+                src={promo.src}
+                alt={promo.alt || ""}
+                fill
+                sizes="(min-width: 1024px) 394px, (min-width: 640px) 45vw, 90vw"
+                className="object-cover"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ---------- plan picker ---------- */}
       <fieldset className="m-0 grid gap-2.5 border-0 p-0 lg:sticky lg:top-24">
         <legend className="sr-only">Choose your plan</legend>
 
-        {PLANS.map((plan) => {
+        {plans.map((plan) => {
           const picked = plan.id === selected;
           const addon = picked && cert !== null && plan.id !== 3;
 
@@ -171,7 +184,7 @@ export default function PlanMatrix({
 
               <div className="mt-2.5 flex items-baseline gap-2 border-t border-[#fbe3d2] pt-2.5">
                 <span className="text-[1.4rem] font-extrabold leading-none tracking-[-0.03em] text-primary">
-                  {inr(plan.price + (addon ? MNC_ADDON_PRICE : 0))}
+                  {inr(plan.price + (addon ? mncAddonPrice : 0))}
                 </span>
                 <span className="text-[10.5px] font-semibold text-[#8c7a70]">
                   {addon

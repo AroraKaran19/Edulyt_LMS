@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ISSUERS, PLANS, type PlanId } from "./plans";
+import { ISSUERS, type PlanId } from "./plans";
+import { usePlanData } from "./usePlanData";
 import { useReveal } from "./useReveal";
+import { EnquirySettingsProvider } from "./settings";
+import type { EnquiryPageSettings } from "@/types/enquiry-page-settings";
 import SiteHeader from "./sections/SiteHeader";
 import OfferStrip from "./sections/OfferStrip";
 import HeroSection from "./sections/HeroSection";
@@ -21,7 +24,11 @@ import MobileDock from "./sections/MobileDock";
 /** Scroll offset past which the mobile plan dock slides in. */
 const DOCK_AFTER = 620;
 
-export default function EnquiryLanding() {
+export default function EnquiryLanding({
+  settings = {},
+}: {
+  settings?: EnquiryPageSettings;
+}) {
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   /*
@@ -67,9 +74,10 @@ export default function EnquiryLanding() {
     });
   };
 
-  const picked = PLANS.find((p) => p.id === plan)!;
+  const picked = usePlanData().planById(plan);
 
   return (
+    <EnquirySettingsProvider value={settings}>
     <div
       data-enquiry
       ref={rootRef}
@@ -123,5 +131,6 @@ export default function EnquiryLanding() {
 
       <MobileDock planName={picked.name} visible={docked} onCta={toForm} />
     </div>
+    </EnquirySettingsProvider>
   );
 }

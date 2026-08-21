@@ -1,0 +1,692 @@
+{
+  "offer": {
+    "enabled": true,
+    "label": "Admissions open",
+    "headline": "Talk to a counsellor before this intake closes",
+    "body": "Plan pricing and any discount that applies are confirmed on the call, usually within one working day."
+  },
+  "hero": {
+    "eyebrow": "Career Acceleration Program",
+    "headingLine1": "Don't just learn.",
+    "headingLine2": "Get placed at a top MNC.",
+    "introHtml": "",
+    "primaryCta": {
+      "label": "",
+      "href": "",
+      "source": "url",
+      "s3Key": ""
+    },
+    "secondaryCta": {
+      "label": "",
+      "href": "",
+      "source": "url",
+      "s3Key": ""
+    },
+    "ratingScore": 4.7,
+    "ratingCount": 116,
+    "ratingSource": "Google reviews",
+    "ratingLabel": "Trusted learners",
+    "partnersHeading": "Certification partners (CATC)",
+    "partners": [
+      {
+        "name": "Meta",
+        "src": "/enquiry/logos/meta.svg",
+        "height": 22,
+        "ratio": 1.4971
+      },
+      {
+        "name": "Microsoft",
+        "src": "/enquiry/logos/microsoft.svg",
+        "height": 24,
+        "ratio": 1
+      },
+      {
+        "name": "Adobe",
+        "src": "/enquiry/logos/adobe.svg",
+        "height": 26,
+        "ratio": 1.1375
+      },
+      {
+        "name": "Cisco",
+        "src": "/enquiry/logos/cisco.svg",
+        "height": 26,
+        "ratio": 1.8571
+      }
+    ],
+    "marquee": [
+      "15+ hrs live mentorship",
+      "Live projects on real data",
+      "Internship offer letter",
+      "Mock interviews",
+      "ATS-optimised resume",
+      "Referrals into 5 top companies"
+    ]
+  },
+  "certificates": {
+    "eyebrow": "Certificates",
+    "heading": "The certificates and letters",
+    "headingHighlight": "you walk away with",
+    "lead": "Every one of these is issued in your name and verifiable. Pick any on the right to see the real document.",
+    "items": [
+      {
+        "title": "Digital Marketing Associate",
+        "issuer": "Meta",
+        "blurb": "Sat and passed with Certiport and Pearson VUE. Verifiable by certificate ID.",
+        "src": "/enquiry/certificates/mnc-meta.jpg",
+        "availability": "Free on Plan 03, add-on elsewhere"
+      },
+      {
+        "title": "Azure AI Fundamentals",
+        "issuer": "Microsoft",
+        "blurb": "Microsoft Certified credential, signed off by the exam body and listed on your transcript.",
+        "src": "/enquiry/certificates/mnc-microsoft.jpg",
+        "availability": "Free on Plan 03, add-on elsewhere"
+      },
+      {
+        "title": "Adobe Certified Professional",
+        "issuer": "Adobe",
+        "blurb": "Industry credential for creative and design tooling, verifiable through Certiport.",
+        "src": "/enquiry/certificates/mnc-adobe.jpg",
+        "availability": "Free on Plan 03, add-on elsewhere"
+      },
+      {
+        "title": "Support Technician, Cybersecurity",
+        "issuer": "Cisco",
+        "blurb": "CCST Cybersecurity, the entry credential recruiters look for in security roles.",
+        "src": "/enquiry/certificates/mnc-cisco.jpg",
+        "availability": "Free on Plan 03, add-on elsewhere"
+      },
+      {
+        "title": "Internship offer letter",
+        "issuer": "Airkrit India",
+        "blurb": "Issued on company letterhead with your intern ID, domain and duration.",
+        "src": "/enquiry/certificates/doc-offer-letter.jpg",
+        "availability": "Every plan, on completion"
+      },
+      {
+        "title": "Internship certificate",
+        "issuer": "Airkrit India",
+        "blurb": "Confirms the domain you worked in, the period, and the live projects you shipped.",
+        "src": "/enquiry/certificates/doc-internship-certificate.jpg",
+        "availability": "Every plan, on completion"
+      },
+      {
+        "title": "Training certificate",
+        "issuer": "Airkrit India",
+        "blurb": "Names the course and the skills covered, with a QR code for instant verification.",
+        "src": "/enquiry/certificates/doc-training-certificate.jpg",
+        "availability": "Every plan, on completion"
+      },
+      {
+        "title": "Letter of Recommendation",
+        "issuer": "Airkrit India",
+        "blurb": "Written about your actual performance in sessions and project work, signed by HR.",
+        "src": "/enquiry/certificates/doc-recommendation.jpg",
+        "availability": "Plan 03, on completion"
+      }
+    ]
+  },
+  "badges": {
+    "eyebrow": "Badges",
+    "heading": "The badges you",
+    "headingHighlight": "sit the exam for",
+    "lead": "Clear the official exam and the badge is issued in your name by Microsoft or Pearson. Which ones you go for is decided with your counsellor on the call.",
+    "items": [
+      {
+        "name": "Python",
+        "issuer": "Pearson",
+        "level": "",
+        "src": "/badges/it-specialist-python.webp"
+      },
+      {
+        "name": "Data Analytics",
+        "issuer": "Pearson",
+        "level": "",
+        "src": "/badges/it-specialist-data-analytics.webp"
+      },
+      {
+        "name": "Excel",
+        "issuer": "Microsoft",
+        "level": "Expert",
+        "src": "/badges/mos-excel-expert.webp"
+      },
+      {
+        "name": "Excel",
+        "issuer": "Microsoft",
+        "level": "Associate",
+        "src": "/badges/mos-excel-associate.webp"
+      },
+      {
+        "name": "Word",
+        "issuer": "Microsoft",
+        "level": "Associate",
+        "src": "/badges/mos-word-associate.webp"
+      },
+      {
+        "name": "PowerPoint",
+        "issuer": "Microsoft",
+        "level": "Associate",
+        "src": "/badges/mos-powerpoint-associate.webp"
+      }
+    ]
+  },
+  "resumes": {
+    "eyebrow": "On your CV",
+    "heading": "This is how you",
+    "headingHighlight": "carry them",
+    "lead": "A badge is worth what it does on the page a recruiter actually opens. Same CV below, four different badges, so you can see where yours lands before you pick one.",
+    "items": [
+      {
+        "partner": "Meta",
+        "credential": "Digital Marketing Associate",
+        "src": "/sample_resumes/resume-meta-digital-marketing.webp"
+      },
+      {
+        "partner": "Microsoft",
+        "credential": "Office Specialist, PowerPoint",
+        "src": "/sample_resumes/resume-microsoft-powerpoint.webp"
+      },
+      {
+        "partner": "Cisco",
+        "credential": "CCST Cybersecurity",
+        "src": "/sample_resumes/resume-cisco-cybersecurity.webp"
+      },
+      {
+        "partner": "Adobe",
+        "credential": "Certified Professional",
+        "src": "/sample_resumes/resume-adobe-professional.webp"
+      }
+    ]
+  },
+  "languages": {
+    "heading": "Learn in the language",
+    "headingHighlight": "you think in",
+    "lead": "English is the default, not the requirement. Select courses also run in Hindi, Tamil, Marathi, Telugu and Kannada, so a concept lands the first time you hear it.",
+    "items": [
+      {
+        "label": "English",
+        "native": "English",
+        "code": "en"
+      },
+      {
+        "label": "Hindi",
+        "native": "हिन्दी",
+        "code": "hi"
+      },
+      {
+        "label": "Tamil",
+        "native": "தமிழ்",
+        "code": "ta"
+      },
+      {
+        "label": "Marathi",
+        "native": "मराठी",
+        "code": "mr"
+      },
+      {
+        "label": "Telugu",
+        "native": "తెలుగు",
+        "code": "te"
+      },
+      {
+        "label": "Kannada",
+        "native": "ಕನ್ನಡ",
+        "code": "kn"
+      }
+    ]
+  },
+  "plans": {
+    "eyebrow": "Compare the plans",
+    "heading": "Everything we offer, and",
+    "headingHighlight": "what each plan unlocks",
+    "lead": "Pick a plan on the right. The list lights up with what you get and dims what you do not. The MNC certification is free on Mentor-to-Placement and can be added to either other plan.",
+    "mncAddonPrice": 3999,
+    "plans": [
+      {
+        "id": 1,
+        "no": "01",
+        "name": "Blended",
+        "price": 5999,
+        "tagline": "Self-paced learning with weekly live doubt support to build strong foundations.",
+        "bestFor": "Best for flexible learners",
+        "badge": ""
+      },
+      {
+        "id": 2,
+        "no": "02",
+        "name": "Mentor-Led",
+        "price": 11999,
+        "tagline": "Live guidance from experts to upskill, build projects and grow your confidence.",
+        "bestFor": "Best for guided learners",
+        "badge": ""
+      },
+      {
+        "id": 3,
+        "no": "03",
+        "name": "Mentor-to-Placement",
+        "price": 18999,
+        "tagline": "Everything in Mentor-Led, plus a full placement pipeline into top MNCs.",
+        "bestFor": "Best for guaranteed placement support",
+        "badge": "Most chosen"
+      }
+    ],
+    "perkGroups": [
+      {
+        "title": "Learning",
+        "perks": [
+          {
+            "label": "Recorded sessions",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Live doubt support",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "Weekly live doubt sessions",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "Live sessions + doubt support",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "Live sessions + doubt support",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Live mentorship sessions",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "15+ hours",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "15+ hours",
+                "price": 0
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "Projects",
+        "perks": [
+          {
+            "label": "Live projects on real data",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "1 project",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "4 projects",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "6 projects",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Capstone projects",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "1 capstone",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "2 capstones",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "3 capstones",
+                "price": 0
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "Certificates",
+        "perks": [
+          {
+            "label": "Internship offer letter",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Internship certificate",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Training certificate",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Letter of Recommendation",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "MNC certification",
+        "perks": [
+          {
+            "label": "MNC certification with exam",
+            "id": "mnc",
+            "by": {
+              "1": {
+                "kind": "addon",
+                "note": "",
+                "price": 3999
+              },
+              "2": {
+                "kind": "addon",
+                "note": "",
+                "price": 3999
+              },
+              "3": {
+                "kind": "included",
+                "note": "Any 1 free",
+                "price": 0
+              }
+            }
+          }
+        ]
+      },
+      {
+        "title": "Placement assistance",
+        "perks": [
+          {
+            "label": "Mock interviews, HR and technical",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "ATS-optimised resume",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Live session with the founder",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Live sessions with future managers at Tier-1 MNCs",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "LinkedIn networking and recommendations from industry leaders",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Job alerts, referral support and personal reference at 5 top companies",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          },
+          {
+            "label": "Post-placement support, PPO opportunities for top performers",
+            "id": "",
+            "by": {
+              "1": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "2": {
+                "kind": "excluded",
+                "note": "",
+                "price": 0
+              },
+              "3": {
+                "kind": "included",
+                "note": "",
+                "price": 0
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "summaryHeader": "Clear the programme goals and most of it is yours whichever plan you pick."
+  },
+  "howItRuns": {
+    "eyebrow": "How it runs",
+    "heading": "Learn, get mentored,",
+    "headingHighlight": "get placed",
+    "lead": "Three stages, in order. Every plan covers the first, Mentor-Led adds the second, Mentor-to-Placement carries you through all three.",
+    "steps": [
+      {
+        "no": "01",
+        "title": "Learn",
+        "body": "Recorded sessions, live doubt support and projects built on real data, not toy exercises."
+      },
+      {
+        "no": "02",
+        "title": "Get mentored",
+        "body": "15+ hours of live mentorship from people doing the work, reviewing what you build."
+      },
+      {
+        "no": "03",
+        "title": "Get placed",
+        "body": "Mock interviews, an ATS-ready resume, referrals into 5 top companies and PPO support after you land."
+      }
+    ]
+  },
+  "trackRecord": {
+    "heading": "Ten years,",
+    "headingHighlight": "not ten months",
+    "lead": "Airkrit has been training and placing students since 2016. Long enough to know what a hiring manager actually asks, and to still be here when you need the referral."
+  },
+  "closing": {
+    "heading": "Three plans. One short form.",
+    "body": "Share your name, email and number. A counsellor calls you back to walk through the plan, the fees and the MNC certification add-on.",
+    "ctaLabel": ""
+  }
+}

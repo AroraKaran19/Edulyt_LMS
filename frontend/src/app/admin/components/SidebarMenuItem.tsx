@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 
 interface MenuItem {
@@ -13,6 +13,11 @@ interface MenuItem {
   href: string;
   submenu?: MenuItem[];
 }
+
+const matchesHref = (href: string, pathname: string) =>
+  href === "/admin"
+    ? pathname === "/admin"
+    : pathname === href || pathname.startsWith(href + "/");
 
 const SidebarMenuItem = ({
   menuItem,
@@ -24,32 +29,24 @@ const SidebarMenuItem = ({
   onNavigate?: () => void;
 }) => {
   const pathname = usePathname();
-  const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>({});
+  /** A click overrides the route-derived open state, but only for that route. */
+  const [toggled, setToggled] = useState<{ path: string; open: boolean } | null>(
+    null
+  );
 
-  // Auto-open submenu if current route is a child route or matches any submenu item
-  useEffect(() => {
-    const newOpenSubmenus: Record<string, boolean> = {};
-    if (menuItem.submenu) {
-      const hasActiveSubmenuItem = menuItem.submenu.some(
-        (submenu: MenuItem) => submenu.href === pathname
-      );
-      const isChildRoute =
-        pathname.startsWith(menuItem.href + "/") && menuItem.href !== "/admin";
-      const isParentActive = pathname === menuItem.href;
+  // A group is active on its own subtree, and also when one of its items is.
+  // The item test is prefix-based, not exact, which is the only way a group
+  // whose item sits outside its own path stays lit and open on that item's
+  // subroutes.
+  const isParentActive =
+    matchesHref(menuItem.href, pathname) ||
+    !!menuItem.submenu?.some((submenu) => matchesHref(submenu.href, pathname));
 
-      newOpenSubmenus[menuItem.href] =
-        hasActiveSubmenuItem || isChildRoute || isParentActive;
-    }
-    setOpenSubmenus(newOpenSubmenus);
-  }, [pathname, menuItem]);
+  const isOpen =
+    toggled?.path === pathname ? toggled.open : isParentActive;
 
   const handleSubmenuToggle = (item: MenuItem) => {
-    if (item.submenu) {
-      setOpenSubmenus((prev) => ({
-        ...prev,
-        [item.href]: !prev[item.href],
-      }));
-    }
+    if (item.submenu) setToggled({ path: pathname, open: !isOpen });
   };
 
   const getRedirectHref = (item: MenuItem) => {
@@ -67,14 +64,6 @@ const SidebarMenuItem = ({
     return item.href;
   };
 
-  const isActiveRoute = (itemHref: string) => {
-    if (itemHref === "/admin") {
-      return pathname === "/admin";
-    }
-    // Check if current path matches exactly or starts with the href followed by "/"
-    return pathname === itemHref || pathname.startsWith(itemHref + "/");
-  };
-
   return (
     <div className="relative flex flex-col gap-2">
       <Link
@@ -83,7 +72,7 @@ const SidebarMenuItem = ({
           `w-full p-3 rounded-lg transition-all duration-300 relative`,
           {
             "bg-orange-500 shadow-[inset_0_4px_10px_rgba(255,255,255,0.4)] text-white":
-              isActiveRoute(menuItem.href),
+              isParentActive,
           },
           isCollapsed && "flex justify-center"
         )}
@@ -109,7 +98,7 @@ const SidebarMenuItem = ({
                 width={24}
                 height={24}
                 className={cn("size-6", {
-                  "filter brightness-0 invert": isActiveRoute(menuItem.href),
+                  "filter brightness-0 invert": isParentActive,
                 })}
               />
             )}
@@ -120,18 +109,16 @@ const SidebarMenuItem = ({
           {menuItem.submenu && !isCollapsed && (
             <ChevronDownIcon
               className={`size-5 transition-transform duration-300 ${
-                openSubmenus[menuItem.href] ? "rotate-180" : ""
+                isOpen ? "rotate-180" : ""
               }`}
             />
           )}
         </div>
       </Link>
-      {openSubmenus[menuItem.href] && menuItem.submenu && !isCollapsed && (
+      {isOpen && menuItem.submenu && !isCollapsed && (
         <div className="flex admin-sidebar-menu-item-submenu w-full flex-col gap-6 bg-white p-3 rounded-lg shadow-md animate-fade-from-top duration-300">
           {menuItem.submenu.map((submenu, index) => {
-            const isSubmenuActive =
-              pathname === submenu.href ||
-              pathname.startsWith(submenu.href + "/");
+            const isSubmenuActive = matchesHref(submenu.href, pathname);
             return (
               <Link
                 key={index}

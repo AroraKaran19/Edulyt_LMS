@@ -79,8 +79,16 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
   {
     key: "leads",
     label: "Leads",
-    single: true,
-    pages: [{ key: "leads", label: "Leads", href: "/admin/leads" }],
+    pages: [
+      // Keeps the `leads` key: grants already stored against it would otherwise
+      // silently lose access to the page they have today.
+      { key: "leads", label: "Leads submission", href: "/admin/leads" },
+      {
+        key: "leads.enquiry-page",
+        label: "Configure Enquiry Page",
+        href: "/admin/enquiry-page",
+      },
+    ],
   },
   {
     key: "faqs",
