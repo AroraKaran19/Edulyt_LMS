@@ -9,6 +9,9 @@ import { CERTIFICATES, type Certificate } from "../plans";
 /** How long each certificate holds before the list advances on its own. */
 const AUTO_ADVANCE_MS = 2000;
 
+/** Quiet needed after the last scroll event before the page counts as settled. */
+const SETTLE_AFTER_MS = 250;
+
 /**
  * How long the rotation stands back after someone drives it themselves. Long
  * enough to actually read the one they picked, and it lapses on its own rather
@@ -41,11 +44,14 @@ export default function CertificateShowcase({
   /** Off screen it holds at the first item, so nobody arrives mid-rotation. */
   const [onScreen, setOnScreen] = useState(false);
   /**
-   * True on the mobile layout, where the list is a snap strip rather than the
-   * desktop column. Everything the rotation does there happens inside a
-   * scroller the visitor is holding, so it stays off. See the auto-advance.
+   * False while the page itself is being scrolled.
+   *
+   * On mobile the list is a snap strip the visitor is scrolling past, and a
+   * programmatic scroll landing mid-gesture cancels their momentum: the page
+   * stops dead at this section every couple of seconds, which reads as the
+   * section grabbing the screen. So nothing here moves until they settle.
    */
-  const [isStrip, setIsStrip] = useState(false);
+  const [pageSettled, setPageSettled] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const activeRef = useRef<HTMLLIElement>(null);
@@ -64,20 +70,28 @@ export default function CertificateShowcase({
   };
 
   useEffect(() => {
-    const list = listRef.current;
-    if (!list) return;
-    const measure = () => setIsStrip(list.scrollWidth > list.clientWidth);
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, [items.length]);
+    let timer: ReturnType<typeof setTimeout>;
+    const onScroll = () => {
+      setPageSettled(false);
+      clearTimeout(timer);
+      timer = setTimeout(() => setPageSettled(true), SETTLE_AFTER_MS);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(timer);
+    };
+  }, []);
 
+  // Also runs when the page settles, so a pick made mid-scroll is centred as
+  // soon as the gesture ends rather than being left off screen.
   useEffect(() => {
     const list = listRef.current;
     const item = activeRef.current;
-    // Only the strip scrolls; the desktop column has nothing to centre.
-    if (!list || !item || !isStrip) return;
+    // Only the mobile strip scrolls; the desktop column has nothing to centre.
+    // Off screen there is nothing to centre for either, so it stays still.
+    if (!list || !item || !pageSettled || !onScreen) return;
+    if (list.scrollWidth <= list.clientWidth) return;
 
     // Driving scrollLeft, not scrollIntoView: that one walks every scrollable
     // ancestor, so on first paint it hauled the whole page down to this section
@@ -87,7 +101,7 @@ export default function CertificateShowcase({
     const offset =
       itemBox.left + itemBox.width / 2 - (listBox.left + listBox.width / 2);
     list.scrollTo({ left: list.scrollLeft + offset, behavior: "smooth" });
-  }, [active, isStrip]);
+  }, [active, pageSettled, onScreen]);
 
   useEffect(() => {
     const node = rootRef.current;
@@ -101,7 +115,7 @@ export default function CertificateShowcase({
   }, []);
 
   useEffect(() => {
-    if (!onScreen || isStrip || items.length < 2) return;
+    if (!onScreen || !pageSettled || items.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     // The timer keeps running through a manual pick and skips the ticks it
@@ -112,7 +126,7 @@ export default function CertificateShowcase({
       setActive((i) => (i + 1) % items.length);
     }, AUTO_ADVANCE_MS);
     return () => clearInterval(timer);
-  }, [onScreen, isStrip, items.length]);
+  }, [onScreen, pageSettled, items.length]);
 
   useEffect(() => {
     const list = listRef.current;

@@ -3,6 +3,7 @@ import {
   claimEnquiryPhoneSend,
   getEnquirySession,
   requestEnquiryOtp,
+  startEnquirySession,
   verifyEnquiryOtp,
   verifyEnquiryPhone,
 } from "../controllers/enquiryPublic.controller";
@@ -17,10 +18,23 @@ import { requireRecaptcha } from "../middlewares/recaptcha.middleware";
 const router = Router();
 
 /**
+ * @route   POST /api/enquiry/start
+ * @desc    Open a session from a typed email, no code. The captcha is the only
+ *          thing standing between a script and this form's SMS budget, so it
+ *          stays even though nothing is mailed.
+ * @access  Public, one solved reCAPTCHA per session
+ */
+router.post("/start", requireRecaptcha, startEnquirySession);
+
+/**
  * @route   POST /api/enquiry/otp
  * @desc    Email a six digit code. Throttled per email, and behind a captcha
  *          because the per-email throttle says nothing about a script working
  *          through a list of addresses.
+ *
+ *          The enquiry form does not call this: it opens sessions through
+ *          /start and proves the number only. Kept mounted so turning the email
+ *          step back on is a frontend change.
  * @access  Public, one solved reCAPTCHA per send
  */
 router.post("/otp", requireRecaptcha, requestEnquiryOtp);

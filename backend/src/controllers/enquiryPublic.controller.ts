@@ -8,6 +8,7 @@ import {
   claimPhoneSend,
   loadSessionByToken,
   requestEmailOtp,
+  startUnverifiedSession,
   verifyEmailOtp,
   verifyPhone,
 } from "../services/publicContactVerification.services";
@@ -29,6 +30,24 @@ const sessionOf = (req: Request) => {
   if (!session) throw new AppError("Verify your email again to continue", 401);
   return session;
 };
+
+/**
+ * Opens a session from the details on the form, with no code for the address.
+ *
+ * The lead is a request for a sales call, so the number is the part that has to
+ * be real and it is proved on the next two calls. The address rides along
+ * unproved, which the session records rather than implies.
+ */
+export const startEnquirySession = asyncHandler(
+  async (req: Request, res: Response) => {
+    const result = await startUnverifiedSession({
+      scope: ENQUIRY_SCOPE,
+      email: String(req.body?.email ?? ""),
+      sessionMinutes: ENQUIRY_SESSION_MINUTES,
+    });
+    sendSuccessResponse(res, result, "Continue");
+  },
+);
 
 export const requestEnquiryOtp = asyncHandler(
   async (req: Request, res: Response) => {

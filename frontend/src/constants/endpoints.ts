@@ -141,6 +141,8 @@ export const ENDPOINTS = {
    * account, and both codes prove the details handed to the sales team.
    */
   enquiry: {
+    /** Opens a session from the typed email. The form proves only the phone. */
+    start: "/enquiry/start",
     otp: "/enquiry/otp",
     verifyOtp: "/enquiry/otp/verify",
     session: "/enquiry/session",

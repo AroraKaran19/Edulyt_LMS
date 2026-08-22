@@ -286,6 +286,7 @@ export const verifyEmailOtp = async ({
     tokenHash: hashSessionToken(sessionToken),
     scope,
     email,
+    emailVerifiedAt: new Date(),
     phone: proved?.phone ?? null,
     phoneVerifiedAt: proved?.phoneVerifiedAt ?? null,
     expiresAt,
@@ -293,6 +294,46 @@ export const verifyEmailOtp = async ({
 
   // Reported rather than assumed so the UI reads one field for every entry path.
   return { sessionToken, expiresAt, phoneVerified: Boolean(proved?.phone) };
+};
+
+/**
+ * Issues a session for a form that takes the address on trust.
+ *
+ * The enquiry form is the only caller: it collects leads for a sales call, so
+ * the number is what has to be real and the address is a note for the
+ * counsellor. `emailVerifiedAt` stays null, which is what tells anything reading
+ * the session apart from one a code paid for.
+ *
+ * A number proved under this address on an earlier session is deliberately not
+ * inherited. Nothing here proves the caller owns the address, so inheriting
+ * would let anyone who types it skip the SMS and post a lead as them.
+ */
+export const startUnverifiedSession = async ({
+  scope,
+  email: rawEmail,
+  sessionMinutes,
+}: {
+  scope: string;
+  email: string;
+  sessionMinutes: number;
+}): Promise<VerifiedSession> => {
+  const email = normalizeEmail(rawEmail);
+  if (!EMAIL_PATTERN.test(email)) {
+    throw new AppError("Enter a valid email address", 400);
+  }
+
+  const sessionToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = minutesFromNow(sessionMinutes);
+
+  await ContactSessionModel.create({
+    tokenHash: hashSessionToken(sessionToken),
+    scope,
+    email,
+    emailVerifiedAt: null,
+    expiresAt,
+  });
+
+  return { sessionToken, expiresAt, phoneVerified: false };
 };
 
 export interface AccountSession {
@@ -334,6 +375,7 @@ export const startSessionForAccount = async ({
     tokenHash: hashSessionToken(sessionToken),
     scope,
     email,
+    emailVerifiedAt: new Date(),
     userId,
     phone: verifiedProfilePhone ?? null,
     phoneVerifiedAt: verifiedProfilePhone ? new Date() : null,

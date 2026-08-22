@@ -34,6 +34,13 @@ export interface ContactSession {
   tokenHash: string;
   scope: string;
   email: string;
+  /**
+   * Set only when a code proved the address, or the session came from a
+   * signed-in account. Null means the address was typed and never checked: the
+   * enquiry form takes leads that way, so nothing downstream may read the
+   * presence of a session as proof of the email on it.
+   */
+  emailVerifiedAt?: Date | null;
   /** Set once the MSG91 widget has proved the number. */
   phone?: string | null;
   phoneVerifiedAt?: Date | null;
