@@ -197,10 +197,11 @@ const perkGroupSchema = new Schema(
   { _id: false },
 );
 
-const promoImageSchema = new Schema(
+const instructorSchema = new Schema(
   {
+    name: { type: String, default: "" },
+    title: { type: String, default: "" },
     src: { type: String, default: "" },
-    alt: { type: String, default: "" },
     source: { type: String, enum: ["upload", "url"], default: "url" },
     s3Key: { type: String, default: "" },
   },
@@ -217,7 +218,8 @@ const plansSchema = new Schema(
     mncAddonPrice: { type: Number, default: 0 },
     plans: { type: [planSchema], default: [] },
     perkGroups: { type: [perkGroupSchema], default: [] },
-    promoImage: { type: promoImageSchema, default: () => ({}) },
+    instructorsHeading: { type: String, default: "" },
+    instructors: { type: [instructorSchema], default: [] },
   },
   { _id: false },
 );

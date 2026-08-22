@@ -13,9 +13,11 @@ export interface EnquiryCta {
   s3Key?: string;
 }
 
-export interface EnquiryPromoImage {
+export interface EnquiryInstructor {
+  name?: string;
+  /** Optional line under the name, e.g. "Lead mentor, Data Science". */
+  title?: string;
   src?: string;
-  alt?: string;
   source?: "upload" | "url";
   s3Key?: string;
 }
@@ -159,8 +161,10 @@ export interface EnquiryPlansSettings {
   mncAddonPrice?: number;
   plans?: EnquiryPlan[];
   perkGroups?: EnquiryPerkGroup[];
-  /** Fills the gap at the foot of the perk columns. Blank renders nothing. */
-  promoImage?: EnquiryPromoImage;
+  /** Label above the instructor picker. */
+  instructorsHeading?: string;
+  /** Sits at the foot of the perk columns. Empty renders nothing at all. */
+  instructors?: EnquiryInstructor[];
 }
 
 export interface EnquiryStep {

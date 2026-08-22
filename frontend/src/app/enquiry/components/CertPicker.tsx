@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Check, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ISSUERS, MNC_ADDON_PRICE, type PerkState } from "./plans";
+import { ISSUERS, MNC_ADDON_PRICE, type PerkState } from "../plans";
 
 type Props = {
   state: PerkState;

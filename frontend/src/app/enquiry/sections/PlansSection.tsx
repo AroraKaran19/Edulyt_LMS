@@ -1,5 +1,5 @@
 import { BadgeCheck, Crown, Plus } from "lucide-react";
-import PlanMatrix from "../PlanMatrix";
+import PlanMatrix from "../components/PlanMatrix";
 import {
   AVAILABILITY,
   CERTIFICATES,

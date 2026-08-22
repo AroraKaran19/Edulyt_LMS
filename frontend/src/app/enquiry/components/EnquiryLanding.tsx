@@ -2,24 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { ISSUERS, type PlanId } from "./plans";
-import { usePlanData } from "./usePlanData";
-import { useReveal } from "./useReveal";
-import { EnquirySettingsProvider } from "./settings";
+import { ISSUERS, type PlanId } from "../plans";
+import { usePlanData } from "../usePlanData";
+import { useReveal } from "../useReveal";
+import { EnquirySettingsProvider } from "../settings";
 import type { EnquiryPageSettings } from "@/types/enquiry-page-settings";
-import SiteHeader from "./sections/SiteHeader";
-import OfferStrip from "./sections/OfferStrip";
-import HeroSection from "./sections/HeroSection";
-import MarqueeStrip from "./sections/MarqueeStrip";
-import CertificatesSection from "./sections/CertificatesSection";
-import BadgesSection from "./sections/BadgesSection";
-import ResumeSection from "./sections/ResumeSection";
-import LanguageNote from "./sections/LanguageNote";
-import PlansSection from "./sections/PlansSection";
-import HowItRunsSection from "./sections/HowItRunsSection";
-import TrackRecordSection from "./sections/TrackRecordSection";
-import ClosingSection from "./sections/ClosingSection";
-import MobileDock from "./sections/MobileDock";
+import SiteHeader from "../sections/SiteHeader";
+import OfferStrip from "../sections/OfferStrip";
+import HeroSection from "../sections/HeroSection";
+import MarqueeStrip from "../sections/MarqueeStrip";
+import CertificatesSection from "../sections/CertificatesSection";
+import BadgesSection from "../sections/BadgesSection";
+import ResumeSection from "../sections/ResumeSection";
+import LanguageNote from "../sections/LanguageNote";
+import PlansSection from "../sections/PlansSection";
+import HowItRunsSection from "../sections/HowItRunsSection";
+import TrackRecordSection from "../sections/TrackRecordSection";
+import ClosingSection from "../sections/ClosingSection";
+import MobileDock from "../sections/MobileDock";
 
 /** Scroll offset past which the mobile plan dock slides in. */
 const DOCK_AFTER = 620;

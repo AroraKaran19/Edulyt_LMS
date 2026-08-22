@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Check, Lock, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CertPicker from "./CertPicker";
-import { type PerkState, type PlanId } from "./plans";
-import { useSection } from "./settings";
-import { usePlanData } from "./usePlanData";
+import EnquirySelect from "./EnquirySelect";
+import { type PerkState, type PlanId } from "../plans";
+import { useSection, withSrc } from "../settings";
+import { usePlanData } from "../usePlanData";
 
 type Props = {
   selected: PlanId;
@@ -35,7 +37,14 @@ export default function PlanMatrix({
 }: Props) {
   const { plans, perkGroups, mncAddonPrice, allPerks, countIncluded } =
     usePlanData();
-  const promo = useSection("plans").promoImage;
+  const { instructors: cmsInstructors, instructorsHeading } =
+    useSection("plans");
+  const instructors = withSrc(cmsInstructors ?? []);
+  const [instructorPick, setInstructorPick] = useState(0);
+  // Clamped rather than reset: an admin deleting an instructor mid-session
+  // would otherwise index past the end of the list.
+  const instructorIndex = Math.min(instructorPick, instructors.length - 1);
+  const instructor = instructors[instructorIndex];
 
   const TOTAL_PERKS = allPerks.length;
   /** Flat index of each group's first perk, so rows stagger without a counter. */
@@ -109,16 +118,41 @@ export default function PlanMatrix({
         ))}
 
         {/* Fills the gap the column balance leaves at the foot of the perks. */}
-        {promo?.src && (
-          <div className="mb-4 break-inside-avoid overflow-hidden rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-16px_rgba(43,21,8,0.18)]">
-            <div className="relative h-[264px] w-full">
+        {instructor && (
+          <div className="relative mb-4 break-inside-avoid rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-16px_rgba(43,21,8,0.18)]">
+            <div className="relative h-[264px] w-full overflow-hidden rounded-t-2xl bg-[#fff6f1]">
               <Image
-                src={promo.src}
-                alt={promo.alt || ""}
+                key={instructor.src}
+                src={instructor.src}
+                alt={instructor.name || "Instructor"}
                 fill
                 sizes="(min-width: 1024px) 394px, (min-width: 640px) 45vw, 90vw"
-                className="object-cover"
+                className="animate-eq-fade-up object-cover"
               />
+            </div>
+
+            <div className="border-t border-[#fbe3d2] p-3.5">
+              {instructors.length > 1 ? (
+                <EnquirySelect
+                  label={instructorsHeading || "Who you will learn from"}
+                  value={String(instructorIndex)}
+                  onChange={(next) => setInstructorPick(Number(next))}
+                  options={instructors.map((person, i) => ({
+                    value: String(i),
+                    label: person.name || `Instructor ${i + 1}`,
+                  }))}
+                />
+              ) : (
+                <p className="text-[13px] font-extrabold leading-[1.25] text-text-primary">
+                  {instructor.name}
+                </p>
+              )}
+
+              {instructor.title && (
+                <p className="mt-1.5 text-[11px] leading-[1.35] font-semibold text-[#8c7a70]">
+                  {instructor.title}
+                </p>
+              )}
             </div>
           </div>
         )}

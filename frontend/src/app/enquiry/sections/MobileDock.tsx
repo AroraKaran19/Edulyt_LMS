@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import EnquiryButton from "../EnquiryButton";
+import EnquiryButton from "../components/EnquiryButton";
 
 type Props = {
   planName: string;

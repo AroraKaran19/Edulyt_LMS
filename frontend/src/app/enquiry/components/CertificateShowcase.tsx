@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { CERTIFICATES, type Certificate } from "./plans";
+import { CERTIFICATES, type Certificate } from "../plans";
 
-/** Seconds each certificate holds before the strip advances on its own. */
-const AUTO_ADVANCE_MS = 4500;
+/** How long each certificate holds before the list advances on its own. */
+const AUTO_ADVANCE_MS = 2000;
 
 /**
  * The documents themselves, previewed at size.
@@ -26,14 +26,21 @@ export default function CertificateShowcase({
   items?: Certificate[];
 }) {
   const [active, setActive] = useState(0);
-  /** Set on first tap. Advancing under someone's finger is hostile. */
+  /** Set on first pick. Advancing under someone's finger is hostile. */
   const [userPicked, setUserPicked] = useState(false);
+  /** Off screen it holds at the first item, so nobody arrives mid-rotation. */
+  const [onScreen, setOnScreen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const activeRef = useRef<HTMLLIElement>(null);
   const shown = items[active];
 
-  // Only on the mobile strip: desktop has no horizontal overflow, so centring
-  // is a no-op there, and `block: "nearest"` keeps it from scrolling the page.
   useEffect(() => {
+    const list = listRef.current;
+    // Only the mobile strip scrolls. On the desktop grid there is nothing to
+    // centre, and `block: "nearest"` would drag the page back to this section
+    // every few seconds while someone is reading further down.
+    if (!list || list.scrollWidth <= list.clientWidth) return;
     activeRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "nearest",
@@ -42,21 +49,32 @@ export default function CertificateShowcase({
   }, [active]);
 
   useEffect(() => {
-    if (userPicked || items.length < 2) return;
+    const node = rootRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setOnScreen(entry.isIntersecting),
+      { threshold: 0.25 },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (userPicked || !onScreen || items.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // Mobile only: on desktop the whole list is already visible, so rotating it
-    // would just move the preview under the reader.
-    if (!window.matchMedia("(max-width: 1023px)").matches) return;
 
     const timer = setInterval(
       () => setActive((i) => (i + 1) % items.length),
       AUTO_ADVANCE_MS,
     );
     return () => clearInterval(timer);
-  }, [userPicked, items.length]);
+  }, [userPicked, onScreen, items.length]);
 
   return (
-    <div className="mt-9 grid items-start gap-6 lg:grid-cols-[1fr_400px] lg:gap-8">
+    <div
+      ref={rootRef}
+      className="mt-9 grid items-start gap-6 lg:grid-cols-[1fr_400px] lg:gap-8"
+    >
       {/* ---------- preview ---------- */}
       <div className="rounded-2xl border border-[#fbe3d2] bg-white p-4 shadow-[0_16px_40px_-20px_rgba(43,21,8,0.28)]">
         <div className="relative flex h-[340px] items-center justify-center overflow-hidden rounded-xl bg-[#fff6f1] p-3 sm:h-[540px]">
@@ -88,6 +106,7 @@ export default function CertificateShowcase({
 
       {/* ---------- list: strip on mobile, column on desktop ---------- */}
       <ul
+        ref={listRef}
         role="tablist"
         aria-label="Certificates"
         className={cn(

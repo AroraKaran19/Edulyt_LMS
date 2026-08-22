@@ -1,4 +1,4 @@
-import CertificateShowcase from "../CertificateShowcase";
+import CertificateShowcase from "../components/CertificateShowcase";
 import { CERTIFICATES, type Certificate } from "../plans";
 import { listOr, useSection } from "../settings";
 import { CONTAINER, EYEBROW, H2, LEAD, REVEAL, SECTION } from "./shared";

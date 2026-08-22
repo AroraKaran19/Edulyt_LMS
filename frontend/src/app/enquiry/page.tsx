@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
-import EnquiryLanding from "./EnquiryLanding";
+import EnquiryLanding from "./components/EnquiryLanding";
 import { getEnquiryPageSettings } from "@/lib/enquiry-page/getEnquiryPageSettings";
 
 const inter = Inter({

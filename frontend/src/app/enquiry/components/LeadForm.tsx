@@ -22,8 +22,8 @@ import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
 import { PHONE_ERROR_CODES } from "@/constants/authErrorCodes";
 import EnquiryButton from "./EnquiryButton";
 import OtpBoxes from "./OtpBoxes";
-import { ISSUERS, type PlanId } from "./plans";
-import { usePlanData } from "./usePlanData";
+import { ISSUERS, type PlanId } from "../plans";
+import { usePlanData } from "../usePlanData";
 
 type Props = {
   selected: PlanId;
@@ -827,7 +827,7 @@ export default function LeadForm({
 
         <p className="mt-2.5 text-[10.5px] leading-[1.45] text-[#8c7a70]">
           By submitting you agree to hear from Airkrit about this plan over
-          email, SMS and WhatsApp. Read our{" "}
+          call, email, SMS and WhatsApp. Read our{" "}
           <Link
             href="/terms-of-use"
             className="text-text-secondary underline underline-offset-2"

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import EnquiryButton from "../EnquiryButton";
+import EnquiryButton from "../components/EnquiryButton";
 import { useSection } from "../settings";
 import { CONTAINER, REVEAL, SECTION } from "./shared";
 

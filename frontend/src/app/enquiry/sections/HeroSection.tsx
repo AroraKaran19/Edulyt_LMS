@@ -1,6 +1,6 @@
 import Image from "next/image";
-import EnquiryButton, { enquiryButtonClass } from "../EnquiryButton";
-import LeadForm from "../LeadForm";
+import EnquiryButton, { enquiryButtonClass } from "../components/EnquiryButton";
+import LeadForm from "../components/LeadForm";
 import { ISSUERS, RATING, type PlanId } from "../plans";
 import { listOr, useSection, withSrc } from "../settings";
 import { CARD, CONTAINER, EYEBROW } from "./shared";

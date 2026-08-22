@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
-import { enquiryButtonClass } from "../EnquiryButton";
+import { enquiryButtonClass } from "../components/EnquiryButton";
 import { CONTAINER } from "./shared";
 
 export default function SiteHeader() {

@@ -12,6 +12,7 @@ import {
 import type {
   EnquiryPerk,
   EnquiryPerkGroup,
+  EnquiryInstructor,
   EnquiryPerkState,
   EnquiryPlan,
   EnquiryPlanId,
@@ -70,7 +71,8 @@ export default function PlansSectionPage() {
     mncAddonPrice: s?.plans?.mncAddonPrice ?? 0,
     plans: s?.plans?.plans ?? [],
     perkGroups: s?.plans?.perkGroups ?? [],
-    promoImage: s?.plans?.promoImage ?? {},
+    instructorsHeading: s?.plans?.instructorsHeading ?? "",
+    instructors: s?.plans?.instructors ?? [],
   }));
 
   return (
@@ -121,30 +123,50 @@ export default function PlansSectionPage() {
       </FieldGroup>
 
       <FieldGroup>
-        <MediaField
-          title="Filler image"
-          description="Optional. Sits with the perk cards, in the gap the two columns leave at their foot. The box is a fixed 394 × 264, so upload at that ratio (3:2, e.g. 1200 × 800); anything else is centre-cropped to fit. Leave empty to show nothing."
-          value={{
-            src: state.promoImage.src,
-            source: state.promoImage.source,
-            s3Key: state.promoImage.s3Key,
-          }}
-          onChange={(next) =>
-            setState((p) => ({
-              ...p,
-              promoImage: { ...p.promoImage, ...next },
-            }))
-          }
-        />
         <TextField
-          label="Filler image alt text"
-          value={state.promoImage.alt ?? ""}
-          onChange={(v) =>
-            setState((p) => ({ ...p, promoImage: { ...p.promoImage, alt: v } }))
-          }
-          helperText="What the image says, for screen readers. Leave blank if it is purely decorative."
+          label="Instructor picker label"
+          value={state.instructorsHeading}
+          onChange={(v) => setState((p) => ({ ...p, instructorsHeading: v }))}
+          placeholder="Who you will learn from"
+          helperText="Only shown once there are two or more instructors to choose between."
         />
       </FieldGroup>
+
+      <ItemListField<EnquiryInstructor>
+        label="Instructors"
+        description="Optional. Sits with the perk cards, in the gap the two columns leave at their foot: a photo with a picker under it. One instructor shows the photo and name with no picker; none at all hides the card entirely. The photo box is a fixed 394 × 264, so upload at that ratio (3:2, e.g. 1200 × 800); anything else is centre-cropped. An entry with no photo is skipped."
+        items={state.instructors}
+        onChange={(instructors) => setState((p) => ({ ...p, instructors }))}
+        newItem={() => ({ name: "", title: "", src: "" })}
+        addLabel="Add instructor"
+        itemTitle={(item, i) => item.name || `Instructor ${i + 1}`}
+        renderItem={(item, update) => (
+          <div className="flex flex-col gap-3">
+            <TextField
+              label="Name"
+              value={item.name ?? ""}
+              onChange={(v) => update({ ...item, name: v })}
+              placeholder="Vikas Wadhwani"
+            />
+            <TextField
+              label="Title"
+              value={item.title ?? ""}
+              onChange={(v) => update({ ...item, title: v })}
+              placeholder="Lead mentor, Data Science"
+              helperText="Optional line under the name."
+            />
+            <MediaField
+              title="Photo"
+              value={{
+                src: item.src,
+                source: item.source,
+                s3Key: item.s3Key,
+              }}
+              onChange={(next) => update({ ...item, ...next })}
+            />
+          </div>
+        )}
+      />
 
       <ItemListField<EnquiryPlan>
         label="Plans"
