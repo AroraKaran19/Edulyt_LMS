@@ -27,7 +27,7 @@ export function useReveal(rootRef: React.RefObject<HTMLElement | null>) {
           observer.unobserve(entry.target);
         });
       },
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.15 }
+      { rootMargin: "0px 0px -64px 0px", threshold: 0 }
     );
 
     targets.forEach((el) => observer.observe(el));

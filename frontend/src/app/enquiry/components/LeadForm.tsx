@@ -51,7 +51,7 @@ type Errors = Partial<
 >;
 
 /** Which proof the form is currently collecting. */
-type Step = "form" | "emailOtp" | "phoneOtp";
+type Step = "form" | "phoneOtp";
 
 const apiMessage = (error: unknown, fallback: string): string => {
   const e = error as {
@@ -64,13 +64,6 @@ const apiMessage = (error: unknown, fallback: string): string => {
 
 /** Matches the server's cooldown, and only used until it reports the real one. */
 const RESEND_COOLDOWN_SECONDS = 60;
-
-/**
- * The email code is minted by our own backend, not MSG91, so it follows
- * `OTP_LENGTH` in `signupVerification.services` and not the widget's length.
- * Only the phone step is MSG91's.
- */
-const EMAIL_OTP_LENGTH = 6;
 
 /** Shown when the box is untouched. Matches the wording the backend returns. */
 const CAPTCHA_PROMPT = "Please confirm you are not a robot.";
@@ -117,8 +110,10 @@ export default function LeadForm({
   const [step, setStep] = useState<Step>("form");
   const [digits, setDigits] = useState<string[]>([]);
   const [reqId, setReqId] = useState<string | null>(null);
-  /** Proof of the verified email, and what authorises the lead afterwards. */
+  /** What authorises the phone calls and the lead afterwards. */
   const [sessionToken, setSessionToken] = useState("");
+  /** The address `sessionToken` was opened for; editing it invalidates the session. */
+  const [sessionEmail, setSessionEmail] = useState("");
   const [errors, setErrors] = useState<Errors>({});
   /** Seconds until another code may be asked for. Drives the button, not a toast. */
   const [cooldown, setCooldown] = useState(0);
@@ -141,19 +136,14 @@ export default function LeadForm({
   const [oauthLoading, setOauthLoading] = useState(false);
   const [sent, setSent] = useState(false);
   /**
-   * Solved reCAPTCHA response, required by `/enquiry/otp`. Only the anonymous
+   * Solved reCAPTCHA response, required by `/enquiry/start`. Only the anonymous
    * path needs one: a signed-in visitor never touches that route, and the two
-   * they do touch are already behind their access token.
+   * they do touch are already behind their access token. With no email code in
+   * the way it is the only thing between a script and this form's SMS budget.
    */
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   /** Bumped to clear a tick the server has already spent. */
   const [captchaNonce, setCaptchaNonce] = useState(0);
-  /**
-   * Whether the code screen is currently asking for a second tick. The first
-   * one was spent sending the code they are reading, and the box only earns its
-   * place once they ask for another, so it stays out of the way until then.
-   */
-  const [resendChallenge, setResendChallenge] = useState(false);
   const needsCaptcha = !isAuthenticated;
 
   const name = nameInput ?? profileName;
@@ -205,6 +195,25 @@ export default function LeadForm({
   const freeCert = selected === 3;
   const addonCost = cert && !freeCert ? mncAddonPrice : 0;
   const total = chosenPlan.price + addonCost;
+
+  /*
+   * Every panel after the form is a fraction of its height, so swapping one in
+   * shortens the page under a scroll position taken against the taller one. The
+   * visitor is left looking at whatever now sits in the middle of the screen
+   * and reads the form as submitted, when a code is waiting to be typed.
+   *
+   * Skipped while the form itself is showing: this must never fire on load and
+   * drag someone who opened /enquiry past the top of the page.
+   */
+  useEffect(() => {
+    if (step === "form" && !phoneProved && !sent) return;
+    document.getElementById("eq-form")?.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+      block: "center",
+    });
+  }, [step, phoneProved, sent]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -365,36 +374,33 @@ export default function LeadForm({
   };
 
   /**
-   * Sends the email code on the anonymous path, first time or on a re-send.
+   * Opens the session the phone step runs on, for a visitor with no account.
    *
-   * The tick is spent either way, refused or not, because the server has now
-   * seen that token and will not take it a second time.
+   * The address is taken as typed: this form books a sales call, so the number
+   * is the part worth proving and it is proved next. The tick is spent either
+   * way, refused or not, because the server has now seen that token and will
+   * not take it a second time.
    */
-  const sendEmailCode = async (
-    fallback: string,
-    // A tick solved this same tick is not in state yet, so the caller can hand
-    // the token straight over.
-    token: string | null = captchaToken,
-  ): Promise<boolean> => {
-    if (!token) {
+  const openSession = async (): Promise<string | null> => {
+    if (!captchaToken) {
       setErrors({ captcha: CAPTCHA_PROMPT });
-      return false;
+      return null;
     }
 
     setSending(true);
     setErrors({});
     try {
-      await publicClient.post(ENDPOINTS.enquiry.otp, {
+      const res = await publicClient.post(ENDPOINTS.enquiry.start, {
         email: email.trim().toLowerCase(),
-        recaptchaToken: token,
+        recaptchaToken: captchaToken,
       });
-      setDigits([]);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-      setResendChallenge(false);
-      return true;
+      const token = String(res.data?.data?.sessionToken ?? "");
+      setSessionToken(token);
+      setSessionEmail(email.trim().toLowerCase());
+      return token || null;
     } catch (error) {
-      handleSendRefusal(error, fallback);
-      return false;
+      handleSendRefusal(error, "Could not continue. Try again.");
+      return null;
     } finally {
       spendCaptcha();
       setSending(false);
@@ -420,68 +426,35 @@ export default function LeadForm({
       return;
     }
 
-    if (await sendEmailCode("Could not send the code")) setStep("emailOtp");
+    // A session already open for this same address is reused, so a failed SMS
+    // claim does not cost the visitor another captcha tick to try again.
+    const open =
+      sessionToken && sessionEmail === email.trim().toLowerCase()
+        ? sessionToken
+        : await openSession();
+    if (open) await startPhoneVerification(open);
   };
 
   const resendCode = async () => {
     if (sending || cooldown > 0 || sendLimitMinutes !== null) return;
 
-    if (step === "phoneOtp") {
-      setSending(true);
-      setErrors({});
-      try {
-        if (sessionToken) {
-          await publicClient.post(
-            ENDPOINTS.enquiry.phoneOtpRequest,
-            { phone },
-            schAuth(sessionToken),
-          );
-        } else {
-          await apiClient.post(ENDPOINTS.users.phoneOtpRequest, { phone });
-        }
-        setReqId(await retryOtp(reqId));
-        setDigits([]);
-        setCooldown(RESEND_COOLDOWN_SECONDS);
-      } catch (error) {
-        handleSendRefusal(error, "Could not resend the code");
-      } finally {
-        setSending(false);
-      }
-      return;
-    }
-
-    // The tick that paid for the first code is spent. Asking for another one is
-    // what puts the box on screen; solving it sends immediately, so this is the
-    // only click the visitor makes.
-    if (!captchaToken) {
-      setResendChallenge(true);
-      return;
-    }
-
-    await sendEmailCode("Could not resend the code");
-  };
-
-  const confirmEmailOtp = async (code: string) => {
     setSending(true);
     setErrors({});
     try {
-      const res = await publicClient.post(ENDPOINTS.enquiry.verifyOtp, {
-        email: email.trim().toLowerCase(),
-        otp: code,
-      });
-      const token = String(res.data?.data?.sessionToken ?? "");
-      setSessionToken(token);
-      // A number proved on an earlier session for this address carries over, so
-      // a reload does not cost another SMS.
-      if (res.data?.data?.phoneVerified) {
-        setPhoneProved(true);
-        await sendLead(token);
-        return;
+      if (sessionToken) {
+        await publicClient.post(
+          ENDPOINTS.enquiry.phoneOtpRequest,
+          { phone },
+          schAuth(sessionToken),
+        );
+      } else {
+        await apiClient.post(ENDPOINTS.users.phoneOtpRequest, { phone });
       }
-      await startPhoneVerification(token);
-    } catch (error) {
-      setErrors({ code: apiMessage(error, "That code did not work") });
+      setReqId(await retryOtp(reqId));
       setDigits([]);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (error) {
+      handleSendRefusal(error, "Could not resend the code");
     } finally {
       setSending(false);
     }
@@ -574,12 +547,6 @@ export default function LeadForm({
   // `sent` wins: the lead is posted from inside the phone step, so `step` is
   // still on a code panel at the moment it succeeds.
   if (step !== "form" && !sent) {
-    const onEmail = step === "emailOtp";
-    const codeLength = onEmail ? EMAIL_OTP_LENGTH : PHONE_OTP_LENGTH;
-    // A signed-in visitor only ever proves the phone, so numbering the steps
-    // would promise a second one that never comes.
-    const showsBothSteps = !isAuthenticated;
-
     return (
       <div
         className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]"
@@ -599,29 +566,19 @@ export default function LeadForm({
             Back to your details
           </button>
 
-          {showsBothSteps && (
-            <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#c4551a]">
-              Step {onEmail ? 1 : 2} of 2
-            </p>
-          )}
-
           <h2 className="text-[1.15rem] font-extrabold leading-[1.2] tracking-[-0.02em] text-text-primary">
-            {onEmail ? "Check your inbox" : "Check your messages"}
+            Check your messages
           </h2>
           <p className="mt-1.5 mb-4 text-[13px] leading-[1.5] text-text-secondary">
-            We sent a {codeLength}-digit code to{" "}
-            <b className="font-bold text-text-primary">
-              {onEmail ? email.trim().toLowerCase() : `+91 ${phone}`}
-            </b>
-            .
+            We sent a {PHONE_OTP_LENGTH}-digit code to{" "}
+            <b className="font-bold text-text-primary">+91 {phone}</b>.
           </p>
 
           <OtpBoxes
-            key={step}
-            length={codeLength}
+            length={PHONE_OTP_LENGTH}
             digits={digits}
             onChange={setDigits}
-            onComplete={onEmail ? confirmEmailOtp : confirmPhoneOtp}
+            onComplete={confirmPhoneOtp}
             disabled={sending}
             invalid={Boolean(errors.code)}
           />
@@ -659,42 +616,11 @@ export default function LeadForm({
                       : "Resend code"}
                 </button>
                 <span className="text-[11.5px] leading-[1.45] text-[#8c7a70]">
-                  {onEmail
-                    ? "Then we move straight on to your number."
-                    : "Then your details go to our counselling team."}
+                  Then your details go to our counselling team.
                 </span>
               </>
             )}
           </div>
-
-          {/* Only a fresh email code is behind the captcha, and only once they
-              ask for one: a v2 token dies on first use, so the server cannot be
-              given the one that sent the code already on its way. The phone
-              re-send runs on a session-authenticated route with its own send
-              budget and needs none of this. */}
-          {onEmail &&
-            resendChallenge &&
-            cooldown === 0 &&
-            sendLimitMinutes === null && (
-              <div className="mt-4">
-                <p className="mb-1.5 text-[11.5px] leading-[1.45] font-semibold text-[#8c7a70]">
-                  Tick the box and a new code is on its way.
-                </p>
-                <RecaptchaV2
-                  onChange={(token) => {
-                    setCaptchaToken(token);
-                    if (token)
-                      void sendEmailCode("Could not resend the code", token);
-                  }}
-                  resetSignal={captchaNonce}
-                />
-                {errors.captcha && (
-                  <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
-                    {errors.captcha}
-                  </span>
-                )}
-              </div>
-            )}
         </div>
       </div>
     );
