@@ -22,19 +22,39 @@ export default function OtpBoxes({
   invalid,
 }: Props) {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
+  /**
+   * The last code handed to `onComplete`.
+   *
+   * A single autofill can raise two input events for the same digits, and
+   * announcing twice spends the one-time code on the first call and fails the
+   * second, which reads to the visitor as a good code being rejected. Cleared
+   * as soon as a box empties, so retyping the same code after a refusal still
+   * announces.
+   */
+  const announced = useRef<string | null>(null);
 
   // Callers reset with `[]`, and writing into a short array leaves holes that
   // `every` skips: a digit typed into the last box alone would read as complete.
   const cells = Array.from({ length }, (_, i) => digits[i] ?? "");
+  const filled = cells.every(Boolean);
 
   useEffect(() => {
     boxes.current[0]?.focus();
   }, []);
 
+  // A parent that clears the boxes after a refusal re-arms `onComplete`, so the
+  // same code can be typed again on the next attempt.
+  useEffect(() => {
+    if (!filled) announced.current = null;
+  }, [filled]);
+
   const commit = (next: string[], focusAt: number) => {
     onChange(next);
-    if (next.every(Boolean) && next.length === length) {
-      onComplete(next.join(""));
+    if (next.length === length && next.every(Boolean)) {
+      const code = next.join("");
+      if (announced.current === code) return;
+      announced.current = code;
+      onComplete(code);
       return;
     }
     boxes.current[Math.max(0, Math.min(length - 1, focusAt))]?.focus();

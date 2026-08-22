@@ -364,7 +364,11 @@ const refusedPhoneSend = async (sessionId: unknown): Promise<AppError> => {
   if (!doc) return new AppError("Verify your email again to continue", 401);
 
   if (doc.phoneVerifiedAt) {
-    return new AppError("That number is already verified", 400);
+    return new AppError(
+      "That number is already verified",
+      400,
+      PHONE_ERROR_CODES.PHONE_ALREADY_VERIFIED,
+    );
   }
 
   if ((doc.phoneSendCount ?? 0) >= PHONE_SENDS_PER_SESSION) {

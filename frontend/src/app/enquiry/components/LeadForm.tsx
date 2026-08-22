@@ -18,7 +18,9 @@ import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import apiClient from "@/configs/apiConfig";
 import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import useMSG91OTP, { OTP_LENGTH as PHONE_OTP_LENGTH } from "@/hooks/useMSG91OTP";
+import useMSG91OTP, {
+  OTP_LENGTH as PHONE_OTP_LENGTH,
+} from "@/hooks/useMSG91OTP";
 import RecaptchaV2 from "@/components/ui/RecaptchaV2";
 import {
   CAPTCHA_ERROR_CODES,
@@ -107,10 +109,10 @@ export default function LeadForm({
   const [emailInput, setEmailInput] = useState<string | null>(null);
   const [phoneInput, setPhoneInput] = useState<string | null>(null);
   const [collegeInput, setCollegeInput] = useState<string | null>(
-    initialCollege || null
+    initialCollege || null,
   );
   const [collegeIdInput, setCollegeIdInput] = useState<string | null>(
-    initialCollegeId || null
+    initialCollegeId || null,
   );
   const [step, setStep] = useState<Step>("form");
   const [digits, setDigits] = useState<string[]>([]);
@@ -127,6 +129,15 @@ export default function LeadForm({
    */
   const [sendLimitMinutes, setSendLimitMinutes] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
+  /**
+   * Both proofs are in and only the lead itself is still owed.
+   *
+   * Once the number is proved the session's SMS budget is closed, so every
+   * button that books another code is refused from here on. Without this the
+   * panel kept offering "Resend code" as the only way forward and a lead that
+   * failed to post had nowhere to go.
+   */
+  const [phoneProved, setPhoneProved] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [sent, setSent] = useState(false);
   /**
@@ -137,6 +148,12 @@ export default function LeadForm({
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   /** Bumped to clear a tick the server has already spent. */
   const [captchaNonce, setCaptchaNonce] = useState(0);
+  /**
+   * Whether the code screen is currently asking for a second tick. The first
+   * one was spent sending the code they are reading, and the box only earns its
+   * place once they ask for another, so it stays out of the way until then.
+   */
+  const [resendChallenge, setResendChallenge] = useState(false);
   const needsCaptcha = !isAuthenticated;
 
   const name = nameInput ?? profileName;
@@ -160,7 +177,7 @@ export default function LeadForm({
     try {
       const out = await signInWithOAuthProvider(
         "google",
-        `/enquiry?${back.toString()}`
+        `/enquiry?${back.toString()}`,
       );
       if (out.kind === "redirect_to_provider") {
         window.location.assign(out.url);
@@ -231,6 +248,15 @@ export default function LeadForm({
       return;
     }
 
+    // Not a failure: the number is already proved for this session, so there is
+    // no code left to send and the only thing still owed is the lead.
+    if (detail?.code === PHONE_ERROR_CODES.PHONE_ALREADY_VERIFIED) {
+      setPhoneProved(true);
+      setErrors({});
+      void retryLead();
+      return;
+    }
+
     if (detail?.code === PHONE_ERROR_CODES.OTP_SEND_LIMIT) {
       setSendLimitMinutes(Number(detail?.meta?.retryAfterMinutes) || null);
       setCooldown(0);
@@ -294,6 +320,19 @@ export default function LeadForm({
     }
   };
 
+  /**
+   * Posts the lead again after a failed attempt. The proofs survive the
+   * failure, so this never asks for another code.
+   */
+  const retryLead = async () => {
+    const token = sessionToken || accessToken;
+    if (!token) {
+      setErrors({ form: "Start again from your details." });
+      return;
+    }
+    await sendLead(token);
+  };
+
   /** Books an SMS on the right endpoint, then lets the widget dispatch it. */
   const startPhoneVerification = async (sessionToken: string | null) => {
     if (!ready) {
@@ -331,8 +370,13 @@ export default function LeadForm({
    * The tick is spent either way, refused or not, because the server has now
    * seen that token and will not take it a second time.
    */
-  const sendEmailCode = async (fallback: string): Promise<boolean> => {
-    if (!captchaToken) {
+  const sendEmailCode = async (
+    fallback: string,
+    // A tick solved this same tick is not in state yet, so the caller can hand
+    // the token straight over.
+    token: string | null = captchaToken,
+  ): Promise<boolean> => {
+    if (!token) {
       setErrors({ captcha: CAPTCHA_PROMPT });
       return false;
     }
@@ -342,10 +386,11 @@ export default function LeadForm({
     try {
       await publicClient.post(ENDPOINTS.enquiry.otp, {
         email: email.trim().toLowerCase(),
-        recaptchaToken: captchaToken,
+        recaptchaToken: token,
       });
       setDigits([]);
       setCooldown(RESEND_COOLDOWN_SECONDS);
+      setResendChallenge(false);
       return true;
     } catch (error) {
       handleSendRefusal(error, fallback);
@@ -405,6 +450,14 @@ export default function LeadForm({
       return;
     }
 
+    // The tick that paid for the first code is spent. Asking for another one is
+    // what puts the box on screen; solving it sends immediately, so this is the
+    // only click the visitor makes.
+    if (!captchaToken) {
+      setResendChallenge(true);
+      return;
+    }
+
     await sendEmailCode("Could not resend the code");
   };
 
@@ -412,15 +465,16 @@ export default function LeadForm({
     setSending(true);
     setErrors({});
     try {
-      const res = await publicClient.post(
-        ENDPOINTS.enquiry.verifyOtp,
-        { email: email.trim().toLowerCase(), otp: code },
-      );
+      const res = await publicClient.post(ENDPOINTS.enquiry.verifyOtp, {
+        email: email.trim().toLowerCase(),
+        otp: code,
+      });
       const token = String(res.data?.data?.sessionToken ?? "");
       setSessionToken(token);
       // A number proved on an earlier session for this address carries over, so
       // a reload does not cost another SMS.
       if (res.data?.data?.phoneVerified) {
+        setPhoneProved(true);
         await sendLead(token);
         return;
       }
@@ -446,6 +500,9 @@ export default function LeadForm({
           { phone, accessToken: accessTokenMsg91 },
           schAuth(sessionToken),
         );
+        // Set before the lead goes out: from here the proof holds whatever the
+        // post does, and re-proving it is neither possible nor needed.
+        setPhoneProved(true);
         await sendLead(sessionToken);
         return;
       }
@@ -453,6 +510,7 @@ export default function LeadForm({
         phone,
         msg91Token: accessTokenMsg91,
       });
+      setPhoneProved(true);
       if (accessToken) await sendLead(accessToken);
     } catch (error) {
       setErrors({
@@ -465,6 +523,53 @@ export default function LeadForm({
       setSending(false);
     }
   };
+
+  /*
+   * Both proofs are in but the lead has not landed yet. Its own panel, because
+   * the code panel underneath is spent: the boxes have nothing left to check
+   * and its resend button books an SMS the server will refuse. This is the
+   * only thing left to do, so it is the only thing on screen.
+   */
+  if (phoneProved && !sent) {
+    return (
+      <div
+        className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]"
+        id="eq-form"
+      >
+        <div className="px-[18px] pt-5 pb-[18px] sm:px-6 sm:pb-5">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid size-6 flex-none place-items-center rounded-full bg-[#3aa544]/[0.12] text-[#2c7f34]">
+              <Check size={14} strokeWidth={3.4} />
+            </span>
+            <h2 className="text-[1.15rem] font-extrabold leading-[1.2] tracking-[-0.02em] text-text-primary">
+              Email and number verified
+            </h2>
+          </div>
+          <p className="mb-4 text-[13px] leading-[1.5] text-text-secondary">
+            {sending
+              ? "Sending your details to our counselling team."
+              : "Nothing else to verify. Send your details and a counsellor will call you."}
+          </p>
+
+          {errors.form && (
+            <span className="mb-3 block text-xs font-semibold text-[#c03c19]">
+              {errors.form}
+            </span>
+          )}
+
+          <EnquiryButton
+            type="button"
+            block
+            disabled={sending}
+            onClick={() => void retryLead()}
+          >
+            {sending ? "Sending…" : "Send my details"}
+            {!sending && <ArrowRight size={16} strokeWidth={2.8} />}
+          </EnquiryButton>
+        </div>
+      </div>
+    );
+  }
 
   // `sent` wins: the lead is posted from inside the phone step, so `step` is
   // still on a code panel at the moment it succeeds.
@@ -532,25 +637,6 @@ export default function LeadForm({
             </span>
           )}
 
-          {/* Only the email code is behind the captcha. The phone re-send runs
-              on a session-authenticated route with its own send budget. */}
-          {onEmail && sendLimitMinutes === null && (
-            <div className="mt-4">
-              <p className="mb-1.5 text-[11.5px] leading-[1.45] font-semibold text-[#8c7a70]">
-                Tick the box again if you need another code.
-              </p>
-              <RecaptchaV2
-                onChange={setCaptchaToken}
-                resetSignal={captchaNonce}
-              />
-              {errors.captcha && (
-                <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
-                  {errors.captcha}
-                </span>
-              )}
-            </div>
-          )}
-
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
             {sendLimitMinutes !== null ? (
               <p className="text-[11.5px] leading-[1.45] font-semibold text-[#a8401a]">
@@ -580,6 +666,35 @@ export default function LeadForm({
               </>
             )}
           </div>
+
+          {/* Only a fresh email code is behind the captcha, and only once they
+              ask for one: a v2 token dies on first use, so the server cannot be
+              given the one that sent the code already on its way. The phone
+              re-send runs on a session-authenticated route with its own send
+              budget and needs none of this. */}
+          {onEmail &&
+            resendChallenge &&
+            cooldown === 0 &&
+            sendLimitMinutes === null && (
+              <div className="mt-4">
+                <p className="mb-1.5 text-[11.5px] leading-[1.45] font-semibold text-[#8c7a70]">
+                  Tick the box and a new code is on its way.
+                </p>
+                <RecaptchaV2
+                  onChange={(token) => {
+                    setCaptchaToken(token);
+                    if (token)
+                      void sendEmailCode("Could not resend the code", token);
+                  }}
+                  resetSignal={captchaNonce}
+                />
+                {errors.captcha && (
+                  <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
+                    {errors.captcha}
+                  </span>
+                )}
+              </div>
+            )}
         </div>
       </div>
     );
@@ -588,7 +703,10 @@ export default function LeadForm({
   if (sent) {
     const plan = planById(selected);
     return (
-      <div className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]" id="eq-form">
+      <div
+        className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]"
+        id="eq-form"
+      >
         <div className="px-[26px] pt-10 pb-[34px] text-center">
           <div className="mx-auto mb-[18px] grid size-14 place-items-center rounded-full bg-[#3aa544]/[0.12] text-[#3aa544]">
             <Check size={26} strokeWidth={3} />
@@ -606,8 +724,9 @@ export default function LeadForm({
               enquiry, not an enrolment. No payment has been taken.
             </li>
             <li>
-              <b className="text-[#c4551a]">On the call:</b> your counsellor takes
-              you through the {plan.name} plan, what it covers and the fees.
+              <b className="text-[#c4551a]">On the call:</b> your counsellor
+              takes you through the {plan.name} plan, what it covers and the
+              fees.
             </li>
             <li>
               <b className="text-[#c4551a]">You pick the course:</b> the plan
@@ -621,7 +740,10 @@ export default function LeadForm({
   }
 
   return (
-    <div className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]" id="eq-form">
+    <div
+      className="rounded-2xl border border-[#fbe3d2] bg-white shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]"
+      id="eq-form"
+    >
       <form
         className="px-[18px] pt-4 pb-[18px] sm:px-6 sm:pt-5 sm:pb-5"
         onSubmit={submit}
@@ -638,7 +760,11 @@ export default function LeadForm({
 
         {isAuthenticated ? (
           <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#3aa544]/[0.08] px-3 py-2">
-            <Check size={13} strokeWidth={3.4} className="mt-[3.5px] flex-none text-[#2c7f34]" />
+            <Check
+              size={13}
+              strokeWidth={3.4}
+              className="mt-[3.5px] flex-none text-[#2c7f34]"
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[11.5px] font-semibold text-[#2c7f34]">
                 Signed in as {profileName || profile?.email}
@@ -682,7 +808,10 @@ export default function LeadForm({
 
         {!hideName && (
           <div className="mb-2.5">
-            <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-name">
+            <label
+              className="block text-[11.5px] font-bold text-text-primary mb-1"
+              htmlFor="eq-name"
+            >
               Full name
             </label>
             <input
@@ -695,13 +824,20 @@ export default function LeadForm({
               onChange={(e) => setName(e.target.value)}
               aria-invalid={!!errors.name}
             />
-            {errors.name && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.name}</span>}
+            {errors.name && (
+              <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                {errors.name}
+              </span>
+            )}
           </div>
         )}
 
         {!hideEmail && (
           <div className="mb-2.5">
-            <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-email">
+            <label
+              className="block text-[11.5px] font-bold text-text-primary mb-1"
+              htmlFor="eq-email"
+            >
               Email
             </label>
             <input
@@ -715,12 +851,19 @@ export default function LeadForm({
               onChange={(e) => setEmail(e.target.value)}
               aria-invalid={!!errors.email}
             />
-            {errors.email && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.email}</span>}
+            {errors.email && (
+              <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                {errors.email}
+              </span>
+            )}
           </div>
         )}
 
         <div className="mb-2.5">
-          <label className="block text-[11.5px] font-bold text-text-primary mb-1" htmlFor="eq-phone">
+          <label
+            className="block text-[11.5px] font-bold text-text-primary mb-1"
+            htmlFor="eq-phone"
+          >
             Mobile number
           </label>
           <div className="flex items-center gap-2">
@@ -742,7 +885,11 @@ export default function LeadForm({
               aria-invalid={!!errors.phone}
             />
           </div>
-          {errors.phone && <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">{errors.phone}</span>}
+          {errors.phone && (
+            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+              {errors.phone}
+            </span>
+          )}
         </div>
 
         <div className="mb-2.5">
@@ -765,7 +912,9 @@ export default function LeadForm({
 
         <div className="mb-2.5">
           <div className="mb-[9px] flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
-            <span className="block text-[12.5px] font-bold text-text-primary">Plan you are interested in</span>
+            <span className="block text-[12.5px] font-bold text-text-primary">
+              Plan you are interested in
+            </span>
             <button
               type="button"
               className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-bold text-[#c4551a] underline decoration-[#c4551a]/40 decoration-[1.5px] underline-offset-[3px] hover:text-primary hover:decoration-current focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-primary"
@@ -784,7 +933,7 @@ export default function LeadForm({
                   "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
                   selected === plan.id
                     ? "border-primary bg-primary/10 shadow-[0_0_0_3px_rgba(247,173,36,0.22)]"
-                    : "border-[#ecdfd5] bg-[#fffcfa] hover:border-[#f2d6c2]"
+                    : "border-[#ecdfd5] bg-[#fffcfa] hover:border-[#f2d6c2]",
                 )}
               >
                 <input
@@ -814,7 +963,9 @@ export default function LeadForm({
                 MNC certification
               </label>
               <span className="flex-none text-[10.5px] font-bold whitespace-nowrap text-[#c4551a]">
-                {freeCert ? "1 included free" : `+₹${mncAddonPrice.toLocaleString("en-IN")} each`}
+                {freeCert
+                  ? "1 included free"
+                  : `+₹${mncAddonPrice.toLocaleString("en-IN")} each`}
               </span>
             </div>
             <div className="relative">

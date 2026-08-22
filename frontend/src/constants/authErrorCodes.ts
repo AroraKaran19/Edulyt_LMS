@@ -59,6 +59,11 @@ export const PHONE_ERROR_CODES = {
   OTP_SEND_LIMIT: "OTP_SEND_LIMIT",
   /** A profile save tried to change the number without verifying it. */
   PHONE_NOT_VERIFIED: "PHONE_NOT_VERIFIED",
+  /**
+   * A code was asked for on a session that has already proved its number.
+   * Nothing is left to send, so this is a state to carry on from, not an error.
+   */
+  PHONE_ALREADY_VERIFIED: "PHONE_ALREADY_VERIFIED",
   /** Another account already owns this number. */
   PHONE_IN_USE: "PHONE_IN_USE",
 } as const;

@@ -13,6 +13,12 @@ export const PHONE_ERROR_CODES = {
   PHONE_IN_USE: "PHONE_IN_USE",
   /** A profile save tried to change `phone` without verifying it first. */
   PHONE_NOT_VERIFIED: "PHONE_NOT_VERIFIED",
+  /**
+   * A code was asked for on a session that has already proved its number. Not
+   * a failure: there is nothing left to send, so the client should carry on
+   * rather than show this as a wall.
+   */
+  PHONE_ALREADY_VERIFIED: "PHONE_ALREADY_VERIFIED",
   /** Asked for another code inside the cooldown. Carries retryAfterSeconds. */
   OTP_THROTTLED: "OTP_THROTTLED",
   /** Burned every code this window allows. Carries retryAfterMinutes. */
