@@ -71,7 +71,7 @@ export async function POST(request: Request) {
         ? lead.plan === 3
           ? `${lead.certification} (included free)`
           : `${lead.certification} (add-on)`
-        : "None selected",
+        : "Airkrit certificates only (no MNC exam)",
     },
     ...(lead.total !== undefined
       ? [

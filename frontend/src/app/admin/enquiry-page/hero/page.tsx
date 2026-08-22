@@ -63,6 +63,7 @@ export default function HeroSectionPage() {
     ratingCount: s?.hero?.ratingCount ?? 0,
     ratingSource: s?.hero?.ratingSource ?? "",
     ratingLabel: s?.hero?.ratingLabel ?? "",
+    ratingHref: s?.hero?.ratingHref ?? "",
     partnersHeading: s?.hero?.partnersHeading ?? "",
     partners: s?.hero?.partners ?? [],
     marquee: s?.hero?.marquee ?? [],
@@ -152,6 +153,13 @@ export default function HeroSectionPage() {
           onChange={(v) => setState((p) => ({ ...p, ratingSource: v }))}
           placeholder="Google reviews"
           helperText="Read out to screen readers, not shown."
+        />
+        <TextField
+          label="Rating link"
+          value={state.ratingHref}
+          onChange={(v) => setState((p) => ({ ...p, ratingHref: v }))}
+          placeholder="https://share.google/..."
+          helperText="Where the badge opens so a student can check the score."
         />
       </FieldGroup>
 

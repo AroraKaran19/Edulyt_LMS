@@ -43,7 +43,7 @@ export const PLANS: Plan[] = [
     name: "Blended",
     price: 5999,
     tagline:
-      "Self-paced learning with weekly live doubt support to build strong foundations.",
+      "Self-paced learning with weekly live doubt support, plus your Airkrit certificates.",
     bestFor: "Best for flexible learners",
   },
   {
@@ -439,4 +439,6 @@ export const RATING = {
   score: 4.7,
   count: 116,
   source: "Google reviews",
+  /** The listing itself, so the score on the page is one click from checkable. */
+  href: "https://share.google/WuIxA7K9IwEhJDR2a",
 };

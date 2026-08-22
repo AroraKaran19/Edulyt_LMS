@@ -137,7 +137,7 @@ export default function PlansSectionPage() {
         description="Optional. Sits with the perk cards, in the gap the two columns leave at their foot: a photo with a picker under it. One instructor shows the photo and name with no picker; none at all hides the card entirely. The photo box is a fixed 394 × 264, so upload at that ratio (3:2, e.g. 1200 × 800); anything else is centre-cropped. An entry with no photo is skipped."
         items={state.instructors}
         onChange={(instructors) => setState((p) => ({ ...p, instructors }))}
-        newItem={() => ({ name: "", title: "", src: "" })}
+        newItem={() => ({ name: "", title: "", src: "", linkedinUrl: "" })}
         addLabel="Add instructor"
         itemTitle={(item, i) => item.name || `Instructor ${i + 1}`}
         renderItem={(item, update) => (
@@ -154,6 +154,13 @@ export default function PlansSectionPage() {
               onChange={(v) => update({ ...item, title: v })}
               placeholder="Lead mentor, Data Science"
               helperText="Optional line under the name."
+            />
+            <TextField
+              label="LinkedIn URL"
+              value={item.linkedinUrl ?? ""}
+              onChange={(v) => update({ ...item, linkedinUrl: v })}
+              placeholder="https://www.linkedin.com/in/..."
+              helperText="Optional. Adds a badge on the photo that opens their profile."
             />
             <MediaField
               title="Photo"

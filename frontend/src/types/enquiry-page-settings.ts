@@ -20,6 +20,8 @@ export interface EnquiryInstructor {
   src?: string;
   source?: "upload" | "url";
   s3Key?: string;
+  /** Optional profile to vouch for them. Empty renders no badge at all. */
+  linkedinUrl?: string;
 }
 
 export interface EnquiryOfferSettings {
@@ -49,6 +51,8 @@ export interface EnquiryHeroSettings {
   ratingCount?: number;
   ratingSource?: string;
   ratingLabel?: string;
+  /** Where the badge links. Falls back to the Google listing in `plans.ts`. */
+  ratingHref?: string;
   partnersHeading?: string;
   partners?: EnquiryPartnerLogo[];
   marquee?: string[];

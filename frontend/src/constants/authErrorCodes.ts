@@ -37,6 +37,18 @@ export const EMAIL_CHANGE_ERROR_CODES = {
 } as const;
 
 /**
+ * reCAPTCHA gate codes. Must match backend `constants/recaptcha.ts`.
+ */
+export const CAPTCHA_ERROR_CODES = {
+  /** No token was sent. */
+  CAPTCHA_REQUIRED: "CAPTCHA_REQUIRED",
+  /** Google refused the token: unsolved, already spent, or expired. */
+  CAPTCHA_REJECTED: "CAPTCHA_REJECTED",
+  /** Misconfigured secret, or Google unreachable. Not the visitor's fault. */
+  CAPTCHA_UNAVAILABLE: "CAPTCHA_UNAVAILABLE",
+} as const;
+
+/**
  * MSG91 phone verification codes. Must match backend
  * `constants/phoneVerification.ts`.
  */

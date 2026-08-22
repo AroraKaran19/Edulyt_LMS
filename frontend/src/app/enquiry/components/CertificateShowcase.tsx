@@ -2,12 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CERTIFICATES, type Certificate } from "../plans";
 
 /** How long each certificate holds before the list advances on its own. */
 const AUTO_ADVANCE_MS = 2000;
+
+/**
+ * How long the rotation stands back after someone drives it themselves. Long
+ * enough to actually read the one they picked, and it lapses on its own rather
+ * than retiring the rotation, so the section still shows itself off to a
+ * visitor who touched it once and moved on.
+ */
+const RESUME_AFTER_MS = 6000;
+
+/** The two step-through controls sitting over the preview. */
+const ARROW =
+  "absolute top-1/2 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-[#f2d6c2] bg-white/95 text-[#c4551a] shadow-[0_6px_16px_-6px_rgba(43,21,8,0.4)] transition-[background-color,border-color,transform] duration-200 hover:-translate-y-1/2 hover:scale-105 hover:border-primary hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 /**
  * The documents themselves, previewed at size.
@@ -26,8 +38,6 @@ export default function CertificateShowcase({
   items?: Certificate[];
 }) {
   const [active, setActive] = useState(0);
-  /** Set on first pick. Advancing under someone's finger is hostile. */
-  const [userPicked, setUserPicked] = useState(false);
   /** Off screen it holds at the first item, so nobody arrives mid-rotation. */
   const [onScreen, setOnScreen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -35,17 +45,34 @@ export default function CertificateShowcase({
   const activeRef = useRef<HTMLLIElement>(null);
   const shown = items[active];
 
+  /** Wall-clock ms until which the rotation keeps out of the way. */
+  const holdUntilRef = useRef(0);
+  const hold = () => {
+    holdUntilRef.current = Date.now() + RESUME_AFTER_MS;
+  };
+
+  /** Stepping is driving it by hand, so the rotation waits its turn. */
+  const step = (delta: number) => {
+    setActive((i) => (i + delta + items.length) % items.length);
+    hold();
+  };
+
   useEffect(() => {
     const list = listRef.current;
+    const item = activeRef.current;
     // Only the mobile strip scrolls. On the desktop grid there is nothing to
-    // centre, and `block: "nearest"` would drag the page back to this section
-    // every few seconds while someone is reading further down.
-    if (!list || list.scrollWidth <= list.clientWidth) return;
-    activeRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
+    // centre, and moving the page every few seconds while someone reads further
+    // down would be hostile.
+    if (!list || !item || list.scrollWidth <= list.clientWidth) return;
+
+    // Driving scrollLeft, not scrollIntoView: that one walks every scrollable
+    // ancestor, so on first paint it hauled the whole page down to this section
+    // and a visitor opening /enquiry landed here instead of the top.
+    const listBox = list.getBoundingClientRect();
+    const itemBox = item.getBoundingClientRect();
+    const offset =
+      itemBox.left + itemBox.width / 2 - (listBox.left + listBox.width / 2);
+    list.scrollTo({ left: list.scrollLeft + offset, behavior: "smooth" });
   }, [active]);
 
   useEffect(() => {
@@ -60,15 +87,37 @@ export default function CertificateShowcase({
   }, []);
 
   useEffect(() => {
-    if (userPicked || !onScreen || items.length < 2) return;
+    if (!onScreen || items.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const timer = setInterval(
-      () => setActive((i) => (i + 1) % items.length),
-      AUTO_ADVANCE_MS,
-    );
+    // The timer keeps running through a manual pick and skips the ticks it
+    // lands on, so the two ways of driving this share one clock instead of one
+    // of them switching the other off.
+    const timer = setInterval(() => {
+      if (Date.now() < holdUntilRef.current) return;
+      setActive((i) => (i + 1) % items.length);
+    }, AUTO_ADVANCE_MS);
     return () => clearInterval(timer);
-  }, [userPicked, onScreen, items.length]);
+  }, [onScreen, items.length]);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+
+    // Pointer events only: the auto-advance centres the strip itself, and a
+    // `scroll` listener would read its own work as someone reaching in.
+    const onWheel = (event: WheelEvent) => {
+      if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) hold();
+    };
+    const onPointerDown = () => hold();
+
+    list.addEventListener("pointerdown", onPointerDown, { passive: true });
+    list.addEventListener("wheel", onWheel, { passive: true });
+    return () => {
+      list.removeEventListener("pointerdown", onPointerDown);
+      list.removeEventListener("wheel", onWheel);
+    };
+  }, []);
 
   return (
     <div
@@ -89,6 +138,27 @@ export default function CertificateShowcase({
           <span className="absolute top-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#c4551a] shadow-[0_4px_12px_-4px_rgba(43,21,8,0.4)]">
             Sample
           </span>
+
+          {items.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={() => step(-1)}
+                aria-label="Previous certificate"
+                className={cn(ARROW, "left-2.5")}
+              >
+                <ChevronLeft size={18} strokeWidth={2.8} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                onClick={() => step(1)}
+                aria-label="Next certificate"
+                className={cn(ARROW, "right-2.5")}
+              >
+                <ChevronRight size={18} strokeWidth={2.8} aria-hidden="true" />
+              </button>
+            </>
+          )}
         </div>
 
         <div className="mt-3.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 px-1">
@@ -129,7 +199,7 @@ export default function CertificateShowcase({
                 aria-selected={on}
                 onClick={() => {
                   setActive(i);
-                  setUserPicked(true);
+                  hold();
                 }}
                 className={cn(
                   "flex h-full w-full cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-[border-color,background-color,box-shadow] duration-200",

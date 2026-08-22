@@ -1,7 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { enquiryButtonClass } from "../components/EnquiryButton";
 import { CONTAINER } from "./shared";
 
 export default function SiteHeader() {
@@ -23,13 +21,16 @@ export default function SiteHeader() {
             className="h-11 w-auto sm:h-[52px]"
           />
         </Link>
-        <Link
+        {/* Parked on request: the enquiry page is a funnel, and a way out of it
+            at the top right was pulling ad clicks into the catalogue. Restore by
+            uncommenting, along with the Link and ArrowUpRight imports. */}
+        {/* <Link
           href="/programs"
           className={`ml-auto ${enquiryButtonClass("ghost")}`}
         >
           Go to platform
           <ArrowUpRight size={15} strokeWidth={2.6} />
-        </Link>
+        </Link> */}
       </div>
     </header>
   );

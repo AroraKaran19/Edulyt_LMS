@@ -19,7 +19,11 @@ import apiClient from "@/configs/apiConfig";
 import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
-import { PHONE_ERROR_CODES } from "@/constants/authErrorCodes";
+import RecaptchaV2 from "@/components/ui/RecaptchaV2";
+import {
+  CAPTCHA_ERROR_CODES,
+  PHONE_ERROR_CODES,
+} from "@/constants/authErrorCodes";
 import EnquiryButton from "./EnquiryButton";
 import OtpBoxes from "./OtpBoxes";
 import { ISSUERS, type PlanId } from "../plans";
@@ -38,7 +42,10 @@ type Props = {
 };
 
 type Errors = Partial<
-  Record<"name" | "email" | "phone" | "college" | "code" | "form", string>
+  Record<
+    "name" | "email" | "phone" | "college" | "code" | "captcha" | "form",
+    string
+  >
 >;
 
 /** Which proof the form is currently collecting. */
@@ -55,6 +62,9 @@ const apiMessage = (error: unknown, fallback: string): string => {
 
 /** Matches the server's cooldown, and only used until it reports the real one. */
 const RESEND_COOLDOWN_SECONDS = 60;
+
+/** Shown when the box is untouched. Matches the wording the backend returns. */
+const CAPTCHA_PROMPT = "Please confirm you are not a robot.";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -112,6 +122,15 @@ export default function LeadForm({
   const [sending, setSending] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  /**
+   * Solved reCAPTCHA response, required by `/enquiry/otp`. Only the anonymous
+   * path needs one: a signed-in visitor never touches that route, and the two
+   * they do touch are already behind their access token.
+   */
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  /** Bumped to clear a tick the server has already spent. */
+  const [captchaNonce, setCaptchaNonce] = useState(0);
+  const needsCaptcha = !isAuthenticated;
 
   const name = nameInput ?? profileName;
   const email = emailInput ?? profile?.email ?? "";
@@ -170,6 +189,15 @@ export default function LeadForm({
   }, [cooldown]);
 
   /**
+   * A v2 token dies on first use, whatever the server made of it, so the box
+   * has to come back unticked after every send that carried one.
+   */
+  const spendCaptcha = () => {
+    setCaptchaToken(null);
+    setCaptchaNonce((n) => n + 1);
+  };
+
+  /**
    * Turns a refused send into something the UI can act on.
    *
    * A throttle is a known state, not a failure: the server says when the next
@@ -184,6 +212,17 @@ export default function LeadForm({
         };
       }
     )?.response?.data?.error;
+
+    // A captcha refusal belongs beside the box, not in the throttle banner:
+    // the fix is one more tick, and nothing here is worth counting down.
+    if (
+      detail?.code === CAPTCHA_ERROR_CODES.CAPTCHA_REQUIRED ||
+      detail?.code === CAPTCHA_ERROR_CODES.CAPTCHA_REJECTED ||
+      detail?.code === CAPTCHA_ERROR_CODES.CAPTCHA_UNAVAILABLE
+    ) {
+      setErrors({ captcha: apiMessage(error, fallback) });
+      return;
+    }
 
     if (detail?.code === PHONE_ERROR_CODES.OTP_SEND_LIMIT) {
       setSendLimitMinutes(Number(detail?.meta?.retryAfterMinutes) || null);
@@ -279,6 +318,37 @@ export default function LeadForm({
     }
   };
 
+  /**
+   * Sends the email code on the anonymous path, first time or on a re-send.
+   *
+   * The tick is spent either way, refused or not, because the server has now
+   * seen that token and will not take it a second time.
+   */
+  const sendEmailCode = async (fallback: string): Promise<boolean> => {
+    if (!captchaToken) {
+      setErrors({ captcha: CAPTCHA_PROMPT });
+      return false;
+    }
+
+    setSending(true);
+    setErrors({});
+    try {
+      await publicClient.post(ENDPOINTS.enquiry.otp, {
+        email: email.trim().toLowerCase(),
+        recaptchaToken: captchaToken,
+      });
+      setDigits([]);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      return true;
+    } catch (error) {
+      handleSendRefusal(error, fallback);
+      return false;
+    } finally {
+      spendCaptcha();
+      setSending(false);
+    }
+  };
+
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const found = validate();
@@ -298,20 +368,7 @@ export default function LeadForm({
       return;
     }
 
-    setSending(true);
-    setErrors({});
-    try {
-      await publicClient.post(ENDPOINTS.enquiry.otp, {
-        email: email.trim().toLowerCase(),
-      });
-      setDigits([]);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-      setStep("emailOtp");
-    } catch (error) {
-      handleSendRefusal(error, "Could not send the code");
-    } finally {
-      setSending(false);
-    }
+    if (await sendEmailCode("Could not send the code")) setStep("emailOtp");
   };
 
   const resendCode = async () => {
@@ -341,19 +398,7 @@ export default function LeadForm({
       return;
     }
 
-    setSending(true);
-    setErrors({});
-    try {
-      await publicClient.post(ENDPOINTS.enquiry.otp, {
-        email: email.trim().toLowerCase(),
-      });
-      setDigits([]);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-    } catch (error) {
-      handleSendRefusal(error, "Could not resend the code");
-    } finally {
-      setSending(false);
-    }
+    await sendEmailCode("Could not resend the code");
   };
 
   const confirmEmailOtp = async (code: string) => {
@@ -476,6 +521,25 @@ export default function LeadForm({
             <span className="mt-2 block text-xs font-semibold text-[#c03c19]">
               {errors.form}
             </span>
+          )}
+
+          {/* Only the email code is behind the captcha. The phone re-send runs
+              on a session-authenticated route with its own send budget. */}
+          {onEmail && sendLimitMinutes === null && (
+            <div className="mt-4">
+              <p className="mb-1.5 text-[11.5px] leading-[1.45] font-semibold text-[#8c7a70]">
+                Tick the box again if you need another code.
+              </p>
+              <RecaptchaV2
+                onChange={setCaptchaToken}
+                resetSignal={captchaNonce}
+              />
+              {errors.captcha && (
+                <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
+                  {errors.captcha}
+                </span>
+              )}
+            </div>
           )}
 
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5">
@@ -752,7 +816,11 @@ export default function LeadForm({
                 onChange={(e) => onCert(e.target.value || null)}
               >
                 <option value="">
-                  {freeCert ? "Help me choose later" : "No certification"}
+                  {/* Not "none": every plan ships Airkrit's own certificates,
+                      and this dropdown only decides the MNC exam on top. */}
+                  {freeCert
+                    ? "Help me choose later"
+                    : "Airkrit certificates only"}
                 </option>
                 {ISSUERS.map((issuer) => (
                   <option key={issuer.name} value={issuer.name}>
@@ -783,13 +851,27 @@ export default function LeadForm({
                 ? addonCost > 0
                   ? `${chosenPlan.name} + ${cert} certification`
                   : `${chosenPlan.name}, ${cert} certification included`
-                : `${chosenPlan.name}, no certification added`}
+                : `${chosenPlan.name}, Airkrit certificates only`}
             </span>
             <span className="flex-none text-[14px] font-extrabold text-primary">
               ₹{total.toLocaleString("en-IN")}
             </span>
           </div>
         </div>
+
+        {needsCaptcha && (
+          <div className="mt-3">
+            <RecaptchaV2
+              onChange={setCaptchaToken}
+              resetSignal={captchaNonce}
+            />
+            {errors.captcha && (
+              <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
+                {errors.captcha}
+              </span>
+            )}
+          </div>
+        )}
 
         {(errors.form || cooldown > 0 || sendLimitMinutes !== null) && (
           <p

@@ -116,7 +116,10 @@ export default function EnquirySelect({
   };
 
   return (
-    <div ref={rootRef} className="relative">
+    // `min-w-0` so a long name can never widen whatever holds this: the trigger
+    // sets `white-space: nowrap` to get its ellipsis, which otherwise becomes a
+    // min-content width the parent has to honour.
+    <div ref={rootRef} className="relative min-w-0 max-w-full">
       <span
         id={`${id}-label`}
         className="mb-1 block text-[11.5px] font-bold text-text-primary"
@@ -182,20 +185,20 @@ export default function EnquirySelect({
                 onClick={() => commit(i)}
                 onPointerMove={() => setCursor(i)}
                 className={cn(
-                  "flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-[13.5px] leading-[1.3]",
+                  "flex cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-[13.5px] leading-[1.35]",
                   isSelected
                     ? "font-extrabold text-text-primary"
                     : "font-semibold text-text-secondary",
                   i === cursor && "bg-[#fff6f1]",
                 )}
               >
-                <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                <span className="min-w-0 flex-1 break-words">{option.label}</span>
                 {isSelected && (
                   <Check
                     size={14}
                     strokeWidth={3}
                     aria-hidden="true"
-                    className="flex-none text-primary"
+                    className="mt-[3px] flex-none text-primary"
                   />
                 )}
               </li>

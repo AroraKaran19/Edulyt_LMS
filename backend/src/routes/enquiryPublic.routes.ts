@@ -7,6 +7,7 @@ import {
   verifyEnquiryPhone,
 } from "../controllers/enquiryPublic.controller";
 import { requireEnquirySession } from "../middlewares/enquirySession.middleware";
+import { requireRecaptcha } from "../middlewares/recaptcha.middleware";
 
 /**
  * Verification for the enquiry form. Unauthenticated by design: most visitors
@@ -17,10 +18,12 @@ const router = Router();
 
 /**
  * @route   POST /api/enquiry/otp
- * @desc    Email a six digit code. Throttled per email.
- * @access  Public
+ * @desc    Email a six digit code. Throttled per email, and behind a captcha
+ *          because the per-email throttle says nothing about a script working
+ *          through a list of addresses.
+ * @access  Public, one solved reCAPTCHA per send
  */
-router.post("/otp", requestEnquiryOtp);
+router.post("/otp", requireRecaptcha, requestEnquiryOtp);
 
 /**
  * @route   POST /api/enquiry/otp/verify

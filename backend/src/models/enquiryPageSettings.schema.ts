@@ -48,6 +48,7 @@ const heroSchema = new Schema(
     ratingCount: { type: Number, default: 0 },
     ratingSource: { type: String, default: "" },
     ratingLabel: { type: String, default: "" },
+    ratingHref: { type: String, default: "" },
     partnersHeading: { type: String, default: "" },
     partners: { type: [partnerLogoSchema], default: [] },
     marquee: { type: [String], default: [] },
@@ -204,6 +205,7 @@ const instructorSchema = new Schema(
     src: { type: String, default: "" },
     source: { type: String, enum: ["upload", "url"], default: "url" },
     s3Key: { type: String, default: "" },
+    linkedinUrl: { type: String, default: "" },
   },
   { _id: false },
 );

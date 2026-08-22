@@ -54,8 +54,11 @@ export default function PlanMatrix({
 
   return (
     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[1fr_340px] lg:gap-8">
+      {/* `min-w-0` on both tracks, or the 1fr one sizes to its content's
+          min-content instead of the fraction and shunts the plan column past
+          the container edge, where the page's overflow-x-clip eats it. */}
       {/* ---------- perks ---------- */}
-      <div className="sm:columns-2 sm:gap-4">
+      <div className="min-w-0 sm:columns-2 sm:gap-4">
         {perkGroups.map((group, groupIndex) => (
           <section
             key={group.title}
@@ -129,6 +132,27 @@ export default function PlanMatrix({
                 sizes="(min-width: 1024px) 394px, (min-width: 640px) 45vw, 90vw"
                 className="animate-eq-fade-up object-cover"
               />
+
+              {/* Optional, and the point of it is that the claim is checkable:
+                  a mentor with no profile set simply has no badge. */}
+              {instructor.linkedinUrl ? (
+                <a
+                  href={instructor.linkedinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${instructor.name || "Instructor"} on LinkedIn`}
+                  className="absolute top-2.5 right-2.5 grid size-9 place-items-center rounded-full bg-white/95 text-[#0a66c2] shadow-[0_6px_16px_-6px_rgba(43,21,8,0.5)] transition-[transform,background-color] duration-200 hover:scale-105 hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                    className="size-[18px]"
+                  >
+                    <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05a3.74 3.74 0 0 1 3.37-1.85c3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z" />
+                  </svg>
+                </a>
+              ) : null}
             </div>
 
             <div className="border-t border-[#fbe3d2] p-3.5">
@@ -159,7 +183,7 @@ export default function PlanMatrix({
       </div>
 
       {/* ---------- plan picker ---------- */}
-      <fieldset className="m-0 grid gap-2.5 border-0 p-0 lg:sticky lg:top-24">
+      <fieldset className="m-0 grid min-w-0 gap-2.5 border-0 p-0 lg:sticky lg:top-24">
         <legend className="sr-only">Choose your plan</legend>
 
         {plans.map((plan) => {

@@ -69,7 +69,10 @@ export default function HeroSection({
       <div
         className={`${CONTAINER} grid items-start gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-14`}
       >
-        <div>
+        {/* `min-w-0` on both tracks. Without it a track sizes to its content's
+            min-content, so one long CTA label widens the whole hero past the
+            viewport and the page's overflow-x-clip shears off the right side. */}
+        <div className="min-w-0">
           <div
             data-fade
             className="flex animate-eq-fade-up flex-wrap items-center gap-2.5 [animation-delay:300ms]"
@@ -79,10 +82,17 @@ export default function HeroSection({
               {cms.eyebrow || "Career Acceleration Program"}
             </span>
 
-            <span className="inline-flex items-center gap-3 rounded-[18px] border-[1.5px] border-[#fbe3d2] bg-white py-2 pr-5 pl-3 shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)]">
+            {/* A link, not a badge: a score nobody can check is worth nothing,
+                so this opens the listing it is quoting. */}
+            <a
+              href={cms.ratingHref || RATING.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 rounded-[18px] border-[1.5px] border-[#fbe3d2] bg-white py-2 pr-5 pl-3 shadow-[0_10px_30px_-14px_rgba(43,21,8,0.18),0_2px_6px_rgba(43,21,8,0.04)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-[#f2d6c2] hover:shadow-[0_14px_34px_-14px_rgba(43,21,8,0.26),0_2px_6px_rgba(43,21,8,0.05)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
               <span className="sr-only">
                 Rated {score} out of 5 from {cms.ratingCount || RATING.count}{" "}
-                {cms.ratingSource || RATING.source}
+                {cms.ratingSource || RATING.source}. Opens the listing in a new
+                tab.
               </span>
               <span
                 aria-hidden="true"
@@ -104,7 +114,7 @@ export default function HeroSection({
                   {score}/5 Rating on Google
                 </span>
               </span>
-            </span>
+            </a>
 
           </div>
 
@@ -179,7 +189,7 @@ export default function HeroSection({
 
         <div
           data-fade
-          className="animate-eq-fade-up [animation-delay:300ms] lg:sticky lg:top-24"
+          className="min-w-0 animate-eq-fade-up [animation-delay:300ms] lg:sticky lg:top-24"
         >
           <LeadForm
             selected={plan}
