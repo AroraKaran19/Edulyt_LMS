@@ -40,6 +40,12 @@ export default function CertificateShowcase({
   const [active, setActive] = useState(0);
   /** Off screen it holds at the first item, so nobody arrives mid-rotation. */
   const [onScreen, setOnScreen] = useState(false);
+  /**
+   * True on the mobile layout, where the list is a snap strip rather than the
+   * desktop column. Everything the rotation does there happens inside a
+   * scroller the visitor is holding, so it stays off. See the auto-advance.
+   */
+  const [isStrip, setIsStrip] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const activeRef = useRef<HTMLLIElement>(null);
@@ -59,11 +65,19 @@ export default function CertificateShowcase({
 
   useEffect(() => {
     const list = listRef.current;
+    if (!list) return;
+    const measure = () => setIsStrip(list.scrollWidth > list.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [items.length]);
+
+  useEffect(() => {
+    const list = listRef.current;
     const item = activeRef.current;
-    // Only the mobile strip scrolls. On the desktop grid there is nothing to
-    // centre, and moving the page every few seconds while someone reads further
-    // down would be hostile.
-    if (!list || !item || list.scrollWidth <= list.clientWidth) return;
+    // Only the strip scrolls; the desktop column has nothing to centre.
+    if (!list || !item || !isStrip) return;
 
     // Driving scrollLeft, not scrollIntoView: that one walks every scrollable
     // ancestor, so on first paint it hauled the whole page down to this section
@@ -73,7 +87,7 @@ export default function CertificateShowcase({
     const offset =
       itemBox.left + itemBox.width / 2 - (listBox.left + listBox.width / 2);
     list.scrollTo({ left: list.scrollLeft + offset, behavior: "smooth" });
-  }, [active]);
+  }, [active, isStrip]);
 
   useEffect(() => {
     const node = rootRef.current;
@@ -87,7 +101,7 @@ export default function CertificateShowcase({
   }, []);
 
   useEffect(() => {
-    if (!onScreen || items.length < 2) return;
+    if (!onScreen || isStrip || items.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     // The timer keeps running through a manual pick and skips the ticks it
@@ -98,7 +112,7 @@ export default function CertificateShowcase({
       setActive((i) => (i + 1) % items.length);
     }, AUTO_ADVANCE_MS);
     return () => clearInterval(timer);
-  }, [onScreen, items.length]);
+  }, [onScreen, isStrip, items.length]);
 
   useEffect(() => {
     const list = listRef.current;
@@ -180,7 +194,7 @@ export default function CertificateShowcase({
         role="tablist"
         aria-label="Certificates"
         className={cn(
-          "flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2",
+          "flex snap-x snap-proximity gap-2 overflow-x-auto overscroll-x-contain pb-2",
           "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
           "lg:grid lg:gap-1.5 lg:overflow-visible lg:pb-0",
         )}

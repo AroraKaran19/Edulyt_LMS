@@ -23,6 +23,10 @@ export default function OtpBoxes({
 }: Props) {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Callers reset with `[]`, and writing into a short array leaves holes that
+  // `every` skips: a digit typed into the last box alone would read as complete.
+  const cells = Array.from({ length }, (_, i) => digits[i] ?? "");
+
   useEffect(() => {
     boxes.current[0]?.focus();
   }, []);
@@ -40,14 +44,14 @@ export default function OtpBoxes({
     const only = raw.replace(/\D/g, "");
     if (!only) {
       commit(
-        digits.map((d, i) => (i === index ? "" : d)),
+        cells.map((d, i) => (i === index ? "" : d)),
         index,
       );
       return;
     }
     // Typing or pasting several digits at once fills forward from here, which is
     // what happens when the code arrives one tap away in another app.
-    const next = [...digits];
+    const next = [...cells];
     for (let i = 0; i < only.length && index + i < length; i += 1) {
       next[index + i] = only[i];
     }
@@ -55,10 +59,10 @@ export default function OtpBoxes({
   };
 
   const onKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !digits[index] && index > 0) {
+    if (e.key === "Backspace" && !cells[index] && index > 0) {
       e.preventDefault();
       commit(
-        digits.map((d, i) => (i === index - 1 ? "" : d)),
+        cells.map((d, i) => (i === index - 1 ? "" : d)),
         index - 1,
       );
     }
@@ -72,7 +76,7 @@ export default function OtpBoxes({
           ref={(el) => {
             boxes.current[i] = el;
           }}
-          value={digits[i] ?? ""}
+          value={cells[i]}
           onChange={(e) => setDigit(i, e.target.value)}
           onKeyDown={(e) => onKeyDown(i, e)}
           onFocus={(e) => e.target.select()}

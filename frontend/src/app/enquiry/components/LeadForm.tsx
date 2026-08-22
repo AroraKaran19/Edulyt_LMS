@@ -18,7 +18,7 @@ import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import apiClient from "@/configs/apiConfig";
 import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
-import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
+import useMSG91OTP, { OTP_LENGTH as PHONE_OTP_LENGTH } from "@/hooks/useMSG91OTP";
 import RecaptchaV2 from "@/components/ui/RecaptchaV2";
 import {
   CAPTCHA_ERROR_CODES,
@@ -62,6 +62,13 @@ const apiMessage = (error: unknown, fallback: string): string => {
 
 /** Matches the server's cooldown, and only used until it reports the real one. */
 const RESEND_COOLDOWN_SECONDS = 60;
+
+/**
+ * The email code is minted by our own backend, not MSG91, so it follows
+ * `OTP_LENGTH` in `signupVerification.services` and not the widget's length.
+ * Only the phone step is MSG91's.
+ */
+const EMAIL_OTP_LENGTH = 6;
 
 /** Shown when the box is untouched. Matches the wording the backend returns. */
 const CAPTCHA_PROMPT = "Please confirm you are not a robot.";
@@ -463,6 +470,7 @@ export default function LeadForm({
   // still on a code panel at the moment it succeeds.
   if (step !== "form" && !sent) {
     const onEmail = step === "emailOtp";
+    const codeLength = onEmail ? EMAIL_OTP_LENGTH : PHONE_OTP_LENGTH;
     // A signed-in visitor only ever proves the phone, so numbering the steps
     // would promise a second one that never comes.
     const showsBothSteps = !isAuthenticated;
@@ -496,7 +504,7 @@ export default function LeadForm({
             {onEmail ? "Check your inbox" : "Check your messages"}
           </h2>
           <p className="mt-1.5 mb-4 text-[13px] leading-[1.5] text-text-secondary">
-            We sent a {OTP_LENGTH}-digit code to{" "}
+            We sent a {codeLength}-digit code to{" "}
             <b className="font-bold text-text-primary">
               {onEmail ? email.trim().toLowerCase() : `+91 ${phone}`}
             </b>
@@ -504,7 +512,8 @@ export default function LeadForm({
           </p>
 
           <OtpBoxes
-            length={OTP_LENGTH}
+            key={step}
+            length={codeLength}
             digits={digits}
             onChange={setDigits}
             onComplete={onEmail ? confirmEmailOtp : confirmPhoneOtp}
