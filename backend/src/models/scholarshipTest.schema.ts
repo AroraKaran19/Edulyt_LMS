@@ -30,6 +30,11 @@ const scholarshipTestSchema = new mongoose.Schema<ScholarshipTest>(
       ref: "User",
       required: true,
     },
+    /**
+     * Frozen at creation. Users are hard-deleted, so a pointer alone would
+     * leave old campaigns with no attributable author.
+     */
+    createdByName: { type: String, default: "" },
   },
   { timestamps: true },
 );

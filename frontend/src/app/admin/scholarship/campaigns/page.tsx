@@ -24,7 +24,8 @@ import {
 } from "@/types/scholarship";
 
 const PAGE_LIMIT = 20;
-const COL_SPAN = 7;
+/** Fixed columns; the Created by column is conditional, see `colSpan` below. */
+const BASE_COL_SPAN = 7;
 
 function formatIst(iso?: string) {
   if (!iso) return "—";
@@ -53,9 +54,14 @@ const errorMessage = (error: unknown, fallback: string): string => {
 
 export default function ScholarshipCampaignsAdminPage() {
   const { user } = useAuth();
-  // A marketer's list is already scoped server-side, so the control would be a
-  // no-op that implies otherwise.
-  const canFilterByOwner = user?.userType !== "marketer";
+  /**
+   * Marketers and sales only ever get their own campaigns from the server, so
+   * an owner filter would be a no-op implying otherwise, and a Created by
+   * column would repeat their own name on every row.
+   */
+  const canSeeOthers =
+    user?.userType !== "marketer" && user?.userType !== "sales";
+  const colSpan = canSeeOthers ? BASE_COL_SPAN + 1 : BASE_COL_SPAN;
 
   const [rows, setRows] = useState<ScholarshipTestListRow[]>([]);
   const [page, setPage] = useState(1);
@@ -163,7 +169,7 @@ export default function ScholarshipCampaignsAdminPage() {
           </div>
         }
         filterRow2={
-          canFilterByOwner ? (
+          canSeeOthers ? (
             <CheckBoxContainer
               label="Only campaigns I created"
               checked={mineOnly}
@@ -185,6 +191,11 @@ export default function ScholarshipCampaignsAdminPage() {
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Status
                 </th>
+                {canSeeOthers ? (
+                  <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
+                    Created by
+                  </th>
+                ) : null}
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Created (IST)
                 </th>
@@ -205,7 +216,7 @@ export default function ScholarshipCampaignsAdminPage() {
             <tbody className="divide-y divide-gray-200">
               {isLoading ? (
                 <tr>
-                  <td colSpan={COL_SPAN} className="px-6 py-12 text-center">
+                  <td colSpan={colSpan} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
                       <p className="text-gray-500 text-sm">Loading…</p>
@@ -214,7 +225,7 @@ export default function ScholarshipCampaignsAdminPage() {
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={COL_SPAN} className="px-6 py-12 text-center">
+                  <td colSpan={colSpan} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <GraduationCap className="w-12 h-12 text-gray-400" />
                       {/* Two distinct empty states: "nothing exists" and "your
@@ -269,6 +280,18 @@ export default function ScholarshipCampaignsAdminPage() {
                       <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                         <StatusPill status={status} />
                       </td>
+                      {canSeeOthers ? (
+                        <td className="px-4 sm:px-6 py-4 text-xs whitespace-nowrap">
+                          {row.createdByName ? (
+                            <span className="text-gray-700">
+                              {row.createdByName}
+                            </span>
+                          ) : (
+                            // Campaigns made before the name was snapshotted.
+                            <span className="text-gray-400">Unknown</span>
+                          )}
+                        </td>
+                      ) : null}
                       <td className="px-4 sm:px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
                         {formatIst(row.createdAt)}
                       </td>

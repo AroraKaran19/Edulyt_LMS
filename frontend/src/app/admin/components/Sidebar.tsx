@@ -223,6 +223,10 @@ const AdminSidebar = ({
           href: "/admin/crm/team",
         },
         {
+          label: "All leads",
+          href: "/admin/leads",
+        },
+        {
           label: "My leads",
           href: "/admin/crm/my-leads",
         },
@@ -238,18 +242,8 @@ const AdminSidebar = ({
     },
     {
       icon: <UserPlus className="size-6" />,
-      label: "Leads",
-      href: "/admin/leads",
-      submenu: [
-        {
-          label: "Leads submission",
-          href: "/admin/leads",
-        },
-        {
-          label: "Configure Enquiry Page",
-          href: "/admin/enquiry-page",
-        },
-      ],
+      label: "Enquiry Page",
+      href: "/admin/enquiry-page",
     },
     {
       icon: <HelpCircle className="size-6" />,

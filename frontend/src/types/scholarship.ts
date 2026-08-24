@@ -11,6 +11,8 @@ export interface ScholarshipTestListRow {
   couponValidForDays: number;
   isActive: boolean;
   createdBy: string;
+  /** Frozen at creation, so a deleted author is still named. */
+  createdByName?: string;
   createdAt: string;
   questions: string[];
 }

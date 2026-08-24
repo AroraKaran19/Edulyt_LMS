@@ -36,11 +36,10 @@ export const STAFF_ROLES: readonly StaffRole[] = [
 ];
 
 /**
- * True for roles whose access comes from the role itself rather than a
- * permissions array. Storing permissions on one would make it reachable by
- * `requirePermission` and so grantable any admin page.
+ * True for staff whose baseline access comes from the role itself. They may
+ * also hold page grants, which add to that baseline; see `ROLE_PAGE_KEYS`.
  */
-export const isPermissionlessRole = (role: string): boolean =>
+export const isRoleGrantedStaff = (role: string): boolean =>
   role === "marketer" || role === "sales";
 
 const ROLE_ARTICLE: Record<StaffRole, string> = {
@@ -49,11 +48,7 @@ const ROLE_ARTICLE: Record<StaffRole, string> = {
   sales: "a sales user",
 };
 
-/**
- * A marketer's access comes from its userType, not from page keys: the
- * scholarship guard admits the role directly. Storing permissions on one would
- * make it reachable by `requirePermission` and so grantable any admin page.
- */
+/** Rejects anything outside the three staff roles. */
 const resolveRole = (role?: string): StaffRole => {
   if (role === undefined) return "admin";
   if (!STAFF_ROLES.includes(role as StaffRole)) {
@@ -62,9 +57,13 @@ const resolveRole = (role?: string): StaffRole => {
   return role as StaffRole;
 };
 
-/** Permissions are meaningful for admins only; other staff roles get none. */
-const permissionsForRole = (role: StaffRole, permissions: unknown): string[] =>
-  isPermissionlessRole(role) ? [] : sanitizePermissions(permissions ?? []);
+/**
+ * Every staff role may hold page grants now. A marketer or sales user keeps
+ * their role's own pages unconditionally (see `ROLE_PAGE_KEYS`); anything here
+ * is additive on top, so a grant can widen their access but never shrink it.
+ */
+const permissionsForRole = (_role: StaffRole, permissions: unknown): string[] =>
+  sanitizePermissions(permissions ?? []);
 
 const GENDERS = ["male", "female", "other"] as const;
 export type StaffGender = (typeof GENDERS)[number];
@@ -275,7 +274,7 @@ export const revokeAdminService = async (adminId: string) => {
   }
   // Marketers and sales are staff too, so revoking one demotes it the same
   // way. The permissions-update path deliberately stays admin-only.
-  if (target.userType !== "admin" && !isPermissionlessRole(target.userType)) {
+  if (target.userType !== "admin" && !isRoleGrantedStaff(target.userType)) {
     throw new AppError("This user is not staff", 400);
   }
 

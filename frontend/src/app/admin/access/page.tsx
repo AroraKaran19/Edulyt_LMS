@@ -188,9 +188,9 @@ const AdminAccessPage = () => {
                       </td>
                       <td className="px-4 sm:px-6 py-4">
                         <div className="flex flex-wrap gap-1.5 max-w-md">
-                          {isRoleGated ? (
+                          {isRoleGated && chips.length === 0 ? (
                             <span className="text-xs text-gray-500">
-                              Scholarship campaigns only, set by the role
+                              Their own CRM and Scholarship pages, from the role
                             </span>
                           ) : chips.length === 0 ? (
                             <span className="text-xs text-gray-400 italic">
@@ -220,9 +220,7 @@ const AdminAccessPage = () => {
                           <span className="text-xs text-gray-400">—</span>
                         ) : (
                           <div className="inline-flex items-center gap-2">
-                            {/* No Edit for a role-gated staff member: its access comes from the
-                                role, so there are no page keys to change. */}
-                            {!isRoleGated && (
+                            {(
                               <button
                                 type="button"
                                 onClick={() => setEditing(admin)}

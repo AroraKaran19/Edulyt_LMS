@@ -299,9 +299,11 @@ export const canAccessPageAsRole = (
   }
   if (userType === "super-admin") return true;
   const roleKeys = userType ? ROLE_PAGE_KEYS[userType] : undefined;
-  // Checked before the permission path so a stray permissions array on a
-  // role-gated user cannot widen what the role grants.
-  if (roleKeys) return roleKeys.includes(pageKey);
+  // A role-gated user always has their own pages, and a grant adds to them, so
+  // widening their access is possible but taking the role's pages away is not.
+  if (roleKeys) {
+    return roleKeys.includes(pageKey) || hasPageAccess(permissions, pageKey);
+  }
   if (userType !== "admin") return false;
   return hasPageAccess(permissions, pageKey);
 };

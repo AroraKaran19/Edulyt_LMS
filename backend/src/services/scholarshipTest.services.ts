@@ -70,6 +70,7 @@ const resolveFreeSlug = async (base: string): Promise<string> => {
 export const createScholarshipTest = async (
   input: CreateCampaignInput,
   actorId: string,
+  actorName = "",
 ): Promise<ScholarshipTest> => {
   const title = (input.title ?? "").trim();
   if (!title) throw new AppError("Title is required", 400);
@@ -127,6 +128,7 @@ export const createScholarshipTest = async (
             couponId: coupon._id,
             isActive: input.isActive !== false,
             createdBy: actor,
+            createdByName: actorName,
           },
         ],
         { session, ordered: true },
@@ -151,6 +153,8 @@ export const createScholarshipTest = async (
 export interface Actor {
   id: string;
   userType: string;
+  /** Display name, snapshotted onto anything this actor creates. */
+  name?: string;
 }
 
 export interface ListFilters {
@@ -179,7 +183,7 @@ const isScopedToOwn = (actor: Actor): boolean =>
 const escapeRegex = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const buildListFilter = (
+export const buildListFilter = (
   filters: ListFilters,
   actor: Actor,
 ): Record<string, unknown> => {

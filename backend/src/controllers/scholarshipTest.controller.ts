@@ -20,7 +20,13 @@ const LIST_STATUSES = new Set(["live", "paused"]);
 const actorOf = (req: Request): Actor => {
   const user = req.user;
   if (!user?._id) throw new AppError("Authentication required", 401);
-  return { id: String(user._id), userType: String(user.userType) };
+  return {
+    id: String(user._id),
+    userType: String(user.userType),
+    name:
+      [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
+      user.email,
+  };
 };
 
 const numberOr = (raw: unknown, fallback: number): number => {
@@ -46,6 +52,7 @@ export const createCampaign = asyncHandler(
         isActive: body.isActive,
       },
       actor.id,
+      actor.name,
     );
     sendSuccessResponse(res, created, "Campaign created", 201);
   },

@@ -17,6 +17,8 @@ export interface ScholarshipTest {
   couponId: mongoose.Types.ObjectId;
   isActive: boolean;
   createdBy: mongoose.Types.ObjectId;
+  /** Frozen at creation, so a deleted author is still named. */
+  createdByName?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

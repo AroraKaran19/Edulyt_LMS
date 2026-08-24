@@ -27,11 +27,11 @@ const ROLE_COPY: Record<StaffRole, { label: string; blurb: string }> = {
   },
   marketer: {
     label: "Marketer",
-    blurb: "Scholarship campaigns only. No other admin page.",
+    blurb: "Their own CRM pages, plus any admin page you grant below.",
   },
   sales: {
     label: "Sales",
-    blurb: "Scholarship campaigns only. No other admin page.",
+    blurb: "Their own CRM pages and inbox, plus anything you grant below.",
   },
 };
 
@@ -61,9 +61,11 @@ const AddAdminModal = ({
   const [permissions, setPermissions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Both non-admin staff roles are granted by the role itself, so neither gets
-  // the permission-picking step.
-  const isPermissionless = role !== "admin";
+  /**
+   * Role-granted staff keep their own CRM and scholarship pages whatever is
+   * ticked here, so the picker is additive rather than their whole access.
+   */
+  const isRoleGranted = role !== "admin";
 
   // Cache every user we page through so onChange(id) can resolve the full object.
   const usersCache = useRef<Record<string, UserOption>>({});
@@ -88,9 +90,9 @@ const AddAdminModal = ({
     try {
       await apiClient.post("/admin/staff/admins/promote", {
         email: selectedUser.email,
-        // Sent even for a role-gated staff member, where the server discards
-        // it: the role, not the payload, is what decides their access.
-        permissions: isPermissionless ? [] : permissions,
+        // Sent for every role: a role-granted staff member keeps their own
+        // pages regardless, and these are added on top.
+        permissions,
         role,
       });
       toast.success(
@@ -256,32 +258,31 @@ const AddAdminModal = ({
                 </div>
               </div>
 
-              {/* A disabled permission tree would imply the grants still matter
-                  for a role-gated staff member, so it is replaced rather than greyed out. */}
-              {isPermissionless ? (
+              {isRoleGranted ? (
                 <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
                   <p className="text-sm text-gray-700">
-                    {ROLE_COPY[role].label} gets the Scholarship campaigns page
-                    and nothing else, and only sees campaigns they created
-                    themselves.
+                    {ROLE_COPY[role].label} always gets their own CRM pages and
+                    Scholarship campaigns, and only sees campaigns and leads
+                    they or their ambassadors created. Anything below is extra.
                   </p>
                 </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-gray-700">
-                      Choose the pages this admin can access
-                    </label>
-                    <span className="text-xs text-gray-500">
-                      {permissionLabels.length} selected
-                    </span>
-                  </div>
-                  <PermissionPicker
-                    value={permissions}
-                    onChange={setPermissions}
-                  />
+              ) : null}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-gray-700">
+                    {isRoleGranted
+                      ? "Extra pages they can also access"
+                      : "Choose the pages this admin can access"}
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    {permissionLabels.length} selected
+                  </span>
                 </div>
-              )}
+                <PermissionPicker
+                  value={permissions}
+                  onChange={setPermissions}
+                />
+              </div>
             </div>
           )}
 
@@ -296,7 +297,7 @@ const AddAdminModal = ({
                     {nameOf(selectedUser)}
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                        isPermissionless
+                        isRoleGranted
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-blue-100 text-blue-700"
                       }`}
@@ -313,18 +314,19 @@ const AddAdminModal = ({
 
               <div>
                 <div className="text-sm font-medium text-gray-700 mb-2">
-                  {isPermissionless
-                    ? "Page access"
-                    : `Page access (${permissionLabels.length})`}
+                  {`Extra page access (${permissionLabels.length})`}
                 </div>
-                {isPermissionless ? (
-                  <p className="text-sm text-gray-600">
-                    Scholarship campaigns only, and only the ones they create.
+                {isRoleGranted ? (
+                  <p className="mb-2 text-sm text-gray-600">
+                    Plus their own CRM pages and Scholarship campaigns, which
+                    the role always includes.
                   </p>
-                ) : permissionLabels.length === 0 ? (
+                ) : null}
+                {permissionLabels.length === 0 ? (
                   <p className="text-sm text-gray-500 italic">
-                    No pages selected, so this admin starts with no access until
-                    you grant pages later.
+                    {isRoleGranted
+                      ? "Nothing extra granted."
+                      : "No pages selected, so this admin starts with no access until you grant pages later."}
                   </p>
                 ) : (
                   <div className="flex flex-wrap gap-1.5">

@@ -13,6 +13,7 @@ import {
   Clock,
   UserX,
   UserCheck,
+  ShieldCheck,
   Star,
 } from "lucide-react";
 import Image from "next/image";
@@ -40,6 +41,7 @@ import {
   getPasswordRequirementsText,
 } from "@/lib/passwordValidation";
 import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
+import PromoteToStaffModal from "./components/PromoteToStaffModal";
 import useCsvExport from "@/hooks/useCsvExport";
 import { downloadCsv, type CsvColumn } from "@/lib/csv";
 
@@ -118,6 +120,7 @@ const ManageUsersPage = () => {
   const [showSuccessPointsModal, setShowSuccessPointsModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [promoteUser, setPromoteUser] = useState<User | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -907,6 +910,23 @@ const ManageUsersPage = () => {
                                   },
                                 ] as RowAction[])
                               : []),
+                            // Making staff is a privilege change, so it stays
+                            // super-admin only, matching the promote route.
+                            ...(isSuperAdmin &&
+                            user.userType !== "admin" &&
+                            user.userType !== "super-admin"
+                              ? ([
+                                  {
+                                    key: "promote",
+                                    label: "Make staff",
+                                    icon: ShieldCheck,
+                                    tone: "brand",
+                                    onSelect: () => {
+                                      setPromoteUser(user);
+                                    },
+                                  },
+                                ] as RowAction[])
+                              : []),
                             {
                               key: "password",
                               label: "Change password",
@@ -1043,6 +1063,17 @@ const ManageUsersPage = () => {
           );
         }}
       />
+
+      {promoteUser && (
+        <PromoteToStaffModal
+          user={promoteUser}
+          onClose={() => setPromoteUser(null)}
+          onDone={() => {
+            setPromoteUser(null);
+            void fetchUsers();
+          }}
+        />
+      )}
 
       {showChangePasswordModal && selectedUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
