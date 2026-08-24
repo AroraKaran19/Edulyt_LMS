@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Lead } from "@/types/lead";
+import { Lead } from "../types/lead";
 
 // ===================
 // Lead Schema
@@ -14,14 +14,137 @@ const leadAnswerSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const leadSchema = new mongoose.Schema<Lead>(
+/**
+ * Where the lead came in from. An object rather than a string so a scholarship
+ * lead can carry its campaign, and so `testId` can be nulled on campaign
+ * deletion while the title and slug survive as history.
+ */
+const leadSourceSchema = new mongoose.Schema(
   {
-    source: {
+    kind: {
       type: String,
       required: true,
-      enum: ["enquiry-form"],
-      default: "enquiry-form",
+      enum: ["enquiry", "scholarship"],
+      default: "enquiry",
     },
+    testId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScholarshipTest",
+      default: null,
+    },
+    title: { type: String, default: "" },
+    slug: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+/**
+ * Who this lead came from, frozen at capture. `userId` is nulled when that user
+ * is deleted; everything else survives, because a departing marketer must not
+ * erase the pipeline they generated. `role` is stored rather than derived for
+ * the same reason: once the user is gone there is nothing to derive it from.
+ */
+const leadCreatorSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    code: { type: String, default: "" },
+    name: { type: String, default: "" },
+    role: {
+      type: String,
+      // "ambassador" is kept for rows written before interns were split in two.
+      enum: [
+        "marketer",
+        "sales",
+        "marketing-intern",
+        "sales-intern",
+        "ambassador",
+      ],
+      required: true,
+    },
+  },
+  { _id: false }
+);
+
+/**
+ * The creator's owner at capture time. Snapshotted, not joined: re-homing an
+ * ambassador in March must not rewrite February's team totals.
+ */
+const leadParentSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    name: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+const LEAD_STATUSES = [
+  "new",
+  "contacted",
+  "qualified",
+  "converted",
+  "lost",
+] as const;
+
+const actorSnapshotSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    name: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+/** Append-only: conversion is flipped by hand, so the trail is the only audit. */
+const statusHistorySchema = new mongoose.Schema(
+  {
+    /** Null on the first entry for a lead that predates this field. */
+    from: { type: String, enum: [...LEAD_STATUSES, null], default: null },
+    to: { type: String, enum: LEAD_STATUSES, required: true },
+    changedByUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    changedByName: { type: String, default: "" },
+    changedAt: { type: Date, required: true, default: Date.now },
+    note: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+const assignmentHistorySchema = new mongoose.Schema(
+  {
+    toUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    toName: { type: String, default: "" },
+    byUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    byName: { type: String, default: "" },
+    at: { type: Date, required: true, default: Date.now },
+  },
+  { _id: false }
+);
+
+const leadSchema = new mongoose.Schema<Lead>(
+  {
+    source: { type: leadSourceSchema, required: true, default: () => ({}) },
 
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, lowercase: true, trim: true },
@@ -44,6 +167,35 @@ const leadSchema = new mongoose.Schema<Lead>(
       required: false,
     },
 
+    creator: { type: leadCreatorSchema, required: false },
+    parent: { type: leadParentSchema, required: false },
+
+    assignedTo: { type: actorSnapshotSchema, required: false },
+    assignedBy: { type: actorSnapshotSchema, required: false },
+    assignedAt: { type: Date, required: false },
+    assignmentHistory: { type: [assignmentHistorySchema], default: [] },
+
+    statusHistory: { type: [statusHistorySchema], default: [] },
+
+    /**
+     * Denormalised from `statusHistory`. "Conversions in March" is a different
+     * date from `createdAt`, and deriving it would unwind an array across the
+     * whole collection on every report load.
+     */
+    convertedAt: { type: Date, default: null },
+    convertedBy: { type: actorSnapshotSchema, default: null },
+
+    /** Canonical college link. Absent when the learner typed a college that is
+     *  not in the directory, which `CollegeSelect` allows. */
+    collegeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "College",
+      required: false,
+    },
+    collegeName: { type: String, required: false, trim: true },
+    /** Snapshot of `College.state`, so filtering never joins. */
+    state: { type: String, required: false, trim: true },
+
     status: {
       type: String,
       required: true,
@@ -58,7 +210,20 @@ const leadSchema = new mongoose.Schema<Lead>(
 );
 
 leadSchema.index({ createdAt: -1 });
-leadSchema.index({ source: 1, createdAt: -1 });
+leadSchema.index({ "source.kind": 1, createdAt: -1 });
+// `creator.userId` rather than `creator.code`: renaming a code must not split
+// someone's history in two.
+leadSchema.index({ "creator.userId": 1, createdAt: -1 });
+leadSchema.index({ "parent.userId": 1, createdAt: -1 });
+leadSchema.index({ collegeId: 1, createdAt: -1 });
+leadSchema.index({ state: 1, createdAt: -1 });
+leadSchema.index({ "assignedTo.userId": 1, status: 1, createdAt: -1 });
+// Conversion reporting is by the date of the flip, not the date of capture.
+leadSchema.index({ "convertedBy.userId": 1, convertedAt: -1 });
+// Reversed pair for the leaderboards, which scan a date range and group by
+// actor rather than filtering to one.
+leadSchema.index({ createdAt: -1, "creator.userId": 1 });
+leadSchema.index({ convertedAt: -1, "convertedBy.userId": 1 });
 leadSchema.index({ status: 1, createdAt: -1 });
 leadSchema.index({ email: 1 });
 leadSchema.index({ phone: 1 });

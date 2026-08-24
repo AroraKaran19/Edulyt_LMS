@@ -1,4 +1,4 @@
-import { FAQ } from "@/types";
+import { FAQ } from "../types";
 import mongoose from "mongoose";
 
 // ===================

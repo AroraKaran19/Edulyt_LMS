@@ -50,6 +50,12 @@ export interface InfiniteScrollSelectProps<T = unknown> {
   /** Set false for short static lists (e.g. Active/Inactive) where search is pointless. */
   showSearch?: boolean;
   /**
+   * Label to show for the current `value` when that option is not in the loaded
+   * page. Without it the trigger falls back to the raw id, which for a filter
+   * that survives a search means showing an ObjectId to the reader.
+   */
+  selectedLabel?: string;
+  /**
    * When true, the options panel is rendered in `document.body` with `position: fixed`
    * so it is not clipped by scroll parents (e.g. admin wizard `overflow-y-auto` bodies).
    */
@@ -92,6 +98,7 @@ export function InfiniteScrollSelect<T = unknown>({
   searchPlaceholder = "Search...",
   emptyMessage = "No options found",
   showSearch = true,
+  selectedLabel,
   dropdownPortal = false,
 }: InfiniteScrollSelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
@@ -164,7 +171,7 @@ export function InfiniteScrollSelect<T = unknown>({
         : (() => {
             const firstId = selectedValues[0];
             const opt = options.find((o) => o.value === firstId);
-            return opt ? opt.label : firstId;
+            return opt?.label ?? selectedLabel ?? firstId;
           })();
 
   const loadPage = useCallback(

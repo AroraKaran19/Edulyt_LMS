@@ -48,6 +48,8 @@ import successPointsRoutes from "./successPoints.routes";
 import reportRoutes from "./report.routes";
 import leadRoutes from "./lead.routes";
 import scholarshipTestRoutes from "./scholarshipTest.routes";
+import crmProfileRoutes from "./crmProfile.routes";
+import crmPublicRoutes from "./crmPublic.routes";
 import scholarshipPublicRoutes from "./scholarshipPublic.routes";
 
 export {
@@ -102,4 +104,6 @@ export {
   leadRoutes,
   scholarshipTestRoutes,
   scholarshipPublicRoutes,
+  crmProfileRoutes,
+  crmPublicRoutes,
 };

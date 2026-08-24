@@ -10,6 +10,22 @@ const leadSchema = z.object({
     .regex(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/),
   phone: z.string().regex(/^[6-9]\d{9}$/),
   college: z.string().trim().min(2).max(240),
+  /** Shape-checked, never trusted: the backend re-reads the college itself. */
+  collegeId: z
+    .string()
+    .trim()
+    .regex(/^[a-f0-9]{24}$/)
+    .optional(),
+  /** Raw CRM code from `?ref=`. The backend resolves it; this only forwards. */
+  ref: z.string().trim().max(32).optional(),
+  /** Answer to the one question the link owner added, if any. */
+  extraQuestion: z
+    .object({
+      key: z.string().trim().max(60),
+      label: z.string().trim().max(200),
+      value: z.string().trim().max(500),
+    })
+    .optional(),
   /**
    * Either the contact-session token from the anonymous OTP flow, or a
    * signed-in user's access token. The backend decides which it is and reads
@@ -59,6 +75,7 @@ export async function POST(request: Request) {
 
   const answers = [
     { key: "college", label: "College", value: lead.college },
+    ...(lead.extraQuestion?.value ? [lead.extraQuestion] : []),
     {
       key: "plan",
       label: "Plan you are interested in",
@@ -100,6 +117,8 @@ export async function POST(request: Request) {
         // ignores it and uses the session. Neither path trusts it as the value.
         phone: lead.phone,
         answers,
+        collegeId: lead.collegeId,
+        ref: lead.ref,
         pageQuery: lead.source,
       }),
     });

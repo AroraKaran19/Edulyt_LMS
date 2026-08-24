@@ -53,6 +53,8 @@ export const requireScholarshipSession = async (
     testId,
     email: String(session.email),
     phoneVerified: Boolean(session.phoneVerifiedAt),
+    // The proved number itself, so a lead captured from this flow is callable.
+    phone: session.phoneVerifiedAt ? String(session.phone ?? "") : "",
   };
   next();
 };

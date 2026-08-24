@@ -8,6 +8,7 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Pagination from "@/components/admin/Pagination";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
+import { STATE_SELECT_OPTIONS } from "@/constants/indianStates";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/buttons/button";
 
@@ -36,6 +37,7 @@ export default function AdminCollegesSettingsPage() {
   const [editing, setEditing] = useState<College | null>(null);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
+  const [state, setState] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -73,6 +75,7 @@ export default function AdminCollegesSettingsPage() {
     setEditing(null);
     setName("");
     setLocation("");
+    setState("");
     setIsActive(true);
     setModalOpen(true);
   };
@@ -81,6 +84,7 @@ export default function AdminCollegesSettingsPage() {
     setEditing(c);
     setName(c.name);
     setLocation(c.location || "");
+    setState(c.state || "");
     setIsActive(c.isActive);
     setModalOpen(true);
   };
@@ -94,12 +98,19 @@ export default function AdminCollegesSettingsPage() {
       toast.error("Location is required");
       return;
     }
+    // Required on create only: a legacy row may genuinely have no state, and an
+    // admin fixing its name shouldn't have to guess one to save.
+    if (!editing && !state) {
+      toast.error("State is required");
+      return;
+    }
     setSaving(true);
     try {
       if (editing?._id) {
         const updated = await updateCollege(editing._id, {
           name: name.trim(),
           location: location.trim(),
+          state: state || undefined,
           isActive,
         });
         if (updated) {
@@ -111,6 +122,7 @@ export default function AdminCollegesSettingsPage() {
         const created = await createCollege({
           name: name.trim(),
           location: location.trim(),
+          state,
           isActive,
         });
         if (created) {
@@ -201,6 +213,9 @@ export default function AdminCollegesSettingsPage() {
                   Location
                 </th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">
+                  State
+                </th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">
                   Status
                 </th>
                 <th className="text-right px-4 py-3 font-semibold text-gray-700">
@@ -212,7 +227,7 @@ export default function AdminCollegesSettingsPage() {
               {isLoading && rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-4 py-12 text-center text-gray-500"
                   >
                     Loading…
@@ -221,7 +236,7 @@ export default function AdminCollegesSettingsPage() {
               ) : rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-4 py-12 text-center text-gray-500"
                   >
                     No colleges found.
@@ -238,6 +253,11 @@ export default function AdminCollegesSettingsPage() {
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {c.location.trim() || "—"}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {c.state || (
+                        <span className="text-amber-600">Not set</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <span
@@ -318,6 +338,16 @@ export default function AdminCollegesSettingsPage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="e.g. Roorkee, Uttarakhand, India"
+            />
+            <Select
+              label="State"
+              required={!editing}
+              searchable
+              options={STATE_SELECT_OPTIONS}
+              value={state}
+              onChange={setState}
+              placeholder="Select a state"
+              searchPlaceholder="Search states..."
             />
             <label className="flex items-center gap-2 cursor-pointer">
               <input

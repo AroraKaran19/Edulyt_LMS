@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
 
 interface MenuItem {
@@ -14,7 +14,7 @@ interface MenuItem {
   submenu?: MenuItem[];
 }
 
-const matchesHref = (href: string, pathname: string) =>
+export const matchesHref = (href: string, pathname: string) =>
   href === "/admin"
     ? pathname === "/admin"
     : pathname === href || pathname.startsWith(href + "/");
@@ -23,16 +23,17 @@ const SidebarMenuItem = ({
   menuItem,
   isCollapsed,
   onNavigate,
+  isOpen = false,
+  onToggle,
 }: {
   menuItem: MenuItem;
   isCollapsed?: boolean;
   onNavigate?: () => void;
+  /** Owned by the sidebar so only one group is ever open. */
+  isOpen?: boolean;
+  onToggle?: (href: string) => void;
 }) => {
   const pathname = usePathname();
-  /** A click overrides the route-derived open state, but only for that route. */
-  const [toggled, setToggled] = useState<{ path: string; open: boolean } | null>(
-    null
-  );
 
   // A group is active on its own subtree, and also when one of its items is.
   // The item test is prefix-based, not exact, which is the only way a group
@@ -42,11 +43,8 @@ const SidebarMenuItem = ({
     matchesHref(menuItem.href, pathname) ||
     !!menuItem.submenu?.some((submenu) => matchesHref(submenu.href, pathname));
 
-  const isOpen =
-    toggled?.path === pathname ? toggled.open : isParentActive;
-
   const handleSubmenuToggle = (item: MenuItem) => {
-    if (item.submenu) setToggled({ path: pathname, open: !isOpen });
+    if (item.submenu) onToggle?.(item.href);
   };
 
   const getRedirectHref = (item: MenuItem) => {

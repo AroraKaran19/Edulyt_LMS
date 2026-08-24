@@ -92,6 +92,15 @@ const protectedUser = (user: User) => {
       collegeName: (user as Student).collegeName,
       degreeName: (user as Student).degreeName,
       fatherOccupation: (user as Student).fatherOccupation,
+      /*
+       * Lets the dashboard show the campus-ambassador tab without an extra
+       * request. Sent only while their link is live, so one field answers both
+       * "are they one" and "which kind", and a demoted ambassador loses the tab.
+       */
+      crmAmbassadorKind:
+        user.crmCode && user.crmCodeActive !== false
+          ? user.crmAmbassadorKind
+          : undefined,
     }),
   };
 };
@@ -471,7 +480,17 @@ export const refreshToken = asyncHandler(
 
     sendSuccessResponse(
       res,
-      { accessToken: newAccessToken, refreshToken: newRefreshToken },
+      {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        /*
+         * Returned so the client session picks up field changes without a
+         * re-login: a student attached as a campus ambassador after signing in
+         * would otherwise keep a stale session until they signed out. `user` is
+         * already loaded on the request, so this costs no extra query.
+         */
+        user: protectedUser(user),
+      },
       "Token refreshed successfully",
     );
   },

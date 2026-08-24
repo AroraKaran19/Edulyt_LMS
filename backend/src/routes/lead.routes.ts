@@ -1,9 +1,12 @@
 import { Router } from "express";
 import {
+  assignLeadsController,
   createLead,
   deleteLead,
   getLeadById,
   getLeads,
+  listAssigneesController,
+  listMyAssignedLeads,
   updateLead,
 } from "../controllers/lead.controller";
 import { adminGuard, verifySuperAdmin } from "../middlewares/admin.middleware";
@@ -27,9 +30,30 @@ const router = Router();
  */
 router.post("/", attachUserIfPresent, requireVerifiedLeadContact, createLead);
 
+/**
+ * @route   GET /api/leads/mine
+ * @desc    The caller's own assigned leads
+ * @access  Sales
+ */
+router.get("/mine", verifyUser, listMyAssignedLeads);
+
 // ===================
 // Admin Routes (must be before `/:id` — otherwise "admin" is parsed as an id)
 // ===================
+
+/**
+ * @route   POST /api/leads/admin/assign
+ * @desc    Assign or unassign a batch of leads
+ * @access  Admin
+ */
+router.post("/admin/assign", ...adminGuard("leads"), assignLeadsController);
+
+/**
+ * @route   GET /api/leads/admin/assignees
+ * @desc    Sales people an admin can assign leads to
+ * @access  Admin
+ */
+router.get("/admin/assignees", ...adminGuard("leads"), listAssigneesController);
 
 /**
  * @route   GET /api/leads/admin

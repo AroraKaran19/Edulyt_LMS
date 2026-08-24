@@ -18,6 +18,7 @@ import CollegeSelect from "@/components/ui/inputs/CollegeSelect";
 import apiClient from "@/configs/apiConfig";
 import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { REF_STORAGE_KEY } from "@/constants/crm";
 import useMSG91OTP, {
   OTP_LENGTH as PHONE_OTP_LENGTH,
 } from "@/hooks/useMSG91OTP";
@@ -41,6 +42,14 @@ type Props = {
   /** College carried back through the Google round trip, if any. */
   initialCollege?: string;
   initialCollegeId?: string;
+};
+
+export type ExtraQuestion = {
+  key: string;
+  label: string;
+  type: "text" | "select";
+  options: string[];
+  required: boolean;
 };
 
 type Errors = Partial<
@@ -151,6 +160,71 @@ export default function LeadForm({
   const phone = phoneInput ?? profilePhone;
   const college = collegeInput ?? profileCollege;
   const collegeId = collegeIdInput ?? profileCollegeId;
+
+  const [extraAnswer, setExtraAnswer] = useState("");
+  const [extraQuestion, setExtraQuestion] = useState<ExtraQuestion | null>(null);
+
+  /*
+   * The referral code, captured once when this form mounts.
+   *
+   * sessionStorage rather than localStorage because it is scoped per tab: two
+   * tabs opened from two different people's links each keep their own code,
+   * where localStorage would let whichever loaded second overwrite the first.
+   *
+   * Held in state as well, so a submission in flight uses the code this page
+   * loaded with even if something clears storage underneath it.
+   */
+  const [refCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    const clean = (fromUrl ?? "").trim().slice(0, 32);
+    if (clean) {
+      try {
+        sessionStorage.setItem(REF_STORAGE_KEY, clean);
+      } catch {
+        /* private mode: fall back to this render's value */
+      }
+      return clean;
+    }
+    try {
+      return sessionStorage.getItem(REF_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  /*
+   * Take the code out of the address bar. `history.replaceState` rather than
+   * `router.replace` so React state survives: a soft navigation here would
+   * reset a half-finished form, including the OTP step.
+   */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("ref")) return;
+    url.searchParams.delete("ref");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  /*
+   * Resolved here rather than in the server component: reading `searchParams`
+   * up there would make this whole landing page dynamic, and it is the page ads
+   * point at. An unknown code just leaves the extra field off.
+   */
+  useEffect(() => {
+    if (!refCode) return;
+    let cancelled = false;
+    publicClient
+      .get("/crm-public/resolve", { params: { code: refCode } })
+      .then((res) => {
+        if (!cancelled) setExtraQuestion(res.data?.data?.question ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setExtraQuestion(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refCode]);
 
   const setName = setNameInput;
   const setEmail = setEmailInput;
@@ -313,6 +387,16 @@ export default function LeadForm({
           email: email.trim().toLowerCase(),
           phone,
           college: college.trim(),
+          collegeId: collegeId || undefined,
+          ref: refCode || undefined,
+          extraQuestion:
+            extraQuestion && extraAnswer.trim()
+              ? {
+                  key: extraQuestion.key,
+                  label: extraQuestion.label,
+                  value: extraAnswer.trim(),
+                }
+              : undefined,
           authToken,
           plan: selected,
           certification: cert,
@@ -321,6 +405,13 @@ export default function LeadForm({
         }),
       });
       if (!response.ok) throw new Error("Request failed");
+      // Attribution is spent. A later, unrelated enquiry from this tab must not
+      // be credited to the same person.
+      try {
+        sessionStorage.removeItem(REF_STORAGE_KEY);
+      } catch {
+        /* nothing stored to clear */
+      }
       setSent(true);
     } catch {
       setErrors({ form: "That did not go through. Try once more." });
@@ -835,6 +926,43 @@ export default function LeadForm({
             error={errors.college}
           />
         </div>
+
+        {extraQuestion ? (
+          <div className="mb-2.5">
+            <label
+              htmlFor="enquiry-extra"
+              className="mb-1 block text-[11.5px] font-bold text-text-primary"
+            >
+              {extraQuestion.label}
+              {extraQuestion.required ? (
+                <span className="text-[#c03c19]"> *</span>
+              ) : null}
+            </label>
+            {extraQuestion.type === "select" ? (
+              <select
+                id="enquiry-extra"
+                value={extraAnswer}
+                onChange={(e) => setExtraAnswer(e.target.value)}
+                className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
+              >
+                <option value="">Select an option</option>
+                {extraQuestion.options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="enquiry-extra"
+                type="text"
+                value={extraAnswer}
+                onChange={(e) => setExtraAnswer(e.target.value)}
+                className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
+              />
+            )}
+          </div>
+        ) : null}
 
         <div className="mb-2.5">
           <div className="mb-[9px] flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">

@@ -12,6 +12,7 @@ import {
   listCollegesPublicService,
   updateCollegeService,
 } from "../services/college.services";
+import { normalizeState } from "../constants/indianStates";
 
 export const listCollegesPublic = asyncHandler(
   async (req: Request, res: Response) => {
@@ -69,9 +70,19 @@ const requireNonEmptyLocation = (location: unknown): string => {
   return location.trim();
 };
 
+/** Absent or blank is allowed (legacy rows carry no state); wrong is not. */
+const parseOptionalState = (state: unknown): string | undefined => {
+  if (state === undefined || state === null || state === "") return undefined;
+  const resolved = normalizeState(state);
+  if (!resolved) {
+    throw new AppError("Unknown state", 400);
+  }
+  return resolved;
+};
+
 export const createCollege = asyncHandler(
   async (req: Request, res: Response) => {
-    const { name, location, website, image, isActive } = req.body;
+    const { name, location, state, website, image, isActive } = req.body;
     if (!name || typeof name !== "string" || !name.trim()) {
       throw new AppError("College name is required", 400);
     }
@@ -79,6 +90,7 @@ export const createCollege = asyncHandler(
     const college = await createCollegeService({
       name,
       location: loc,
+      state: parseOptionalState(state),
       website: typeof website === "string" ? website : undefined,
       image: typeof image === "string" ? image : undefined,
       isActive,
@@ -91,11 +103,12 @@ export const updateCollege = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
     if (!id) throw new AppError("College id is required", 400);
-    const { name, location, website, image, isActive } = req.body;
+    const { name, location, state, website, image, isActive } = req.body;
     const loc = requireNonEmptyLocation(location);
     const college = await updateCollegeService(id, {
       name,
       location: loc,
+      state: parseOptionalState(state),
       website: typeof website === "string" ? website : undefined,
       image: typeof image === "string" ? image : undefined,
       isActive,

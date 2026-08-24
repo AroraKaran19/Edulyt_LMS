@@ -19,6 +19,12 @@ export interface AdminPage {
   label: string;
   /** Frontend route this page lives at. */
   href: string;
+  /**
+   * Belongs to a staff role rather than to a permission grant. Kept in the
+   * catalog so a path still resolves to a key, but excluded from the grantable
+   * set so it can never be handed to an admin.
+   */
+  roleOnly?: boolean;
 }
 
 export interface AdminSection {
@@ -82,6 +88,39 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     ],
   },
   {
+    key: "crm",
+    label: "CRM",
+    pages: [
+      {
+        key: "crm.analytics",
+        label: "Analytics",
+        href: "/admin/crm/analytics",
+      },
+      { key: "crm.team", label: "Team", href: "/admin/crm/team" },
+      // `roleOnly` pages belong to a marketer or sales person: they show that
+      // person's own code, team and numbers, so they are meaningless for an
+      // admin and are not grantable to one.
+      {
+        key: "crm.my-leads",
+        label: "My leads",
+        href: "/admin/crm/my-leads",
+        roleOnly: true,
+      },
+      {
+        key: "crm.my-team",
+        label: "My team",
+        href: "/admin/crm/my-team",
+        roleOnly: true,
+      },
+      {
+        key: "crm.performance",
+        label: "My performance",
+        href: "/admin/crm/performance",
+        roleOnly: true,
+      },
+    ],
+  },
+  {
     key: "leads",
     label: "Leads",
     pages: [
@@ -123,7 +162,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     key: "scholarship",
     label: "Scholarship",
     pages: [
-      { key: "scholarship.tests", label: "Campaigns", href: "/admin/scholarship/tests" },
+      { key: "scholarship.tests", label: "Campaigns", href: "/admin/scholarship/campaigns" },
       { key: "scholarship.analytics", label: "Analytics", href: "/admin/scholarship/analytics" },
     ],
   },
@@ -164,12 +203,24 @@ export const ALL_PAGE_KEYS: string[] = ADMIN_PERMISSION_CATALOG.flatMap((s) =>
   s.pages.map((p) => p.key),
 );
 
+/** Pages owned by a staff role, never grantable to an admin. */
+export const ROLE_ONLY_PAGE_KEYS: ReadonlySet<string> = new Set(
+  ADMIN_PERMISSION_CATALOG.flatMap((s) =>
+    s.pages.filter((p) => p.roleOnly).map((p) => p.key),
+  ),
+);
+
+/** Page keys a super-admin may actually grant. */
+export const GRANTABLE_PAGE_KEYS: string[] = ALL_PAGE_KEYS.filter(
+  (k) => !ROLE_ONLY_PAGE_KEYS.has(k),
+);
+
 /**
  * All grantable permission keys: section keys + page keys (deduped — single
  * sections contribute one shared key). `admin.access` is deliberately absent.
  */
 export const ALL_PERMISSION_KEYS: string[] = Array.from(
-  new Set([...ALL_SECTION_KEYS, ...ALL_PAGE_KEYS]),
+  new Set([...ALL_SECTION_KEYS, ...GRANTABLE_PAGE_KEYS]),
 );
 
 const GRANTABLE_KEY_SET = new Set(ALL_PERMISSION_KEYS);
@@ -192,3 +243,54 @@ export const hasPageAccess = (
   pageKey: string,
 ): boolean =>
   permissions.includes(pageKey) || permissions.includes(sectionOf(pageKey));
+
+/**
+ * Page keys a staff role reaches by virtue of the role itself. These roles
+ * hold no permissions array at all, so `hasPageAccess` would deny them every
+ * page.
+ *
+ * Mirrored in `frontend/src/config/adminPermissions.ts`; keep the two in sync.
+ */
+export const ROLE_PAGE_KEYS: Record<string, readonly string[]> = {
+  marketer: ["scholarship.tests", "crm.my-team", "crm.performance"],
+  // `crm.my-leads` is the inbox of assigned leads; a marketer has none.
+  sales: [
+    "scholarship.tests",
+    "crm.my-team",
+    "crm.performance",
+    "crm.my-leads",
+  ],
+};
+
+/**
+ * True for a staff role whose grant is the role itself rather than a
+ * permissions array. Such a role is scoped to its own work, so this is also
+ * what ownership checks key off. One list, so the two can never disagree.
+ */
+export const isRolePageGated = (userType: string | undefined): boolean =>
+  Boolean(userType && ROLE_PAGE_KEYS[userType]);
+
+/**
+ * Access check that understands roles, not just permission arrays. Anything
+ * gating an admin route for a viewer who might hold a role-based grant must
+ * use this rather than `hasPageAccess`.
+ */
+export const canAccessPageAsRole = (
+  userType: string | undefined,
+  permissions: readonly string[],
+  pageKey: string,
+): boolean => {
+  // Checked before the super-admin bypass: a role-only page shows one person's
+  // own code and team, so it belongs to that role and to nobody else.
+  if (ROLE_ONLY_PAGE_KEYS.has(pageKey)) {
+    const own = userType ? ROLE_PAGE_KEYS[userType] : undefined;
+    return Boolean(own?.includes(pageKey));
+  }
+  if (userType === "super-admin") return true;
+  const roleKeys = userType ? ROLE_PAGE_KEYS[userType] : undefined;
+  // Checked before the admin path so a stray permissions array on a
+  // role-gated user cannot widen what the role grants.
+  if (roleKeys) return roleKeys.includes(pageKey);
+  if (userType !== "admin") return false;
+  return hasPageAccess(permissions, pageKey);
+};

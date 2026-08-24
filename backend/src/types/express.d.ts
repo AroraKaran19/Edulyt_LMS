@@ -26,6 +26,8 @@ declare global {
         testId: string;
         email: string;
         phoneVerified: boolean;
+        /** The proved number; empty until `phoneVerified` is true. */
+        phone: string;
       };
     }
   }

@@ -18,6 +18,7 @@ import {
   startAttempt,
   submitAttempt,
 } from "../services/scholarshipAttempt.services";
+import { captureScholarshipLead } from "../services/scholarshipLead.services";
 import {
   getPublicCampaignBySlug,
   recordCampaignView,
@@ -137,8 +138,18 @@ export const getAttempt = asyncHandler(async (req: Request, res: Response) => {
 
 export const beginAttempt = asyncHandler(
   async (req: Request, res: Response) => {
-    const { testId, email } = fullyVerified(req);
+    const { testId, email, phone } = fullyVerified(req);
     const attempt = await startAttempt(testId, email);
+
+    // Detached: campaign traffic joins the lead pool, but a failure there must
+    // never cost someone the test they just started.
+    void captureScholarshipLead({
+      testId,
+      email,
+      phone,
+      ref: typeof req.body?.ref === "string" ? req.body.ref : undefined,
+    });
+
     sendSuccessResponse(res, attempt, "Attempt started", 201);
   },
 );

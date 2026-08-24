@@ -14,6 +14,8 @@ import {
   leadRoutes,
   scholarshipTestRoutes,
   scholarshipPublicRoutes,
+  crmProfileRoutes,
+  crmPublicRoutes,
   enquiryPublicRoutes,
   testimonialRoutes,
   categoryRoutes,
@@ -99,6 +101,8 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/faq", faqRoutes);
 app.use("/api/leads", leadRoutes);
 app.use("/api/scholarship-tests", scholarshipTestRoutes);
+app.use("/api/crm", crmProfileRoutes);
+app.use("/api/crm-public", crmPublicRoutes);
 app.use("/api/scholarship", scholarshipPublicRoutes);
 app.use("/api/enquiry", enquiryPublicRoutes);
 app.use("/api/testimonials", testimonialRoutes);

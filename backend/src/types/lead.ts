@@ -1,7 +1,56 @@
 import { Document, Types } from "mongoose";
 
-/** Other capture points reuse this collection rather than adding their own. */
-export type LeadSource = "enquiry-form";
+export type LeadSourceKind = "enquiry" | "scholarship";
+
+/** Object rather than a string so a scholarship lead carries its campaign. */
+export interface LeadSource {
+  kind: LeadSourceKind;
+  /** Nulled when the campaign is deleted; title and slug survive as history. */
+  testId?: Types.ObjectId | null;
+  title?: string;
+  slug?: string;
+}
+
+/** Frozen at capture. `userId` is nulled if that user is later deleted. */
+export interface LeadCreator {
+  userId: Types.ObjectId | null;
+  code: string;
+  name: string;
+  role:
+    | "marketer"
+    | "sales"
+    | "marketing-intern"
+    | "sales-intern"
+    /** Written before campus ambassadors were split into two kinds. */
+    | "ambassador";
+}
+
+export interface LeadParent {
+  userId: Types.ObjectId | null;
+  name: string;
+}
+
+export interface LeadActor {
+  userId: Types.ObjectId | null;
+  name: string;
+}
+
+export interface LeadStatusChange {
+  from: LeadStatus | null;
+  to: LeadStatus;
+  changedByUserId: Types.ObjectId | null;
+  changedByName: string;
+  changedAt: Date;
+  note?: string;
+}
+
+export interface LeadAssignmentChange {
+  toUserId: Types.ObjectId | null;
+  toName: string;
+  byUserId: Types.ObjectId | null;
+  byName: string;
+  at: Date;
+}
 
 export type LeadStatus =
   | "new"
@@ -32,6 +81,21 @@ export interface Lead extends Document {
   platformUserId?: Types.ObjectId;
 
   submittedByUserId?: Types.ObjectId;
+
+  creator?: LeadCreator;
+  parent?: LeadParent;
+
+  collegeId?: Types.ObjectId;
+  collegeName?: string;
+  state?: string;
+
+  assignedTo?: LeadActor;
+  assignedBy?: LeadActor;
+  assignedAt?: Date;
+  assignmentHistory: LeadAssignmentChange[];
+  statusHistory: LeadStatusChange[];
+  convertedAt?: Date | null;
+  convertedBy?: LeadActor | null;
 
   status: LeadStatus;
   note?: string;

@@ -124,7 +124,9 @@ export default function LeadDetailsModal({
               {loading ? "Loading lead" : lead?.name}
             </h2>
             <p className="text-xs text-gray-500">
-              {lead ? LEAD_SOURCE_LABELS[lead.source] ?? lead.source : ""}
+              {lead
+                ? (LEAD_SOURCE_LABELS[lead.source?.kind] ?? lead.source?.kind)
+                : ""}
               {lead ? ` · ${formatDateTime(lead.createdAt)}` : ""}
             </p>
           </div>
@@ -232,6 +234,77 @@ export default function LeadDetailsModal({
                 )}
               </dl>
             </div>
+
+            {lead.creator || lead.collegeName ? (
+              <div>
+                <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
+                  Attribution
+                </h3>
+                <dl className="space-y-1.5 rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
+                  {lead.creator ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-gray-500">Created by</dt>
+                      <dd className="text-right text-gray-900">
+                        {lead.creator.name || "Unnamed"} ({lead.creator.role})
+                        <span className="ml-1 text-xs text-gray-500">
+                          {lead.creator.code}
+                        </span>
+                      </dd>
+                    </div>
+                  ) : null}
+                  {lead.parent?.name ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-gray-500">Reports to</dt>
+                      <dd className="text-right text-gray-900">
+                        {lead.parent.name}
+                      </dd>
+                    </div>
+                  ) : null}
+                  {lead.collegeName ? (
+                    <div className="flex justify-between gap-4">
+                      <dt className="text-gray-500">College</dt>
+                      <dd className="text-right text-gray-900">
+                        {lead.collegeName}
+                        {lead.state ? `, ${lead.state}` : ""}
+                      </dd>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-gray-500">Assigned to</dt>
+                    <dd className="text-right text-gray-900">
+                      {lead.assignedTo?.userId
+                        ? lead.assignedTo.name
+                        : "Unassigned"}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
+
+            {lead.statusHistory && lead.statusHistory.length > 0 ? (
+              <div>
+                <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
+                  Status history
+                </h3>
+                <ul className="space-y-1.5 rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
+                  {[...lead.statusHistory].reverse().map((entry, i) => (
+                    <li
+                      key={`${entry.changedAt}-${i}`}
+                      className="flex flex-wrap justify-between gap-2"
+                    >
+                      <span className="text-gray-900">
+                        {entry.from ? `${entry.from} to ` : ""}
+                        {entry.to}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {entry.changedByName || "Unknown"} ·{" "}
+                        {formatDateTime(entry.changedAt)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
             {lead.pageQuery ? (
               <div>

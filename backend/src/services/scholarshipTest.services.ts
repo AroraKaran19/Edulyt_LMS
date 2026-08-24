@@ -10,6 +10,7 @@ import {
 } from "../models";
 import { todayIst } from "../utils/ist";
 import { AppError } from "../middlewares/error.middleware";
+import { isRolePageGated } from "../config/adminPermissions";
 import {
   generateScholarshipCouponCode,
   slugifyCampaignTitle,
@@ -167,8 +168,13 @@ export interface UpdateCampaignInput {
   questions?: string[];
 }
 
-/** Marketers only ever see their own work; everyone else sees all of it. */
-const isScopedToOwn = (actor: Actor): boolean => actor.userType === "marketer";
+/**
+ * Role-granted staff only ever see their own work; everyone else sees all of
+ * it. Keyed off the same role map as page access so a role can never be
+ * admitted to the page without also being scoped on it.
+ */
+const isScopedToOwn = (actor: Actor): boolean =>
+  isRolePageGated(actor.userType);
 
 const escapeRegex = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

@@ -166,6 +166,7 @@ export interface User {
     | "collaborator"
     | "partner"
     | "marketer"
+    | "sales"
     | "admin"
     | "super-admin";
   provider: "credentials" | "google" | "linkedin";
@@ -183,6 +184,12 @@ export interface User {
   dob?: Date;
 
   permissions: string[];
+
+  /**
+   * Set for a campus ambassador whose link is live. Sent in the auth payload so
+   * the dashboard can show their tab without an extra request.
+   */
+  crmAmbassadorKind?: "marketing" | "sales";
 
   refreshTokens: {
     token: string;

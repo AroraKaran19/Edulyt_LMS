@@ -2,7 +2,7 @@
  * Imports colleges from frontend/public/colleges.json into MongoDB.
  *
  * Source shape: { "Name of the college": string, "State": string }
- * Stored as:    { name, location: "{State}, India", isActive: true }
+ * Stored as:    { name, location: "{State}, India", state, isActive: true }
  *
  * Re-runs are safe: upserts on (name + location) so existing rows are not duplicated.
  *
@@ -17,6 +17,7 @@ import fs from "fs";
 import dotenv from "dotenv";
 import { connectDB, disconnectDB } from "../config/database";
 import { CollegeModel } from "../models";
+import { normalizeState, type IndianState } from "../constants/indianStates";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -43,7 +44,11 @@ function parseArgs() {
 
 function buildDocuments(rows: RawCollege[]) {
   const seen = new Set<string>();
-  const docs: { name: string; location: string }[] = [];
+  const docs: {
+    name: string;
+    location: string;
+    state: IndianState | undefined;
+  }[] = [];
   let skippedInvalid = 0;
   let skippedDupInFile = 0;
 
@@ -61,7 +66,7 @@ function buildDocuments(rows: RawCollege[]) {
       continue;
     }
     seen.add(key);
-    docs.push({ name, location });
+    docs.push({ name, location, state: normalizeState(state) ?? undefined });
   }
 
   return { docs, skippedInvalid, skippedDupInFile };
@@ -121,6 +126,9 @@ async function main() {
               location: d.location,
               isActive: true,
             },
+            // Unlike the rest, `state` is $set: rows imported before the field
+            // existed must gain it on a re-run, not stay blank forever.
+            ...(d.state ? { $set: { state: d.state } } : {}),
           },
           upsert: true,
         },

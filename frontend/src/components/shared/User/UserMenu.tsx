@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import ReferAndEarnModal from "@/components/shared/Referral/ReferAndEarnModal";
+import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 
 const UserMenu = () => {
   const { user: userFromAuth, handleSignOut } = useAuth();
@@ -174,11 +175,21 @@ const UserMenu = () => {
       href: "",
     },
   ];
+  /**
+   * Marketer and sales are staff too, but "/admin" is the Dashboard page their
+   * role map does not grant, so they are pointed at their own home instead.
+   */
+  const isRoleGatedStaff =
+    user.userType === "marketer" || user.userType === "sales";
+  const staffHome = isRoleGatedStaff
+    ? getPostLoginRedirectPath(user, undefined)
+    : "/admin";
+
   const adminMenuItems = [
     {
-      label: "Dashboard",
+      label: isRoleGatedStaff ? "Admin panel" : "Dashboard",
       icon: Home,
-      href: "/admin",
+      href: staffHome,
     },
     {
       label: "Profile",
@@ -237,7 +248,11 @@ const UserMenu = () => {
           ? collaboratorMenuItems
           : userMenuItems;
 
-  if (user.userType === "admin" || user.userType === "super-admin") {
+  if (
+    user.userType === "admin" ||
+    user.userType === "super-admin" ||
+    isRoleGatedStaff
+  ) {
     return (
       <div
         className="flex items-center gap-3 cursor-pointer relative user-icon select-none"

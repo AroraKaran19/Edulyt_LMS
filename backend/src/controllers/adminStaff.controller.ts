@@ -31,9 +31,14 @@ export const listAdminsController = asyncHandler(
   },
 );
 
-/** Staff can be an admin or a marketer, so the copy has to name which. */
-const roleLabel = (role?: string): string =>
-  role === "marketer" ? "Marketer" : "Admin";
+/** Staff can be an admin, a marketer, or sales, so the copy names which. */
+const ROLE_LABELS: Record<string, string> = {
+  admin: "Admin",
+  marketer: "Marketer",
+  sales: "Sales",
+};
+
+const roleLabel = (role?: string): string => ROLE_LABELS[role ?? ""] ?? "Admin";
 
 /**
  * @route   POST /api/admin/staff/admins

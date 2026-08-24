@@ -22,6 +22,12 @@ async function refreshAccessToken(token: any) {
 
     return {
       ...token,
+      /*
+       * Refresh re-reads the user, so a field that changed since sign-in (being
+       * made a campus ambassador, say) reaches the session without a re-login.
+       * Spread before the token fields below so it can never overwrite them.
+       */
+      ...(refreshedTokens.user ?? {}),
       accessToken: refreshedTokens.accessToken,
       // Rotation: store the new refresh token; fall back to the old one if the
       // backend didn't rotate for some reason.

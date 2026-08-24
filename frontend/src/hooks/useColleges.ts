@@ -1,10 +1,13 @@
 import { useCallback, useState } from "react";
 import apiClient from "@/configs/apiConfig";
+import type { IndianState } from "@/constants/indianStates";
 
 export interface College {
   _id: string;
   name: string;
+  /** Display string. `state` is the filterable field. */
   location: string;
+  state?: IndianState;
   website?: string;
   image?: string;
   isActive: boolean;
@@ -22,6 +25,7 @@ export interface ListCollegesResult {
 export interface CreateCollegePayload {
   name: string;
   location: string;
+  state?: string;
   website?: string;
   image?: string;
   isActive?: boolean;

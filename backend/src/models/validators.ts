@@ -1,5 +1,5 @@
-import { Plan, Quiz } from "@/types";
-import { Review } from "@/types/review";
+import { Plan, Quiz } from "../types";
+import { Review } from "../types/review";
 
 export const validateUrl = (url: string) => {
   return url.startsWith("https://") || url.startsWith("http://");

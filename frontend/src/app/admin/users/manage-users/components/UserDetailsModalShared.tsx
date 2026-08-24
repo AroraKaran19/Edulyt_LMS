@@ -27,6 +27,9 @@ export function formatUserTypeLabel(userType: string): string {
     instructor: "Instructor",
     student: "Student",
     partner: "Partner",
+    marketer: "Marketer",
+    sales: "Sales",
+    collaborator: "Collaborator",
   };
   return map[userType.toLowerCase()] ?? userType.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()).join(" ");
 }

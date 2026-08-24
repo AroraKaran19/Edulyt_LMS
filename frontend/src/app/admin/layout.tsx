@@ -18,7 +18,7 @@ const AdminLayout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthGuard
-      requiredUserType={["admin", "super-admin", "marketer"]}
+      requiredUserType={["admin", "super-admin", "marketer", "sales"]}
       fallbackPath="/login"
     >
       <SidebarProvider>

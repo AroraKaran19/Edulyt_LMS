@@ -1,4 +1,4 @@
-import { QnA, QnAReply } from "@/types";
+import { QnA, QnAReply } from "../types";
 import mongoose from "mongoose";
 
 // Define static methods interface

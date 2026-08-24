@@ -7,6 +7,7 @@ import {
   Loader2,
   Search,
   Trash2,
+  UserCheck,
   UserPlus,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -15,7 +16,12 @@ import useAuth from "@/hooks/useAuth";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
 import Pagination from "@/components/admin/Pagination";
+import { STATE_SELECT_OPTIONS } from "@/constants/indianStates";
+import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
+import useCrm from "@/hooks/useCrm";
 import LeadDetailsModal from "./LeadDetailsModal";
+import AssignLeadsModal from "./AssignLeadsModal";
 import {
   LEAD_SOURCE_LABELS,
   LEAD_STATUSES,
@@ -31,15 +37,13 @@ const formatDate = (value: string) =>
     timeStyle: "short",
   });
 
-const answerFor = (lead: Lead, key: string) =>
-  lead.answers.find((a) => a.key === key)?.value ?? "—";
-
 const answerForAny = (lead: Lead, ...keys: string[]) =>
   keys.map((k) => lead.answers.find((a) => a.key === k)?.value).find(Boolean) ??
   "—";
 
 export default function LeadsPage() {
   const { user } = useAuth();
+  const { fetchAssignees } = useCrm();
   const isSuperAdmin = user?.userType === "super-admin";
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +53,12 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [state, setState] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assigneeLabel, setAssigneeLabel] = useState("");
+  const [assigning, setAssigning] = useState(false);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -69,6 +79,8 @@ export default function LeadsPage() {
           limit: PAGE_SIZE,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          state: state || undefined,
+          assignedTo: assignedTo || undefined,
         },
       });
       const data = res.data?.data;
@@ -81,11 +93,50 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, status]);
+  }, [page, debouncedSearch, status, state, assignedTo]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  /** "Any" and "Unassigned" head page 1; a search returns only real people. */
+  const fetchAssigneesWithAll = async (page: number, search: string) => {
+    const result = await fetchAssignees(page, search);
+    if (page === 1 && !search.trim()) {
+      return {
+        ...result,
+        items: [
+          { value: "", label: "Any assignee" },
+          { value: "unassigned", label: "Unassigned" },
+          ...result.items,
+        ],
+      };
+    }
+    return result;
+  };
+
+  const assignSelected = async (assigneeId: string | null) => {
+    setAssigning(true);
+    try {
+      await apiClient.post("/leads/admin/assign", {
+        leadIds: selected,
+        assigneeId,
+      });
+      const n = selected.length;
+      toast.success(
+        assigneeId
+          ? `Assigned ${n} lead${n === 1 ? "" : "s"}`
+          : `Unassigned ${n} lead${n === 1 ? "" : "s"}`
+      );
+      setSelected([]);
+      setAssignOpen(false);
+      await load();
+    } catch {
+      toast.error("Could not assign these leads");
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const removeLead = async (lead: Lead) => {
     if (!confirm(`Delete the lead from ${lead.name}? This cannot be undone.`)) {
@@ -124,8 +175,8 @@ export default function LeadsPage() {
         </span>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-[240px] flex-1">
+      <div className="mb-4 flex flex-wrap items-center gap-2.5">
+        <div className="relative min-w-[220px] flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-gray-400" />
           <Input
             value={search}
@@ -141,34 +192,103 @@ export default function LeadsPage() {
             setStatus(value);
             setPage(1);
           }}
-          className="min-w-[160px]"
+          className="w-40"
         />
+        <Select
+          searchable
+          options={[{ value: "", label: "All states" }, ...STATE_SELECT_OPTIONS]}
+          value={state}
+          onChange={(value) => {
+            setState(value);
+            setPage(1);
+          }}
+          searchPlaceholder="Search states..."
+          className="w-44"
+        />
+        <InfiniteScrollSelect
+          value={assignedTo}
+          onChange={(v) => {
+            const next = String(v);
+            setAssignedTo(next);
+            setAssigneeLabel(
+              next === "" ? "" : next === "unassigned" ? "Unassigned" : "",
+            );
+            setPage(1);
+          }}
+          fetchOptions={fetchAssigneesWithAll}
+          selectedLabel={assigneeLabel || undefined}
+          placeholder="Any assignee"
+          searchPlaceholder="Search sales..."
+          emptyMessage="No sales users found"
+          dropdownPortal
+          className="w-44"
+        />
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="text-sm text-gray-600">
+          {selected.length > 0
+            ? `${selected.length} selected`
+            : "Tick leads to assign them"}
+        </span>
+        <OrangeButton
+          glow={false}
+          disabled={selected.length === 0}
+          onClick={() => setAssignOpen(true)}
+        >
+          <UserCheck className="mr-2 size-4" />
+          Assign
+        </OrangeButton>
+        {selected.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setSelected([])}
+            className="text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            Clear
+          </button>
+        ) : null}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full text-[13px]">
             <thead className="bg-gray-50">
-              <tr className="text-left text-xs font-semibold tracking-wide text-gray-500 uppercase">
-                <th className="px-4 py-3 sm:px-6">Lead</th>
-                <th className="px-4 py-3 sm:px-6">Plan</th>
-                <th className="px-4 py-3 sm:px-6">College</th>
-                <th className="px-4 py-3 sm:px-6">On platform</th>
-                <th className="px-4 py-3 sm:px-6">Status</th>
-                <th className="px-4 py-3 sm:px-6">Received</th>
-                {isSuperAdmin ? <th className="px-4 py-3 sm:px-6" /> : null}
+              <tr className="text-left text-[10px] font-semibold tracking-wide text-gray-500 uppercase">
+                <th className="w-10 px-3 py-2.5 sm:px-4">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on this page"
+                    checked={
+                      leads.length > 0 && selected.length === leads.length
+                    }
+                    onChange={(e) =>
+                      setSelected(e.target.checked ? leads.map((l) => l._id) : [])
+                    }
+                    className="size-4 rounded border-gray-300 text-orange-600"
+                  />
+                </th>
+                <th className="px-3 py-2.5 sm:px-4">Lead</th>
+                <th className="px-3 py-2.5 sm:px-4">Plan</th>
+                <th className="px-3 py-2.5 sm:px-4">Creator</th>
+                <th className="px-3 py-2.5 sm:px-4">Assignee</th>
+                <th className="px-3 py-2.5 sm:px-4">College</th>
+                <th className="px-3 py-2.5 sm:px-4">On platform</th>
+                <th className="px-3 py-2.5 sm:px-4">Status</th>
+                <th className="px-3 py-2.5 sm:px-4">Received</th>
+                {isSuperAdmin ? <th className="px-3 py-2.5 sm:px-4" /> : null}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-12 text-center">
+                  <td colSpan={isSuperAdmin ? 10 : 9} className="px-6 py-12 text-center">
                     <Loader2 className="mx-auto size-6 animate-spin text-gray-400" />
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-12 text-center">
+                  <td colSpan={isSuperAdmin ? 10 : 9} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <UserPlus className="size-10 text-gray-300" />
                       <p className="font-medium text-gray-500">No leads yet</p>
@@ -182,56 +302,114 @@ export default function LeadsPage() {
                     onClick={() => setOpenLeadId(lead._id)}
                     className="cursor-pointer transition-colors hover:bg-gray-50"
                   >
-                    <td className="min-w-[220px] px-4 py-4 sm:px-6">
-                      <div className="text-sm font-medium text-gray-900">
+                    <td
+                      className="px-3 py-2.5 sm:px-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label={`Select lead from ${lead.name}`}
+                        checked={selected.includes(lead._id)}
+                        onChange={(e) =>
+                          setSelected((prev) =>
+                            e.target.checked
+                              ? [...prev, lead._id]
+                              : prev.filter((id) => id !== lead._id)
+                          )
+                        }
+                        className="size-4 rounded border-gray-300 text-orange-600"
+                      />
+                    </td>
+                    <td className="min-w-[220px] px-3 py-2.5 sm:px-4">
+                      <div className="font-medium text-gray-900">
                         {lead.name}
                       </div>
-                      <div className="text-xs text-gray-500">{lead.email}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-[11px] text-gray-500">{lead.email}</div>
+                      <div className="text-[11px] text-gray-500">
                         +91 {lead.phone}
                       </div>
+                      {(lead.duplicateEmailCount ?? 1) > 1 ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSearch(lead.email);
+                          }}
+                          className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 hover:bg-amber-200"
+                        >
+                          {(lead.duplicateEmailCount ?? 1) - 1} other
+                          {(lead.duplicateEmailCount ?? 1) - 1 === 1 ? "" : "s"}
+                        </button>
+                      ) : null}
                     </td>
-                    <td className="min-w-[150px] px-4 py-4 text-sm text-gray-900 sm:px-6">
-                      {answerFor(lead, "plan")}
+                    <td className="min-w-[150px] px-3 py-2.5 text-gray-900 sm:px-4">
+                      {lead.answers.find((a) => a.key === "plan")?.value ?? "—"}
                     </td>
-                    <td className="min-w-[150px] px-4 py-4 text-sm text-gray-700 sm:px-6">
-                      {/* Leads captured before the college field still carry
-                          careerStage here, so keep showing it. */}
-                      {answerForAny(lead, "college", "careerStage")}
+                    <td className="min-w-[150px] px-3 py-2.5 sm:px-4">
+                      {lead.creator ? (
+                        <>
+                          <div className="text-gray-900">
+                            {lead.creator.name || "Unnamed"}
+                          </div>
+                          <div className="text-[11px] text-gray-500">
+                            {lead.creator.code} · {lead.creator.role}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-gray-400">Direct</span>
+                      )}
                     </td>
-                    <td className="px-4 py-4 sm:px-6">
+                    <td className="min-w-[150px] px-3 py-2.5 sm:px-4">
+                      {lead.assignedTo?.userId ? (
+                        <span className="text-gray-900">
+                          {lead.assignedTo.name}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">Unassigned</span>
+                      )}
+                    </td>
+                    <td className="min-w-[150px] px-3 py-2.5 text-gray-700 sm:px-4">
+                      {/* Pre-snapshot leads still carry the college, and older
+                          ones carry careerStage, in `answers`. */}
+                      {lead.collegeName ??
+                        answerForAny(lead, "college", "careerStage")}
+                      {lead.state ? (
+                        <div className="text-[11px] text-gray-500">{lead.state}</div>
+                      ) : null}
+                    </td>
+                    <td className="px-3 py-2.5 sm:px-4">
                       {lead.emailOnPlatform === true ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-700">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-green-700">
                           <BadgeCheck className="size-4" />
                           Yes
                         </span>
                       ) : lead.emailOnPlatform === false ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm text-gray-500">
+                        <span className="inline-flex items-center gap-1.5 text-gray-500">
                           <CircleSlash className="size-4" />
                           No
                         </span>
                       ) : (
-                        <span className="text-sm text-amber-600">Checking</span>
+                        <span className="text-amber-600">Checking</span>
                       )}
                     </td>
-                    <td className="px-4 py-4 sm:px-6">
+                    <td className="px-3 py-2.5 sm:px-4">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
                       >
                         {
                           LEAD_STATUSES.find((s) => s.value === lead.status)
                             ?.label
                         }
                       </span>
-                      <div className="mt-1 text-xs text-gray-400">
-                        {LEAD_SOURCE_LABELS[lead.source] ?? lead.source}
+                      <div className="mt-0.5 text-[11px] text-gray-400">
+                        {LEAD_SOURCE_LABELS[lead.source?.kind] ?? lead.source?.kind}
                       </div>
                     </td>
-                    <td className="min-w-[150px] px-4 py-4 text-sm whitespace-nowrap text-gray-500 sm:px-6">
+                    <td className="min-w-[150px] px-3 py-2.5 whitespace-nowrap text-gray-500 sm:px-4">
                       {formatDate(lead.createdAt)}
                     </td>
                     {isSuperAdmin ? (
-                      <td className="px-4 py-4 sm:px-6">
+                      <td className="px-3 py-2.5 sm:px-4">
                         <button
                           type="button"
                           aria-label={`Delete lead from ${lead.name}`}
@@ -268,6 +446,16 @@ export default function LeadsPage() {
           </div>
         ) : null}
       </div>
+
+      {assignOpen ? (
+        <AssignLeadsModal
+          count={selected.length}
+          fetchAssignees={fetchAssignees}
+          saving={assigning}
+          onClose={() => setAssignOpen(false)}
+          onConfirm={assignSelected}
+        />
+      ) : null}
 
       {openLeadId ? (
         <LeadDetailsModal

@@ -17,8 +17,8 @@ interface AdminUser {
   firstName?: string;
   lastName?: string;
   email: string;
-  // Marketers are staff too, so the list endpoint returns them here.
-  userType: "admin" | "super-admin" | "marketer";
+  // Marketers and sales are staff too, so the list endpoint returns them here.
+  userType: "admin" | "super-admin" | "marketer" | "sales";
   permissions?: string[];
 }
 
@@ -149,7 +149,8 @@ const AdminAccessPage = () => {
               ) : (
                 admins.map((admin) => {
                   const isSuper = admin.userType === "super-admin";
-                  const isMarketer = admin.userType === "marketer";
+                  const isRoleGated =
+                    admin.userType === "marketer" || admin.userType === "sales";
                   const chips = isSuper
                     ? ["Full access"]
                     : describePermissions(admin.permissions);
@@ -175,9 +176,9 @@ const AdminAccessPage = () => {
                           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-violet-100 text-violet-700">
                             <ShieldCheck className="w-3 h-3" /> Super Admin
                           </span>
-                        ) : isMarketer ? (
+                        ) : isRoleGated ? (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-700">
-                            Marketer
+                            {admin.userType === "sales" ? "Sales" : "Marketer"}
                           </span>
                         ) : (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
@@ -187,7 +188,7 @@ const AdminAccessPage = () => {
                       </td>
                       <td className="px-4 sm:px-6 py-4">
                         <div className="flex flex-wrap gap-1.5 max-w-md">
-                          {isMarketer ? (
+                          {isRoleGated ? (
                             <span className="text-xs text-gray-500">
                               Scholarship campaigns only, set by the role
                             </span>
@@ -219,9 +220,9 @@ const AdminAccessPage = () => {
                           <span className="text-xs text-gray-400">—</span>
                         ) : (
                           <div className="inline-flex items-center gap-2">
-                            {/* No Edit for a marketer: its access comes from the
+                            {/* No Edit for a role-gated staff member: its access comes from the
                                 role, so there are no page keys to change. */}
-                            {!isMarketer && (
+                            {!isRoleGated && (
                               <button
                                 type="button"
                                 onClick={() => setEditing(admin)}

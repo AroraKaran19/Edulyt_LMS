@@ -21,9 +21,33 @@ export type LeadStatus =
   | "converted"
   | "lost";
 
+export interface LeadActor {
+  userId: string | null;
+  name: string;
+}
+
+export interface LeadStatusChange {
+  from: LeadStatus | null;
+  to: LeadStatus;
+  changedByName: string;
+  changedAt: string;
+  note?: string;
+}
+
 export interface Lead {
   _id: string;
-  source: string;
+  source: { kind: "enquiry" | "scholarship"; title?: string; slug?: string };
+  creator?: { userId: string | null; code: string; name: string; role: string };
+  parent?: LeadActor;
+  collegeName?: string;
+  state?: string;
+  assignedTo?: LeadActor | null;
+  assignedAt?: string;
+  statusHistory?: LeadStatusChange[];
+  convertedAt?: string | null;
+  convertedBy?: LeadActor | null;
+  duplicateEmailCount?: number;
+  duplicatePhoneCount?: number;
   name: string;
   email: string;
   phone: string;
@@ -49,7 +73,8 @@ export const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
 ];
 
 export const LEAD_SOURCE_LABELS: Record<string, string> = {
-  "enquiry-form": "Enquiry form",
+  enquiry: "Enquiry form",
+  scholarship: "Scholarship test",
 };
 
 export const STATUS_STYLES: Record<LeadStatus, string> = {

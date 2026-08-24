@@ -93,6 +93,8 @@ const ManageUsersPage = () => {
       { value: "student", label: "Students" },
       { value: "instructor", label: "Instructors" },
       { value: "partner", label: "Partners" },
+      { value: "marketer", label: "Marketers" },
+      { value: "sales", label: "Sales" },
       { value: "admin", label: "Admins" },
       ...(isSuperAdmin
         ? [{ value: "super-admin", label: "Super Admins" as const }]
@@ -581,6 +583,10 @@ const ManageUsersPage = () => {
         return "bg-orange-100 text-orange-800";
       case "super-admin":
         return "bg-red-100 text-red-800";
+      case "marketer":
+        return "bg-emerald-100 text-emerald-800";
+      case "sales":
+        return "bg-teal-100 text-teal-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -624,6 +630,7 @@ const ManageUsersPage = () => {
             {/* User Type Filter */}
             <div className="sm:col-span-1">
               <Select
+                dropdownPortal
                 options={userTypeFilterOptions}
                 value={userTypeFilter}
                 onChange={setUserTypeFilter}
@@ -634,6 +641,7 @@ const ManageUsersPage = () => {
             {/* Status Filter */}
             <div className="sm:col-span-1">
               <Select
+                dropdownPortal
                 options={[
                   { value: "all", label: "All Status" },
                   { value: "active", label: "Active" },

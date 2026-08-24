@@ -27,9 +27,27 @@ const sanitizePermissions = (permissions: unknown): string[] => {
   return cleaned;
 };
 
-export type StaffRole = "admin" | "marketer";
+export type StaffRole = "admin" | "marketer" | "sales";
 
-const STAFF_ROLES: StaffRole[] = ["admin", "marketer"];
+export const STAFF_ROLES: readonly StaffRole[] = [
+  "admin",
+  "marketer",
+  "sales",
+];
+
+/**
+ * True for roles whose access comes from the role itself rather than a
+ * permissions array. Storing permissions on one would make it reachable by
+ * `requirePermission` and so grantable any admin page.
+ */
+export const isPermissionlessRole = (role: string): boolean =>
+  role === "marketer" || role === "sales";
+
+const ROLE_ARTICLE: Record<StaffRole, string> = {
+  admin: "an admin",
+  marketer: "a marketer",
+  sales: "a sales user",
+};
 
 /**
  * A marketer's access comes from its userType, not from page keys: the
@@ -44,9 +62,9 @@ const resolveRole = (role?: string): StaffRole => {
   return role as StaffRole;
 };
 
-/** Permissions are meaningful for admins only; a marketer always gets none. */
+/** Permissions are meaningful for admins only; other staff roles get none. */
 const permissionsForRole = (role: StaffRole, permissions: unknown): string[] =>
-  role === "marketer" ? [] : sanitizePermissions(permissions ?? []);
+  isPermissionlessRole(role) ? [] : sanitizePermissions(permissions ?? []);
 
 const GENDERS = ["male", "female", "other"] as const;
 export type StaffGender = (typeof GENDERS)[number];
@@ -112,7 +130,9 @@ const normalizeEmail = (email?: string): string => {
  */
 export const listAdminsService = async (page: number, limit: number) => {
   const skip = (page - 1) * limit;
-  const filter = { userType: { $in: ["admin", "super-admin", "marketer"] } };
+  const filter = {
+    userType: { $in: ["admin", "super-admin", "marketer", "sales"] },
+  };
 
   const [admins, total] = await Promise.all([
     UserModel.find(filter)
@@ -207,7 +227,7 @@ export const promoteUserToAdminService = async (
   }
   if (target.userType === resolved) {
     throw new AppError(
-      `This user is already ${resolved === "admin" ? "an admin" : "a marketer"}`,
+      `This user is already ${ROLE_ARTICLE[resolved]}`,
       409,
     );
   }
@@ -253,9 +273,9 @@ export const revokeAdminService = async (adminId: string) => {
   if (target.userType === "super-admin") {
     throw new AppError("A super-admin cannot be revoked", 403);
   }
-  // Marketers are staff too, so revoking one demotes it the same way. The
-  // permissions-update path deliberately stays admin-only.
-  if (target.userType !== "admin" && target.userType !== "marketer") {
+  // Marketers and sales are staff too, so revoking one demotes it the same
+  // way. The permissions-update path deliberately stays admin-only.
+  if (target.userType !== "admin" && !isPermissionlessRole(target.userType)) {
     throw new AppError("This user is not staff", 400);
   }
 

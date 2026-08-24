@@ -18,7 +18,7 @@ interface UserOption {
 
 const STEPS = ["Select user", "Access", "Review"] as const;
 
-type StaffRole = "admin" | "marketer";
+type StaffRole = "admin" | "marketer" | "sales";
 
 const ROLE_COPY: Record<StaffRole, { label: string; blurb: string }> = {
   admin: {
@@ -27,6 +27,10 @@ const ROLE_COPY: Record<StaffRole, { label: string; blurb: string }> = {
   },
   marketer: {
     label: "Marketer",
+    blurb: "Scholarship campaigns only. No other admin page.",
+  },
+  sales: {
+    label: "Sales",
     blurb: "Scholarship campaigns only. No other admin page.",
   },
 };
@@ -57,7 +61,9 @@ const AddAdminModal = ({
   const [permissions, setPermissions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const isMarketer = role === "marketer";
+  // Both non-admin staff roles are granted by the role itself, so neither gets
+  // the permission-picking step.
+  const isPermissionless = role !== "admin";
 
   // Cache every user we page through so onChange(id) can resolve the full object.
   const usersCache = useRef<Record<string, UserOption>>({});
@@ -82,9 +88,9 @@ const AddAdminModal = ({
     try {
       await apiClient.post("/admin/staff/admins/promote", {
         email: selectedUser.email,
-        // Sent even for a marketer, where the server discards it: the role, not
-        // the payload, is what decides a marketer's access.
-        permissions: isMarketer ? [] : permissions,
+        // Sent even for a role-gated staff member, where the server discards
+        // it: the role, not the payload, is what decides their access.
+        permissions: isPermissionless ? [] : permissions,
         role,
       });
       toast.success(
@@ -224,7 +230,7 @@ const AddAdminModal = ({
                 <label className="text-sm font-medium text-gray-700">
                   Role
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {(Object.keys(ROLE_COPY) as StaffRole[]).map((r) => {
                     const active = role === r;
                     return (
@@ -251,12 +257,13 @@ const AddAdminModal = ({
               </div>
 
               {/* A disabled permission tree would imply the grants still matter
-                  for a marketer, so it is replaced rather than greyed out. */}
-              {isMarketer ? (
+                  for a role-gated staff member, so it is replaced rather than greyed out. */}
+              {isPermissionless ? (
                 <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
                   <p className="text-sm text-gray-700">
-                    Marketers get the Scholarship campaigns page and nothing
-                    else, and they only see campaigns they created themselves.
+                    {ROLE_COPY[role].label} gets the Scholarship campaigns page
+                    and nothing else, and only sees campaigns they created
+                    themselves.
                   </p>
                 </div>
               ) : (
@@ -289,7 +296,7 @@ const AddAdminModal = ({
                     {nameOf(selectedUser)}
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
-                        isMarketer
+                        isPermissionless
                           ? "bg-emerald-100 text-emerald-700"
                           : "bg-blue-100 text-blue-700"
                       }`}
@@ -306,11 +313,11 @@ const AddAdminModal = ({
 
               <div>
                 <div className="text-sm font-medium text-gray-700 mb-2">
-                  {isMarketer
+                  {isPermissionless
                     ? "Page access"
                     : `Page access (${permissionLabels.length})`}
                 </div>
-                {isMarketer ? (
+                {isPermissionless ? (
                   <p className="text-sm text-gray-600">
                     Scholarship campaigns only, and only the ones they create.
                   </p>

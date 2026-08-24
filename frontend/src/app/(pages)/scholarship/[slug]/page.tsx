@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import scholarshipClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { REF_STORAGE_KEY } from "@/constants/crm";
 import useAuth from "@/hooks/useAuth";
 import EmailGate from "./components/EmailGate";
 import PhoneGate from "./components/PhoneGate";
@@ -199,12 +200,46 @@ export default function ScholarshipCampaignPage() {
     })();
   }, [campaign, isAuthenticated, user?.email, slug, afterSession]);
 
+  /*
+   * Same handling as the enquiry form: sessionStorage rather than localStorage,
+   * because it is per tab, so two tabs opened from two different people's links
+   * keep their own attribution.
+   */
+  const [refCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    const clean = (fromUrl ?? "").trim().slice(0, 32);
+    if (clean) {
+      try {
+        sessionStorage.setItem(REF_STORAGE_KEY, clean);
+      } catch {
+        /* private mode: this render's value still works */
+      }
+      return clean;
+    }
+    try {
+      return sessionStorage.getItem(REF_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  /** Drop it from the address bar without a navigation. */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("ref")) return;
+    url.searchParams.delete("ref");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
   const begin = async () => {
     setStarting(true);
     try {
       const res = await scholarshipClient.post(
         ENDPOINTS.scholarshipPublic.attempt(slug),
-        {},
+        // Raw code only; the server resolves it. Sent at attempt start because
+        // that is where the lead is captured.
+        { ref: refCode || undefined },
         schAuth(token),
       );
       setAttempt(res.data?.data as AttemptView);

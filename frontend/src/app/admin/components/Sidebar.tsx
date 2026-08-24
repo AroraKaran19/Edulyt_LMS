@@ -9,13 +9,15 @@ import {
   MessageSquare,
   Settings,
   ShoppingCart,
+  Target,
   Tag,
   UserPlus,
   Users,
 } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
-import React from "react";
-import SidebarMenuItem from "./SidebarMenuItem";
+import React, { useState } from "react";
+import { usePathname } from "next/navigation";
+import SidebarMenuItem, { matchesHref } from "./SidebarMenuItem";
 import { cn } from "@/lib/utils";
 import useAuth from "@/hooks/useAuth";
 import {
@@ -38,7 +40,10 @@ interface MenuItem {
  * super-admin grant an admin a page whose every request returns 403.
  * `RequirePageAccess` gates the same paths server-side of the router.
  */
-const SUPER_ADMIN_ONLY_HREFS = new Set(["/admin/users/create-marketer"]);
+const SUPER_ADMIN_ONLY_HREFS = new Set([
+  "/admin/users/create-marketer",
+  "/admin/users/create-sales",
+]);
 
 interface AdminSidebarProps {
   isCollapsed: boolean;
@@ -54,6 +59,16 @@ const AdminSidebar = ({
   isMobileOverlay = false,
 }: AdminSidebarProps) => {
   const { user, handleSignOut } = useAuth();
+  const pathname = usePathname();
+  /**
+   * Which group is open, and the route it was opened on. Held here rather than
+   * per item so opening one closes the rest; a click only overrides the
+   * route-derived default while the reader stays on that route.
+   */
+  const [opened, setOpened] = useState<{ path: string; href: string | null }>({
+    path: "",
+    href: null,
+  });
   const isSuperAdmin = user?.userType === "super-admin";
   const permissions = user?.permissions ?? [];
 
@@ -175,6 +190,10 @@ const AdminSidebar = ({
                 label: "Create Marketer",
                 href: "/admin/users/create-marketer",
               },
+              {
+                label: "Create Sales",
+                href: "/admin/users/create-sales",
+              },
             ]
           : []),
       ],
@@ -187,6 +206,33 @@ const AdminSidebar = ({
         {
           label: "Moderation",
           href: "/admin/community/moderation",
+        },
+      ],
+    },
+    {
+      icon: <Target className="size-6" />,
+      label: "CRM",
+      href: "/admin/crm/analytics",
+      submenu: [
+        {
+          label: "Analytics",
+          href: "/admin/crm/analytics",
+        },
+        {
+          label: "Team",
+          href: "/admin/crm/team",
+        },
+        {
+          label: "My leads",
+          href: "/admin/crm/my-leads",
+        },
+        {
+          label: "My team",
+          href: "/admin/crm/my-team",
+        },
+        {
+          label: "My performance",
+          href: "/admin/crm/performance",
         },
       ],
     },
@@ -228,7 +274,7 @@ const AdminSidebar = ({
     {
       icon: <GraduationCap className="size-6" />,
       label: "Scholarship",
-      href: "/admin/scholarship/tests",
+      href: "/admin/scholarship/campaigns",
     },
     {
       icon: <FileBarChart className="size-6" />,
@@ -318,6 +364,20 @@ const AdminSidebar = ({
     })
     .filter((item): item is MenuItem => item !== null);
 
+  const activeHref =
+    visibleMenuItems.find(
+      (item) =>
+        matchesHref(item.href, pathname) ||
+        item.submenu?.some((sub) => matchesHref(sub.href, pathname)),
+    )?.href ?? null;
+
+  // A click wins only while the reader stays on the route they clicked from,
+  // so navigating away re-opens whichever group owns the new route.
+  const openHref = opened.path === pathname ? opened.href : activeHref;
+
+  const toggleGroup = (href: string) =>
+    setOpened({ path: pathname, href: openHref === href ? null : href });
+
   // Super-admin-only entry point to admin/permission management. Placed right
   // after Dashboard so it's visible without scrolling the menu.
   if (isSuperAdmin) {
@@ -399,6 +459,8 @@ const AdminSidebar = ({
                     menuItem={item}
                     isCollapsed={isCollapsed}
                     onNavigate={onNavigate}
+                    isOpen={openHref === item.href}
+                    onToggle={toggleGroup}
                   />
                 ))}
               </div>

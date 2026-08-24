@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp, Search, MessageCircle } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import Modal from "@/components/ui/Modal";
+import type { IndianState } from "@/constants/indianStates";
 
 // Admin WhatsApp number shown when a learner can't find their college in the
 // directory. Keep in sync if the support contact rotates.
@@ -22,6 +23,7 @@ export interface CollegeOption {
   _id: string;
   name: string;
   location: string;
+  state?: IndianState;
 }
 
 interface ListCollegesResponse {
@@ -56,7 +58,13 @@ interface CollegeSelectProps {
   onChange?: (value: string) => void;
   /** Fires when the learner picks a college from the directory. Gives the
    *  canonical `_id` plus the original fields. */
-  onSelect?: (college: { _id: string; name: string; location: string; display: string }) => void;
+  onSelect?: (college: {
+    _id: string;
+    name: string;
+    location: string;
+    state?: IndianState;
+    display: string;
+  }) => void;
   error?: string;
 }
 
@@ -245,6 +253,7 @@ const CollegeSelect = ({
         _id: college._id,
         name: college.name,
         location: college.location,
+        state: college.state,
         display: collegeValue,
       });
     },

@@ -7,7 +7,17 @@ import {
 } from "../middlewares/error.middleware";
 import { LeadModel } from "../models/lead.schema";
 import { UserModel } from "../models/user.schema";
-import { Lead, LeadAnswer } from "@/types/lead";
+import { CollegeModel } from "../models/college.schema";
+import { resolveCrmCode } from "../services/crmProfile.services";
+import { buildAttribution, LeadAttribution } from "../lib/leadAttribution";
+import {
+  assignLeads,
+  countDuplicates,
+  listAssignableSales,
+  transitionLeadStatus,
+  type AssignTarget,
+} from "../services/leadPipeline.services";
+import { Lead, LeadAnswer } from "../types/lead";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_RE = /^[6-9]\d{9}$/;
@@ -87,8 +97,7 @@ async function resolveEmailsOnPlatform(leads: Lead[]): Promise<void> {
  * since a lead could then be posted straight here with anything in it.
  */
 export const createLead = asyncHandler(async (req: Request, res: Response) => {
-  const { source = "enquiry-form", name, answers = [], pageQuery } =
-    req.body ?? {};
+  const { name, answers = [], pageQuery, ref, collegeId } = req.body ?? {};
 
   const proved = req.verifiedContact;
   if (!proved) {
@@ -113,9 +122,6 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
       "Enter a 10-digit Indian mobile number starting with 6, 7, 8 or 9",
       400
     );
-  }
-  if (source !== "enquiry-form") {
-    throw new AppError("Unknown lead source", 400);
   }
 
   const submittedByUserId = proved.userId;
@@ -143,8 +149,57 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     console.error("[leads] inline email check failed:", error);
   }
 
+  // Resolved server-side from the raw code. Accepting a creator id from the
+  // browser would let anyone assign leads to anyone.
+  let attribution: LeadAttribution = {};
+  if (ref) {
+    try {
+      const resolved = await resolveCrmCode(String(ref));
+      if (resolved) {
+        const owner = resolved.parentUserId
+          ? await UserModel.findById(resolved.parentUserId, {
+              firstName: 1,
+              lastName: 1,
+            }).lean()
+          : null;
+        const ownerName =
+          [owner?.firstName, owner?.lastName].filter(Boolean).join(" ").trim() ||
+          "";
+        attribution = buildAttribution(resolved, ownerName);
+      } else {
+        console.warn(`[leads] unresolved ref code: ${String(ref).slice(0, 32)}`);
+      }
+    } catch (error) {
+      // Attribution must never cost the student their submission.
+      console.error("[leads] attribution lookup failed:", error);
+    }
+  }
+
+  // Snapshotted so the state filter is one indexed equality, never a join.
+  let college: Record<string, unknown> = {};
+  if (collegeId && mongoose.isValidObjectId(collegeId)) {
+    try {
+      const doc = await CollegeModel.findById(collegeId, {
+        name: 1,
+        state: 1,
+      }).lean();
+      if (doc) {
+        college = {
+          collegeId: doc._id,
+          collegeName: doc.name,
+          ...(doc.state ? { state: doc.state } : {}),
+        };
+      }
+    } catch (error) {
+      console.error("[leads] college snapshot failed:", error);
+    }
+  }
+
   const lead = await LeadModel.create({
-    source,
+    // The endpoint decides the kind; the caller never asserts it.
+    source: { kind: "enquiry" },
+    ...attribution,
+    ...college,
     name: cleanName,
     email: cleanEmail,
     phone: cleanPhone,
@@ -174,14 +229,42 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   const status = String(req.query.status ?? "").trim();
   const source = String(req.query.source ?? "").trim();
 
+  const collegeId = String(req.query.collegeId ?? "").trim();
+  const state = String(req.query.state ?? "").trim();
+  const assignedTo = String(req.query.assignedTo ?? "").trim();
+  const creator = String(req.query.creator ?? "").trim();
+  const from = String(req.query.from ?? "").trim();
+  const to = String(req.query.to ?? "").trim();
+
   const filter: mongoose.FilterQuery<Lead> = {};
   if (status) filter.status = status;
-  if (source) filter.source = source;
+  if (source) filter["source.kind"] = source;
+  if (collegeId && mongoose.isValidObjectId(collegeId)) {
+    filter.collegeId = new mongoose.Types.ObjectId(collegeId);
+  }
+  if (state) filter.state = state;
+  if (assignedTo === "unassigned") {
+    filter["assignedTo.userId"] = null;
+  } else if (assignedTo && mongoose.isValidObjectId(assignedTo)) {
+    filter["assignedTo.userId"] = new mongoose.Types.ObjectId(assignedTo);
+  }
+  if (creator && mongoose.isValidObjectId(creator)) {
+    filter["creator.userId"] = new mongoose.Types.ObjectId(creator);
+  }
+  if (from || to) {
+    filter.createdAt = {
+      ...(from ? { $gte: new Date(from) } : {}),
+      ...(to ? { $lte: new Date(to) } : {}),
+    };
+  }
   if (search) {
     const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // Anchored on email and phone so their indexes are usable. Name stays
+    // unanchored: it has no index either way, and partial-name search is
+    // what people actually type.
     filter.$or = [
-      { email: { $regex: safe, $options: "i" } },
-      { phone: { $regex: safe, $options: "i" } },
+      { email: { $regex: `^${safe}`, $options: "i" } },
+      { phone: { $regex: `^${safe}` } },
       { name: { $regex: safe, $options: "i" } },
     ];
   }
@@ -197,10 +280,21 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   // One batched refresh for the page being shown, never one query per row.
   await resolveEmailsOnPlatform(leads);
 
+  const dupes = await countDuplicates(
+    [...new Set(leads.map((l) => l.email))],
+    [...new Set(leads.map((l) => l.phone))]
+  );
+
+  const rows = leads.map((lead) => ({
+    ...lead.toObject(),
+    duplicateEmailCount: dupes.byEmail.get(lead.email) ?? 1,
+    duplicatePhoneCount: dupes.byPhone.get(lead.phone) ?? 1,
+  }));
+
   sendSuccessResponse(
     res,
     {
-      leads,
+      leads: rows,
       total,
       page,
       totalPages: Math.ceil(total / limit),
@@ -247,24 +341,35 @@ export const updateLead = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Invalid lead id", 400);
   }
 
-  const update: Partial<Pick<Lead, "status" | "note">> = {};
+  const actor = {
+    userId: req.user?._id
+      ? new mongoose.Types.ObjectId(String(req.user._id))
+      : null,
+    name:
+      [req.user?.firstName, req.user?.lastName].filter(Boolean).join(" ").trim() ||
+      "",
+  };
+
+  let lead: Lead | null = null;
+
   if (status !== undefined) {
     const allowed = ["new", "contacted", "qualified", "converted", "lost"];
     if (!allowed.includes(String(status))) {
       throw new AppError("Invalid status", 400);
     }
-    update.status = status;
-  }
-  if (note !== undefined) {
-    update.note = String(note).slice(0, 2000);
-  }
-  if (Object.keys(update).length === 0) {
-    throw new AppError("Nothing to update", 400);
+    lead = await transitionLeadStatus(id, status, actor, String(note ?? ""));
   }
 
-  const lead = await LeadModel.findByIdAndUpdate(id, update, { new: true });
+  if (note !== undefined) {
+    lead = (await LeadModel.findByIdAndUpdate(
+      id,
+      { note: String(note).slice(0, 2000) },
+      { new: true }
+    )) as unknown as Lead | null;
+  }
+
   if (!lead) {
-    throw new AppError("Lead not found", 404);
+    throw new AppError("Nothing to update", 400);
   }
 
   sendSuccessResponse(res, { lead }, "Lead updated", 200);
@@ -289,3 +394,114 @@ export const deleteLead = asyncHandler(async (req: Request, res: Response) => {
 
   sendSuccessResponse(res, { id }, "Lead deleted", 200);
 });
+
+/**
+ * @desc  Assign or unassign a batch of leads
+ * @route POST /api/leads/admin/assign
+ * @access Admin with `leads`, super-admin
+ */
+export const assignLeadsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { leadIds, assigneeId } = req.body ?? {};
+    if (!Array.isArray(leadIds) || leadIds.length === 0) {
+      throw new AppError("Select at least one lead", 400);
+    }
+    if (leadIds.length > 500) {
+      throw new AppError("Assign at most 500 leads at a time", 400);
+    }
+
+    let target: AssignTarget | null = null;
+    if (assigneeId) {
+      if (!mongoose.isValidObjectId(assigneeId)) {
+        throw new AppError("Invalid assignee", 400);
+      }
+      const salesUser = await UserModel.findOne(
+        { _id: assigneeId, userType: "sales" },
+        { firstName: 1, lastName: 1, email: 1 }
+      ).lean();
+      if (!salesUser) {
+        throw new AppError("Leads can only be assigned to a sales user", 400);
+      }
+      target = {
+        userId: salesUser._id as unknown as mongoose.Types.ObjectId,
+        name:
+          [salesUser.firstName, salesUser.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim() || salesUser.email,
+      };
+    }
+
+    const actor = {
+      userId: req.user?._id
+        ? new mongoose.Types.ObjectId(String(req.user._id))
+        : null,
+      name:
+        [req.user?.firstName, req.user?.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || "",
+    };
+
+    const count = await assignLeads(leadIds.map(String), target, actor);
+    sendSuccessResponse(res, { assigned: count }, "Leads assigned", 200);
+  }
+);
+
+/**
+ * @desc  Sales people an admin can assign leads to
+ * @route GET /api/leads/admin/assignees
+ * @access Admin with `leads`, super-admin
+ */
+export const listAssigneesController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(50, Math.max(1, Number(req.query.limit ?? 20)));
+    const search = String(req.query.search ?? "").trim();
+    sendSuccessResponse(
+      res,
+      await listAssignableSales(page, limit, search),
+      "Assignees fetched",
+      200
+    );
+  }
+);
+
+/**
+ * @desc  The caller's own assigned leads
+ * @route GET /api/leads/mine
+ * @access Sales
+ *
+ * A separate endpoint rather than a filter on the admin pool: this one cannot
+ * be widened to somebody else's leads, whatever query string arrives.
+ */
+export const listMyAssignedLeads = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (req.user?.userType !== "sales") {
+      throw new AppError("You don't have access to this section", 403);
+    }
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 20)));
+    const status = String(req.query.status ?? "").trim();
+
+    const filter: mongoose.FilterQuery<Lead> = {
+      "assignedTo.userId": new mongoose.Types.ObjectId(String(req.user._id)),
+    };
+    if (status) filter.status = status;
+
+    const [leads, total] = await Promise.all([
+      LeadModel.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      LeadModel.countDocuments(filter),
+    ]);
+
+    sendSuccessResponse(
+      res,
+      { leads, total, page, totalPages: Math.ceil(total / limit) },
+      "Leads fetched",
+      200
+    );
+  }
+);

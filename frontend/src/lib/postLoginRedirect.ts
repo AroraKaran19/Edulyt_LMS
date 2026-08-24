@@ -2,6 +2,22 @@ import type { User } from "@/types/user";
 
 const STUDENT_HOME = "/dashboard";
 
+/**
+ * Where each role lands when it has no explicit destination.
+ *
+ * Marketer and sales cannot use "/admin": that route is the Dashboard page,
+ * which their role map does not grant, so they would be 404'd by
+ * `RequirePageAccess`. They get the first page their role actually owns.
+ */
+const ROLE_HOME: Record<string, string> = {
+  admin: "/admin",
+  "super-admin": "/admin",
+  instructor: "/instructor",
+  partner: "/partner/dashboard",
+  marketer: "/admin/crm/performance",
+  sales: "/admin/crm/my-leads",
+};
+
 /** Path used as NextAuth `callbackUrl` for OAuth so the final redirect runs client-side (role-based). */
 export const OAUTH_HANDOFF_PATH = "/auth-redirect" as const;
 
@@ -63,15 +79,8 @@ export function getPostLoginRedirectPath(
   callbackUrl: string | null | undefined
 ): string {
   const ut = user?.userType;
-  if (ut === "admin" || ut === "super-admin") {
-    return "/admin";
-  }
-  if (ut === "instructor") {
-    return "/instructor";
-  }
-  if (ut === "partner") {
-    return "/partner/dashboard";
-  }
+  const roleHome = ut ? ROLE_HOME[ut] : undefined;
+  if (roleHome) return roleHome;
 
   let raw = (callbackUrl ?? "").trim();
   if (!raw) raw = STUDENT_HOME;

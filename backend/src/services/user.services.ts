@@ -13,6 +13,7 @@ import {
   AffiliateModel,
   CourseModel,
   LiveClassModel,
+  LeadModel,
 } from "../models";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { deleteFilesFromS3, extractS3KeyFromUrl } from "./upload.services";
@@ -489,6 +490,23 @@ export const deleteUserService = async (
     AffiliateModel.updateMany(
       { users: userObjectId },
       { $pull: { users: userObjectId } },
+    ),
+    // Deleting an owner demotes their ambassadors, never blocks and never
+    // deletes: the code is kept so an admin can re-home them and restore the
+    // same link. Their leads are untouched.
+    UserModel.updateMany(
+      { crmParentUserId: userObjectId },
+      { $set: { crmCodeActive: false }, $unset: { crmParentUserId: "" } },
+    ),
+    // Leads are never deleted with their creator: they belong to the company.
+    // Only the pointer is cleared, so the name, code and role stay readable.
+    LeadModel.updateMany(
+      { "creator.userId": userObjectId },
+      { $set: { "creator.userId": null } },
+    ),
+    LeadModel.updateMany(
+      { "parent.userId": userObjectId },
+      { $set: { "parent.userId": null } },
     ),
   ]);
 

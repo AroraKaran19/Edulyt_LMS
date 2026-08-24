@@ -33,7 +33,7 @@ export const createCampaign = asyncHandler(
     const actor = actorOf(req);
     const body = req.body ?? {};
     // `createdBy` is taken from the session, never the body: otherwise a
-    // marketer could plant a campaign under someone else's name.
+    // role-gated staff member could plant a campaign under someone else's name.
     const created = await createScholarshipTest(
       {
         title: body.title,

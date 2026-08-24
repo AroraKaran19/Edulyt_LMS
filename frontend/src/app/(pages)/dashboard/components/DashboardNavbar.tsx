@@ -11,6 +11,8 @@ import apiClient from "@/configs/apiConfig";
 import { Course } from "@/types/course";
 import { Enrollment } from "@/types/enrollment";
 import { Loader2, X } from "lucide-react";
+import useAuth from "@/hooks/useAuth";
+import { AMBASSADOR_KIND_TAB_LABELS } from "@/hooks/useCrm";
 
 /**
  * Routes that need a minimal "focus mode" header — no nav tabs, no search,
@@ -139,6 +141,16 @@ const DashboardNavbar = () => {
     );
   };
 
+  /*
+   * Read from the session rather than fetched: the auth payload already carries
+   * the kind, and only while their link is live. Fetching here would cost every
+   * learner a request on every dashboard load to learn they are not one.
+   */
+  const { user: authUser } = useAuth();
+  const internLabel = authUser?.crmAmbassadorKind
+    ? AMBASSADOR_KIND_TAB_LABELS[authUser.crmAmbassadorKind]
+    : null;
+
   const navItems = [
     { label: "Home", href: "/dashboard" },
     {
@@ -160,6 +172,9 @@ const DashboardNavbar = () => {
       href: "/dashboard/certificates",
       count: stats.totalCertificates,
     },
+    ...(internLabel
+      ? [{ label: internLabel, href: "/ambassador", isNew: true }]
+      : []),
   ];
 
   // ── Focus mode (exam / task taking) ──────────────────────────────────────
@@ -311,6 +326,11 @@ const DashboardNavbar = () => {
                 )}
               >
                 <span>{item.label}</span>
+                {item.isNew && (
+                  <span className="rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
+                    New
+                  </span>
+                )}
                 {item.count !== undefined && (
                   <span
                     className={cn(

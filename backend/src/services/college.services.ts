@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { CollegeModel } from "../models/college.schema";
 import { UserModel } from "../models";
 import { College } from "../types/college";
+import { normalizeState } from "../constants/indianStates";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -30,6 +31,7 @@ const toCollege = (doc: Record<string, unknown>): College => {
     website:
       typeof doc.website === "string" ? doc.website.trim() : undefined,
     image: typeof doc.image === "string" ? doc.image.trim() : undefined,
+    state: normalizeState(doc.state) ?? undefined,
     isActive: Boolean(doc.isActive),
     createdAt: doc.createdAt as Date | undefined,
     updatedAt: doc.updatedAt as Date | undefined,
@@ -146,6 +148,7 @@ export const getCollegeByIdService = async (
 export const createCollegeService = async (data: {
   name: string;
   location: string;
+  state?: string;
   website?: string;
   image?: string;
   isActive?: boolean;
@@ -153,6 +156,7 @@ export const createCollegeService = async (data: {
   const doc = await CollegeModel.create({
     name: data.name.trim(),
     location: data.location.trim(),
+    state: normalizeState(data.state) ?? undefined,
     website: data.website?.trim() ?? "",
     image: data.image?.trim() ?? "",
     isActive: data.isActive !== false,
@@ -165,6 +169,7 @@ export const updateCollegeService = async (
   data: Partial<{
     name: string;
     location: string;
+    state: string;
     website: string;
     image: string;
     isActive: boolean;
@@ -175,6 +180,12 @@ export const updateCollegeService = async (
   if (data.name !== undefined) update.name = String(data.name).trim();
   if (data.location !== undefined)
     update.location = String(data.location).trim();
+  // An unrecognised state is rejected by the controller; a blank one here means
+  // a legacy row the admin left alone, which must not overwrite what is stored.
+  if (data.state !== undefined) {
+    const state = normalizeState(data.state);
+    if (state) update.state = state;
+  }
   if (data.website !== undefined) update.website = String(data.website).trim();
   if (data.image !== undefined) update.image = String(data.image).trim();
   if (data.isActive !== undefined) update.isActive = Boolean(data.isActive);
