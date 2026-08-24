@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight, CalendarCheck, Clock } from "lucide-react";
 import {
   getExamWindowState,
+  isExamResultDatePast,
   type ExamWindowState,
 } from "@/lib/internshipEntranceFlow";
 
@@ -55,11 +56,15 @@ export default function ExamCountdownButton({
     getExamWindowState(examStartAt, examEndAt),
   );
   const [countdown, setCountdown] = useState<string>("");
+  const [resultDatePast, setResultDatePast] = useState<boolean>(() =>
+    isExamResultDatePast(examResultAt),
+  );
 
   useEffect(() => {
     const tick = () => {
       const state = getExamWindowState(examStartAt, examEndAt);
       setWindowState(state);
+      setResultDatePast(isExamResultDatePast(examResultAt));
       if (state === "not_yet" && examStartAt) {
         const ms = new Date(examStartAt).getTime() - Date.now();
         setCountdown(formatCountdown(ms));
@@ -73,7 +78,7 @@ export default function ExamCountdownButton({
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [examStartAt, examEndAt]);
+  }, [examStartAt, examEndAt, examResultAt]);
 
   const examHref = `/dashboard/internships/exam/${encodeURIComponent(enrollmentId)}`;
   const isBanner = size === "banner";
@@ -96,7 +101,9 @@ export default function ExamCountdownButton({
             }`}
           >
             <CalendarCheck className={isBanner ? "w-4 h-4" : "w-3.5 h-3.5"} />
-            Results on {formatResultDate(examResultAt)}
+            {resultDatePast
+              ? "Results going live shortly"
+              : `Results on ${formatResultDate(examResultAt)}`}
           </span>
         )}
       </div>

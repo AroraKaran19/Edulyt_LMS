@@ -71,3 +71,30 @@ export function entranceAttentionLabel(
   if (status === "in_merit_pool") return "In merit pool — selection pending";
   return "Pending";
 }
+
+/**
+ * Whether the announced result date has already gone by. Nothing flips an
+ * unattempted `exam_registered` enrollment automatically, so a learner can sit
+ * on a closed exam window weeks past the date the UI promised results. The
+ * countdown pill uses this to stop naming a date that has already passed.
+ */
+export function isExamResultDatePast(examResultAt?: string): boolean {
+  if (!examResultAt) return false;
+  const at = new Date(examResultAt).getTime();
+  return Number.isFinite(at) && Date.now() > at;
+}
+
+/** Days past the announced result date that the entrance-exam banner keeps standing. */
+export const RESULT_BANNER_GRACE_DAYS = 7;
+
+/**
+ * Whether the entrance-exam banner has outlived its purpose: the result date
+ * plus its grace window has gone by with the enrollment still unresolved.
+ * No announced date means no window to expire, so the banner stays.
+ */
+export function isExamResultBannerExpired(examResultAt?: string): boolean {
+  if (!examResultAt) return false;
+  const at = new Date(examResultAt).getTime();
+  if (!Number.isFinite(at)) return false;
+  return Date.now() > at + RESULT_BANNER_GRACE_DAYS * 24 * 60 * 60 * 1000;
+}

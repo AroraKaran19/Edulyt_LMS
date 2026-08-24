@@ -14,13 +14,26 @@ import {
   assignLeads,
   countDuplicates,
   listAssignableSales,
+  listLeadCampaigns,
   transitionLeadStatus,
   type AssignTarget,
 } from "../services/leadPipeline.services";
-import { Lead, LeadAnswer } from "../types/lead";
+import {
+  buildScholarshipViews,
+  scholarshipViewFor,
+} from "../services/scholarshipLeadEnrichment.services";
+import { Lead, LeadAnswer, LeadStatus } from "../types/lead";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_RE = /^[6-9]\d{9}$/;
+
+const LEAD_STATUSES: LeadStatus[] = [
+  "new",
+  "contacted",
+  "qualified",
+  "converted",
+  "lost",
+];
 
 /**
  * A verdict written at capture time goes stale: a lead with no account on
@@ -229,6 +242,7 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   const status = String(req.query.status ?? "").trim();
   const source = String(req.query.source ?? "").trim();
 
+  const campaignId = String(req.query.campaignId ?? "").trim();
   const collegeId = String(req.query.collegeId ?? "").trim();
   const state = String(req.query.state ?? "").trim();
   const assignedTo = String(req.query.assignedTo ?? "").trim();
@@ -239,6 +253,9 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   const filter: mongoose.FilterQuery<Lead> = {};
   if (status) filter.status = status;
   if (source) filter["source.kind"] = source;
+  if (campaignId && mongoose.isValidObjectId(campaignId)) {
+    filter["source.testId"] = new mongoose.Types.ObjectId(campaignId);
+  }
   if (collegeId && mongoose.isValidObjectId(collegeId)) {
     filter.collegeId = new mongoose.Types.ObjectId(collegeId);
   }
@@ -280,15 +297,19 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   // One batched refresh for the page being shown, never one query per row.
   await resolveEmailsOnPlatform(leads);
 
-  const dupes = await countDuplicates(
-    [...new Set(leads.map((l) => l.email))],
-    [...new Set(leads.map((l) => l.phone))]
-  );
+  const [dupes, scholarship] = await Promise.all([
+    countDuplicates(
+      [...new Set(leads.map((l) => l.email))],
+      [...new Set(leads.map((l) => l.phone))]
+    ),
+    buildScholarshipViews(leads),
+  ]);
 
   const rows = leads.map((lead) => ({
     ...lead.toObject(),
     duplicateEmailCount: dupes.byEmail.get(lead.email) ?? 1,
     duplicatePhoneCount: dupes.byPhone.get(lead.phone) ?? 1,
+    scholarship: scholarshipViewFor(scholarship, lead),
   }));
 
   sendSuccessResponse(
@@ -324,9 +345,36 @@ export const getLeadById = asyncHandler(async (req: Request, res: Response) => {
   }
 
   await resolveEmailsOnPlatform([lead]);
+  const scholarship = await buildScholarshipViews([lead]);
 
-  sendSuccessResponse(res, { lead }, "Lead fetched", 200);
+  sendSuccessResponse(
+    res,
+    {
+      lead: {
+        ...lead.toObject(),
+        scholarship: scholarshipViewFor(scholarship, lead),
+      },
+    },
+    "Lead fetched",
+    200
+  );
 });
+
+/**
+ * @desc  Campaigns that have produced at least one lead
+ * @route GET /api/leads/admin/campaigns
+ * @access Admin with `leads`, super-admin
+ */
+export const listLeadCampaignsController = asyncHandler(
+  async (_req: Request, res: Response) => {
+    sendSuccessResponse(
+      res,
+      { campaigns: await listLeadCampaigns() },
+      "Campaigns fetched",
+      200
+    );
+  }
+);
 
 /**
  * @desc  Move a lead through the pipeline, or leave a note on it
@@ -353,8 +401,7 @@ export const updateLead = asyncHandler(async (req: Request, res: Response) => {
   let lead: Lead | null = null;
 
   if (status !== undefined) {
-    const allowed = ["new", "contacted", "qualified", "converted", "lost"];
-    if (!allowed.includes(String(status))) {
+    if (!LEAD_STATUSES.includes(String(status) as LeadStatus)) {
       throw new AppError("Invalid status", 400);
     }
     lead = await transitionLeadStatus(id, status, actor, String(note ?? ""));
@@ -497,11 +544,83 @@ export const listMyAssignedLeads = asyncHandler(
       LeadModel.countDocuments(filter),
     ]);
 
+    const scholarship = await buildScholarshipViews(leads);
+    const rows = leads.map((lead) => ({
+      ...lead.toObject(),
+      scholarship: scholarshipViewFor(scholarship, lead),
+    }));
+
     sendSuccessResponse(
       res,
-      { leads, total, page, totalPages: Math.ceil(total / limit) },
+      { leads: rows, total, page, totalPages: Math.ceil(total / limit) },
       "Leads fetched",
       200
     );
+  }
+);
+
+/**
+ * @desc  Move one of the caller's own leads through the pipeline
+ * @route PATCH /api/leads/mine/:id
+ * @access Sales
+ *
+ * The admin route is behind `adminGuard`, so sales could never use it. This one
+ * is scoped to the caller's own assignments inside the write itself, which is
+ * what keeps it from becoming a way to edit the whole pool.
+ */
+export const updateMyAssignedLead = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (req.user?.userType !== "sales") {
+      throw new AppError("You don't have access to this section", 403);
+    }
+
+    const { id } = req.params;
+    const { status, note } = req.body ?? {};
+
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError("Invalid lead id", 400);
+    }
+
+    const owned = {
+      "assignedTo.userId": new mongoose.Types.ObjectId(String(req.user._id)),
+    };
+    const actor = {
+      userId: new mongoose.Types.ObjectId(String(req.user._id)),
+      name:
+        [req.user.firstName, req.user.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || "",
+    };
+
+    let lead: Lead | null = null;
+
+    if (status !== undefined) {
+      if (!LEAD_STATUSES.includes(String(status) as LeadStatus)) {
+        throw new AppError("Invalid status", 400);
+      }
+      lead = await transitionLeadStatus(
+        id,
+        status,
+        actor,
+        String(note ?? ""),
+        owned
+      );
+    }
+
+    if (note !== undefined) {
+      lead = (await LeadModel.findOneAndUpdate(
+        { _id: id, ...owned },
+        { note: String(note).slice(0, 2000) },
+        { new: true }
+      )) as unknown as Lead | null;
+      if (!lead) throw new AppError("Lead not found", 404);
+    }
+
+    if (!lead) {
+      throw new AppError("Nothing to update", 400);
+    }
+
+    sendSuccessResponse(res, { lead }, "Lead updated", 200);
   }
 );

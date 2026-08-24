@@ -34,6 +34,8 @@ const leadSourceSchema = new mongoose.Schema(
     },
     title: { type: String, default: "" },
     slug: { type: String, default: "" },
+    /** The campaign's author, not the `?ref=` code that brought this person. */
+    campaignOwnerName: { type: String, default: "" },
   },
   { _id: false }
 );

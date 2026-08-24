@@ -6,8 +6,10 @@ import {
   getLeadById,
   getLeads,
   listAssigneesController,
+  listLeadCampaignsController,
   listMyAssignedLeads,
   updateLead,
+  updateMyAssignedLead,
 } from "../controllers/lead.controller";
 import { adminGuard, verifySuperAdmin } from "../middlewares/admin.middleware";
 import {
@@ -37,6 +39,17 @@ router.post("/", attachUserIfPresent, requireVerifiedLeadContact, createLead);
  */
 router.get("/mine", verifyUser, listMyAssignedLeads);
 
+/**
+ * @route   PATCH /api/leads/mine/:id
+ * @desc    Move one of the caller's own leads through the pipeline
+ * @access  Sales
+ *
+ * Split from the admin route for the same reason the read is: sales sits
+ * outside `adminGuard`, and this one cannot be widened to somebody else's lead
+ * whatever id arrives.
+ */
+router.patch("/mine/:id", verifyUser, updateMyAssignedLead);
+
 // ===================
 // Admin Routes (must be before `/:id` — otherwise "admin" is parsed as an id)
 // ===================
@@ -54,6 +67,17 @@ router.post("/admin/assign", ...adminGuard("leads"), assignLeadsController);
  * @access  Admin
  */
 router.get("/admin/assignees", ...adminGuard("leads"), listAssigneesController);
+
+/**
+ * @route   GET /api/leads/admin/campaigns
+ * @desc    Campaigns that have produced at least one lead
+ * @access  Admin
+ */
+router.get(
+  "/admin/campaigns",
+  ...adminGuard("leads"),
+  listLeadCampaignsController
+);
 
 /**
  * @route   GET /api/leads/admin

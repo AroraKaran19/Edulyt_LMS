@@ -22,11 +22,14 @@ import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSel
 import useCrm from "@/hooks/useCrm";
 import LeadDetailsModal from "./LeadDetailsModal";
 import AssignLeadsModal from "./AssignLeadsModal";
+import LeadContextCell from "./LeadContextCell";
 import {
   LEAD_SOURCE_LABELS,
+  LEAD_SOURCE_OPTIONS,
   LEAD_STATUSES,
   STATUS_STYLES,
   type Lead,
+  type LeadCampaignOption,
 } from "./types";
 
 const PAGE_SIZE = 20;
@@ -36,10 +39,6 @@ const formatDate = (value: string) =>
     dateStyle: "medium",
     timeStyle: "short",
   });
-
-const answerForAny = (lead: Lead, ...keys: string[]) =>
-  keys.map((k) => lead.answers.find((a) => a.key === k)?.value).find(Boolean) ??
-  "—";
 
 export default function LeadsPage() {
   const { user } = useAuth();
@@ -53,6 +52,9 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [source, setSource] = useState("");
+  const [campaignId, setCampaignId] = useState("");
+  const [campaigns, setCampaigns] = useState<LeadCampaignOption[]>([]);
   const [state, setState] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
@@ -79,6 +81,8 @@ export default function LeadsPage() {
           limit: PAGE_SIZE,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          source: source || undefined,
+          campaignId: campaignId || undefined,
           state: state || undefined,
           assignedTo: assignedTo || undefined,
         },
@@ -93,11 +97,21 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, status, state, assignedTo]);
+  }, [page, debouncedSearch, status, source, campaignId, state, assignedTo]);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  // Only the campaigns that actually produced leads, so the filter never offers
+  // a dead end. Loaded once: the list changes when a campaign launches, not
+  // while someone is working the pool.
+  useEffect(() => {
+    apiClient
+      .get("/leads/admin/campaigns")
+      .then((res) => setCampaigns(res.data?.data?.campaigns ?? []))
+      .catch(() => setCampaigns([]));
+  }, []);
 
   /** "Any" and "Unassigned" head page 1; a search returns only real people. */
   const fetchAssigneesWithAll = async (page: number, search: string) => {
@@ -167,7 +181,7 @@ export default function LeadsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
           <p className="text-sm text-gray-500">
-            Everyone who filled an enquiry form, newest first.
+            Enquiry forms and scholarship campaigns, newest first.
           </p>
         </div>
         <span className="rounded-full bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-700">
@@ -194,6 +208,36 @@ export default function LeadsPage() {
           }}
           className="w-40"
         />
+        <Select
+          options={LEAD_SOURCE_OPTIONS}
+          value={source}
+          onChange={(value) => {
+            setSource(value);
+            // A campaign filter is meaningless once the pool is enquiry-only.
+            if (value === "enquiry") setCampaignId("");
+            setPage(1);
+          }}
+          className="w-44"
+        />
+        {source !== "enquiry" && campaigns.length > 0 ? (
+          <Select
+            searchable
+            options={[
+              { value: "", label: "All campaigns" },
+              ...campaigns.map((c) => ({
+                value: c.testId,
+                label: `${c.title} (${c.leads})`,
+              })),
+            ]}
+            value={campaignId}
+            onChange={(value) => {
+              setCampaignId(value);
+              setPage(1);
+            }}
+            searchPlaceholder="Search campaigns..."
+            className="w-52"
+          />
+        ) : null}
         <Select
           searchable
           options={[{ value: "", label: "All states" }, ...STATE_SELECT_OPTIONS]}
@@ -269,10 +313,9 @@ export default function LeadsPage() {
                   />
                 </th>
                 <th className="px-3 py-2.5 sm:px-4">Lead</th>
-                <th className="px-3 py-2.5 sm:px-4">Plan</th>
+                <th className="px-3 py-2.5 sm:px-4">Plan or campaign</th>
                 <th className="px-3 py-2.5 sm:px-4">Creator</th>
                 <th className="px-3 py-2.5 sm:px-4">Assignee</th>
-                <th className="px-3 py-2.5 sm:px-4">College</th>
                 <th className="px-3 py-2.5 sm:px-4">On platform</th>
                 <th className="px-3 py-2.5 sm:px-4">Status</th>
                 <th className="px-3 py-2.5 sm:px-4">Received</th>
@@ -282,13 +325,13 @@ export default function LeadsPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={isSuperAdmin ? 10 : 9} className="px-6 py-12 text-center">
+                  <td colSpan={isSuperAdmin ? 9 : 8} className="px-6 py-12 text-center">
                     <Loader2 className="mx-auto size-6 animate-spin text-gray-400" />
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={isSuperAdmin ? 10 : 9} className="px-6 py-12 text-center">
+                  <td colSpan={isSuperAdmin ? 9 : 8} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <UserPlus className="size-10 text-gray-300" />
                       <p className="font-medium text-gray-500">No leads yet</p>
@@ -342,8 +385,8 @@ export default function LeadsPage() {
                         </button>
                       ) : null}
                     </td>
-                    <td className="min-w-[150px] px-3 py-2.5 text-gray-900 sm:px-4">
-                      {lead.answers.find((a) => a.key === "plan")?.value ?? "—"}
+                    <td className="min-w-[190px] px-3 py-2.5 sm:px-4">
+                      <LeadContextCell lead={lead} />
                     </td>
                     <td className="min-w-[150px] px-3 py-2.5 sm:px-4">
                       {lead.creator ? (
@@ -353,6 +396,17 @@ export default function LeadsPage() {
                           </div>
                           <div className="text-[11px] text-gray-500">
                             {lead.creator.code} · {lead.creator.role}
+                          </div>
+                        </>
+                      ) : lead.source?.campaignOwnerName ? (
+                        // No `?ref=` code, but a campaign lead is never really
+                        // direct: whoever ran the campaign brought them in.
+                        <>
+                          <div className="text-gray-900">
+                            {lead.source.campaignOwnerName}
+                          </div>
+                          <div className="text-[11px] text-gray-500">
+                            ran the campaign
                           </div>
                         </>
                       ) : (
@@ -367,15 +421,6 @@ export default function LeadsPage() {
                       ) : (
                         <span className="text-gray-400">Unassigned</span>
                       )}
-                    </td>
-                    <td className="min-w-[150px] px-3 py-2.5 text-gray-700 sm:px-4">
-                      {/* Pre-snapshot leads still carry the college, and older
-                          ones carry careerStage, in `answers`. */}
-                      {lead.collegeName ??
-                        answerForAny(lead, "college", "careerStage")}
-                      {lead.state ? (
-                        <div className="text-[11px] text-gray-500">{lead.state}</div>
-                      ) : null}
                     </td>
                     <td className="px-3 py-2.5 sm:px-4">
                       {lead.emailOnPlatform === true ? (

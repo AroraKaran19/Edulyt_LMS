@@ -9,6 +9,11 @@ export interface LeadSource {
   testId?: Types.ObjectId | null;
   title?: string;
   slug?: string;
+  /**
+   * The campaign's author, snapshotted at capture. Distinct from `creator`,
+   * which is whoever's `?ref=` code brought this particular person in.
+   */
+  campaignOwnerName?: string;
 }
 
 /** Frozen at capture. `userId` is nulled if that user is later deleted. */
@@ -21,7 +26,6 @@ export interface LeadCreator {
     | "sales"
     | "marketing-intern"
     | "sales-intern"
-    /** Written before campus ambassadors were split into two kinds. */
     | "ambassador";
 }
 

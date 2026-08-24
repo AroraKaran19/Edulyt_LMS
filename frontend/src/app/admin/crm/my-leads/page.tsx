@@ -45,7 +45,9 @@ export default function MyLeadsPage() {
   const changeStatus = async (lead: Lead, next: LeadStatus) => {
     setSavingId(lead._id);
     try {
-      const res = await apiClient.patch(`/leads/admin/${lead._id}`, {
+      // Not the admin route: sales sits outside `adminGuard`, so posting there
+      // was a guaranteed 403.
+      const res = await apiClient.patch(`/leads/mine/${lead._id}`, {
         status: next,
       });
       const updated: Lead = res.data?.data?.lead;

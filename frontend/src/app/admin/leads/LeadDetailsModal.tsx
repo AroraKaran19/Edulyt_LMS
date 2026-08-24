@@ -14,13 +14,115 @@ import apiClient from "@/configs/apiConfig";
 import useAuth from "@/hooks/useAuth";
 import { toast } from "react-toastify";
 import Select from "@/components/ui/inputs/Select";
+import { formatIst } from "@/lib/ist";
 import {
+  ATTEMPT_LABELS,
+  ATTEMPT_STYLES,
+  COUPON_STYLES,
   LEAD_SOURCE_LABELS,
   LEAD_STATUSES,
   STATUS_STYLES,
+  couponSummary,
   type Lead,
   type LeadStatus,
 } from "./types";
+
+const CHIP =
+  "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset";
+
+/**
+ * Where a campaign lead got to. Joined on read, so it is absent on an enquiry
+ * lead and empty on a campaign lead whose attempt no longer exists.
+ */
+function ScholarshipPanel({ lead }: { lead: Lead }) {
+  const scholarship = lead.scholarship;
+  const attempt = scholarship?.attempt;
+
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
+        Scholarship campaign
+      </h3>
+      <dl className="space-y-2 rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
+        <div className="flex justify-between gap-4">
+          <dt className="text-gray-500">Campaign</dt>
+          <dd className="text-right font-semibold text-gray-900">
+            {lead.source.title || "Untitled campaign"}
+          </dd>
+        </div>
+        {lead.source.campaignOwnerName ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500">Run by</dt>
+            <dd className="text-right text-gray-900">
+              {lead.source.campaignOwnerName}
+            </dd>
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between gap-4">
+          <dt className="text-gray-500">Test</dt>
+          <dd className="text-right">
+            {attempt ? (
+              <span className={`${CHIP} ${ATTEMPT_STYLES[attempt.status]}`}>
+                {ATTEMPT_LABELS[attempt.status]}
+              </span>
+            ) : (
+              <span className="text-gray-500">No attempt on record</span>
+            )}
+          </dd>
+        </div>
+        {attempt?.status === "submitted" ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500">Score</dt>
+            <dd className="text-right text-gray-900">
+              {attempt.correctCount} of {attempt.totalQuestions} correct
+            </dd>
+          </div>
+        ) : null}
+        {attempt ? (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500">
+              {attempt.submittedAt ? "Submitted" : "Started"}
+            </dt>
+            <dd className="text-right text-gray-900">
+              {formatIst(attempt.submittedAt ?? attempt.startedAt)}
+            </dd>
+          </div>
+        ) : null}
+        {scholarship?.coupon ? (
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-gray-500">Coupon</dt>
+              <dd className="text-right">
+                <span
+                  className={`${CHIP} ${COUPON_STYLES[scholarship.coupon.state]}`}
+                >
+                  {couponSummary(scholarship)}
+                </span>
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-gray-500">
+                {scholarship.coupon.redeemedAt ? "Redeemed on" : "Valid until"}
+              </dt>
+              <dd className="text-right text-gray-900">
+                {formatIst(
+                  scholarship.coupon.redeemedAt ?? scholarship.coupon.expiresAt
+                )}
+              </dd>
+            </div>
+          </>
+        ) : (
+          <div className="flex justify-between gap-4">
+            <dt className="text-gray-500">Coupon</dt>
+            <dd className="text-right text-gray-500">
+              {attempt?.status === "submitted" ? "Not issued" : "Not earned yet"}
+            </dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  );
+}
 
 interface Props {
   leadId: string;
@@ -77,7 +179,9 @@ export default function LeadDetailsModal({
     try {
       const res = await apiClient.patch(`/leads/admin/${leadId}`, patch);
       const updated: Lead = res.data?.data?.lead;
-      setLead(updated);
+      // Merged, not replaced: the write path returns the stored lead, which
+      // carries none of the scholarship view the read path joined on.
+      setLead((prev) => (prev ? { ...prev, ...updated } : updated));
       onUpdated(updated);
       toast.success("Lead updated");
     } catch {
@@ -108,6 +212,11 @@ export default function LeadDetailsModal({
     lead?.platformUserId && typeof lead.platformUserId === "object"
       ? lead.platformUserId
       : null;
+
+  const isScholarship = lead?.source?.kind === "scholarship";
+  const extraAnswers = (lead?.answers ?? []).filter(
+    (answer) => !(isScholarship && answer.key === "campaign")
+  );
 
   return (
     <div
@@ -210,30 +319,36 @@ export default function LeadDetailsModal({
               </div>
             </div>
 
-            <div>
-              <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
-                What they answered
-              </h3>
-              <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200">
-                {lead.answers.length === 0 ? (
-                  <div className="px-3.5 py-3 text-sm text-gray-500">
-                    This form carried no extra answers.
-                  </div>
-                ) : (
-                  lead.answers.map((answer) => (
-                    <div
-                      key={answer.key}
-                      className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-3.5 py-3"
-                    >
-                      <dt className="text-sm text-gray-500">{answer.label}</dt>
-                      <dd className="text-sm font-semibold text-gray-900">
-                        {answer.value}
-                      </dd>
+            {isScholarship ? <ScholarshipPanel lead={lead} /> : null}
+
+            {/* A campaign lead answers no form: its one "answer" is the
+                campaign, which the panel above already names. */}
+            {isScholarship && extraAnswers.length === 0 ? null : (
+              <div>
+                <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
+                  What they answered
+                </h3>
+                <dl className="divide-y divide-gray-100 rounded-xl border border-gray-200">
+                  {extraAnswers.length === 0 ? (
+                    <div className="px-3.5 py-3 text-sm text-gray-500">
+                      This form carried no extra answers.
                     </div>
-                  ))
-                )}
-              </dl>
-            </div>
+                  ) : (
+                    extraAnswers.map((answer) => (
+                      <div
+                        key={answer.key}
+                        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-3.5 py-3"
+                      >
+                        <dt className="text-sm text-gray-500">{answer.label}</dt>
+                        <dd className="text-sm font-semibold text-gray-900">
+                          {answer.value}
+                        </dd>
+                      </div>
+                    ))
+                  )}
+                </dl>
+              </div>
+            )}
 
             {lead.creator || lead.collegeName ? (
               <div>

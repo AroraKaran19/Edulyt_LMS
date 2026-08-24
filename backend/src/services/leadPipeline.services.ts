@@ -58,22 +58,73 @@ export const transitionLeadStatus = async (
   to: LeadStatus,
   actor: TransitionActor,
   note?: string,
+  /**
+   * Extra match terms ANDed into the write, so a caller who may only touch
+   * their own leads is checked by the same operation that moves the lead.
+   * Reading the owner first and updating second leaves that gap open.
+   */
+  scope: mongoose.FilterQuery<Lead> = {},
 ): Promise<Lead> => {
   if (!mongoose.isValidObjectId(leadId)) {
     throw new AppError("Invalid lead id", 400);
   }
 
   const updated = await LeadModel.findOneAndUpdate(
-    { _id: leadId, status: { $ne: to } },
+    { _id: leadId, status: { $ne: to }, ...scope },
     buildStatusTransitionPipeline(to, actor, new Date(), note),
     { new: true },
   );
   if (updated) return updated as unknown as Lead;
 
-  // Matched nothing: either the lead is gone, or it is already in that state.
-  const existing = await LeadModel.findById(leadId, { status: 1 }).lean();
+  // Matched nothing: the lead is gone, out of scope, or already in that state.
+  // The scope is repeated here so an out-of-scope lead reads as missing rather
+  // than announcing that it exists.
+  const existing = await LeadModel.findOne(
+    { _id: leadId, ...scope },
+    { status: 1 },
+  ).lean();
   if (!existing) throw new AppError("Lead not found", 404);
   throw new AppError(`This lead is already marked ${to}`, 409);
+};
+
+/**
+ * The campaigns that actually produced leads, for the pool's campaign filter.
+ *
+ * Grouped out of the lead pool rather than read from the campaign list so the
+ * dropdown never offers a campaign with nothing behind it, and so a leads admin
+ * needs no `scholarship.tests` permission to filter by one.
+ */
+export const buildLeadCampaignFacet = (): Record<string, unknown>[] => [
+  { $match: { "source.kind": "scholarship", "source.testId": { $ne: null } } },
+  {
+    $group: {
+      _id: "$source.testId",
+      title: { $last: "$source.title" },
+      leads: { $sum: 1 },
+      latest: { $max: "$createdAt" },
+    },
+  },
+  { $sort: { latest: -1 } },
+  { $limit: 200 },
+];
+
+export const listLeadCampaigns = async (): Promise<
+  { testId: string; title: string; leads: number }[]
+> => {
+  try {
+    const rows = await LeadModel.aggregate(
+      buildLeadCampaignFacet() as unknown as mongoose.PipelineStage[],
+    );
+    return rows.map((row) => ({
+      testId: String(row._id),
+      title: row.title || "Untitled campaign",
+      leads: row.leads ?? 0,
+    }));
+  } catch (error) {
+    // A filter dropdown must never take the page down with it.
+    console.error("[leads] campaign list failed:", error);
+    return [];
+  }
 };
 
 /**

@@ -71,6 +71,7 @@ export const captureScholarshipLead = async (
     const campaign = await ScholarshipTestModel.findById(testId, {
       title: 1,
       slug: 1,
+      createdByName: 1,
     }).lean();
     if (!campaign) return;
 
@@ -103,6 +104,7 @@ export const captureScholarshipLead = async (
         testId,
         title: campaign.title,
         slug: campaign.slug,
+        campaignOwnerName: campaign.createdByName ?? "",
       },
       ...attribution,
       name: nameForScholarshipLead(account, email),

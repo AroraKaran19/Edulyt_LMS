@@ -66,6 +66,9 @@ scholarshipCouponEntitlementSchema.index(
   { unique: true },
 );
 scholarshipCouponEntitlementSchema.index({ testId: 1, redeemedAt: 1 });
+// The CRM reads a page of leads back by (campaign, email). Neither of the other
+// two indexes serves that: `email` is not a prefix of {couponId, email}.
+scholarshipCouponEntitlementSchema.index({ testId: 1, email: 1 });
 scholarshipCouponEntitlementSchema.index({ expiresAt: 1 });
 
 export const ScholarshipCouponEntitlementModel =

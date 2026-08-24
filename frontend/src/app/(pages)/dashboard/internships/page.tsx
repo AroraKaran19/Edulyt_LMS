@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from "rea
 import { Search, Loader2 } from "lucide-react";
 import { useMyInternshipEnrollments } from "@/hooks/useMyInternshipEnrollments";
 import { fetchMyInternshipEnrollmentsPage } from "@/hooks/useMyInternshipEnrollments";
-import { ENTRANCE_EXAM_ATTENTION_STATUSES } from "@/lib/internshipEntranceFlow";
+import {
+  ENTRANCE_EXAM_ATTENTION_STATUSES,
+  isExamResultBannerExpired,
+} from "@/lib/internshipEntranceFlow";
 import { getCertificationExamListReminder } from "@/lib/internshipCertificationReminder";
 import type { InternshipEnrollmentListRow } from "@/types";
 import EmptyState from "../components/applications/EmptyState";
@@ -57,10 +60,18 @@ function DashboardInternshipsContent() {
           statuses: [...ENTRANCE_EXAM_ATTENTION_STATUSES],
         });
         if (cancelled) return;
-        setEntrancePendingTotal(snap.total);
+        // A no-show never leaves `exam_registered`, so drop the ones whose
+        // result date and grace window have both gone by — otherwise the
+        // banner promises results indefinitely. Their card in the grid still
+        // says they missed the exam.
+        const pending = snap.enrollments.filter(
+          (e) => !isExamResultBannerExpired(e.examResultAt),
+        );
+        const expired = snap.enrollments.length - pending.length;
+        setEntrancePendingTotal(Math.max(0, snap.total - expired));
         // Highlight the soonest upcoming exam; the rest are listed as cards
         // in the grid below. Missing start dates sort last.
-        const soonest = [...snap.enrollments].sort((a, b) => {
+        const soonest = [...pending].sort((a, b) => {
           const ta = a.examStartAt
             ? new Date(a.examStartAt).getTime()
             : Infinity;
