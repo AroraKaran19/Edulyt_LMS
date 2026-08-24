@@ -88,6 +88,17 @@ module.exports = {
       max_memory_restart: "350M",
     },
     {
+      name: "worker-role-change",
+      script: "dist/role-change-worker.js",
+      instances: 1,
+      exec_mode: "fork",
+      time: true,
+      env: {
+        RUN_BACKGROUND_JOBS: "true",
+      },
+      max_memory_restart: "200M",
+    },
+    {
       name: "worker-internship-eval",
       script: "dist/internship-evaluation-worker.js",
       instances: 1,

@@ -16,6 +16,7 @@
     "start:worker:offer-letter": "node dist/offer-letter-worker.js",
     "start:worker:invoice": "node dist/invoice-worker.js",
     "start:worker:internship-eval": "node dist/internship-evaluation-worker.js",
+    "start:worker:role-change": "node dist/role-change-worker.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "dev:watch": "nodemon --exec ts-node src/server.ts",
     "scripts:list": "ts-node src/scripts/list-courses-and-categories.ts",

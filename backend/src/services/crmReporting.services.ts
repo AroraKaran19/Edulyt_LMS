@@ -228,6 +228,37 @@ export const getCrmAnalytics = async (range: DateRange, topN = 8) => {
   };
 };
 
+/** Groups leads by one actor field for a batch of people, in a single pass. */
+const countLeadsBy = async (
+  field: string,
+  ids: mongoose.Types.ObjectId[],
+): Promise<Map<string, number>> => {
+  if (ids.length === 0) return new Map();
+  const out = await LeadModel.aggregate([
+    { $match: { [field]: { $in: ids } } },
+    { $group: { _id: `$${field}`, n: { $sum: 1 } } },
+  ] as unknown as mongoose.PipelineStage[]);
+  return new Map(out.map((r) => [String(r._id), r.n]));
+};
+
+/** Every count the roster shows, for however many people are on the page. */
+const countsForPeople = async (ids: mongoose.Types.ObjectId[]) => {
+  const [generated, teamGenerated, converted, ambassadors] = await Promise.all([
+    countLeadsBy("creator.userId", ids),
+    countLeadsBy("parent.userId", ids),
+    countLeadsBy("convertedBy.userId", ids),
+    (async () => {
+      if (ids.length === 0) return new Map<string, number>();
+      const out = await UserModel.aggregate([
+        { $match: { crmParentUserId: { $in: ids } } },
+        { $group: { _id: "$crmParentUserId", n: { $sum: 1 } } },
+      ] as unknown as mongoose.PipelineStage[]);
+      return new Map(out.map((r) => [String(r._id), r.n]));
+    })(),
+  ]);
+  return { generated, teamGenerated, converted, ambassadors };
+};
+
 export interface CrmPersonRow {
   userId: string;
   name: string;
@@ -283,31 +314,8 @@ export const listCrmPeople = async (
   ]);
 
   const ids = rows.map((r) => r._id as unknown as mongoose.Types.ObjectId);
-  const countBy = async (
-    field: string,
-    extra: Record<string, unknown> = {},
-  ): Promise<Map<string, number>> => {
-    if (ids.length === 0) return new Map();
-    const out = await LeadModel.aggregate([
-      { $match: { [field]: { $in: ids }, ...extra } },
-      { $group: { _id: `$${field}`, n: { $sum: 1 } } },
-    ] as unknown as mongoose.PipelineStage[]);
-    return new Map(out.map((r) => [String(r._id), r.n]));
-  };
-
-  const [generated, teamGenerated, converted, ambassadors] = await Promise.all([
-    countBy("creator.userId"),
-    countBy("parent.userId"),
-    countBy("convertedBy.userId"),
-    (async () => {
-      if (ids.length === 0) return new Map<string, number>();
-      const out = await UserModel.aggregate([
-        { $match: { crmParentUserId: { $in: ids } } },
-        { $group: { _id: "$crmParentUserId", n: { $sum: 1 } } },
-      ] as unknown as mongoose.PipelineStage[]);
-      return new Map(out.map((r) => [String(r._id), r.n]));
-    })(),
-  ]);
+  const { generated, teamGenerated, converted, ambassadors } =
+    await countsForPeople(ids);
 
   return {
     people: rows.map((r) => {
@@ -324,6 +332,141 @@ export const listCrmPeople = async (
         generated: generated.get(id) ?? 0,
         teamGenerated: teamGenerated.get(id) ?? 0,
         converted: converted.get(id) ?? 0,
+      };
+    }),
+    total,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
+};
+
+export interface CrmAmbassadorRow {
+  userId: string;
+  name: string;
+  email: string;
+  code: string | null;
+  kind: "marketing" | "sales" | null;
+  active: boolean;
+  addedAt: Date | null;
+  generated: number;
+  converted: number;
+}
+
+/** One staff member's header row, so a detail page need not fetch the list. */
+export const getCrmPerson = async (
+  userId: string,
+): Promise<CrmPersonRow | null> => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) return null;
+  const id = new mongoose.Types.ObjectId(userId);
+
+  const row = await UserModel.findOne(
+    { _id: id, userType: { $in: ["marketer", "sales"] } },
+    {
+      firstName: 1,
+      lastName: 1,
+      email: 1,
+      userType: 1,
+      crmCode: 1,
+      crmCodeActive: 1,
+    },
+  ).lean();
+  if (!row) return null;
+
+  const { generated, teamGenerated, converted, ambassadors } =
+    await countsForPeople([id]);
+  const key = String(id);
+
+  return {
+    userId: key,
+    name:
+      [row.firstName, row.lastName].filter(Boolean).join(" ").trim() ||
+      row.email,
+    email: row.email,
+    userType: row.userType as "marketer" | "sales",
+    code: row.crmCode ?? null,
+    active: row.crmCodeActive !== false,
+    ambassadors: ambassadors.get(key) ?? 0,
+    generated: generated.get(key) ?? 0,
+    teamGenerated: teamGenerated.get(key) ?? 0,
+    converted: converted.get(key) ?? 0,
+  };
+};
+
+/**
+ * The ambassadors one staff member has recruited, with what each has brought in.
+ *
+ * Ambassadors never close a lead themselves, so `converted` here is how many of
+ * the leads they generated were later closed by whoever worked them. That is the
+ * number an incentive decision actually turns on.
+ */
+export const listAmbassadorsForPerson = async (
+  userId: string,
+  page = 1,
+  limit = 20,
+): Promise<{
+  ambassadors: CrmAmbassadorRow[];
+  total: number;
+  totalPages: number;
+}> => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    return { ambassadors: [], total: 0, totalPages: 1 };
+  }
+  const ownerId = new mongoose.Types.ObjectId(userId);
+  const filter = { crmParentUserId: ownerId };
+
+  const [rows, total] = await Promise.all([
+    UserModel.find(filter, {
+      firstName: 1,
+      lastName: 1,
+      email: 1,
+      crmCode: 1,
+      crmCodeActive: 1,
+      crmAmbassadorKind: 1,
+      createdAt: 1,
+    })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    UserModel.countDocuments(filter),
+  ]);
+
+  const ids = rows.map((r) => r._id as unknown as mongoose.Types.ObjectId);
+  // One pass keyed on `creator.userId`, splitting out the closed ones inline,
+  // rather than a second aggregation filtered by status.
+  const tally =
+    ids.length === 0
+      ? []
+      : await LeadModel.aggregate([
+          { $match: { "creator.userId": { $in: ids } } },
+          {
+            $group: {
+              _id: "$creator.userId",
+              n: { $sum: 1 },
+              closed: {
+                $sum: { $cond: [{ $eq: ["$status", "converted"] }, 1, 0] },
+              },
+            },
+          },
+        ] as unknown as mongoose.PipelineStage[]);
+
+  const byId = new Map(
+    tally.map((t) => [String(t._id), { n: t.n as number, closed: t.closed as number }]),
+  );
+
+  return {
+    ambassadors: rows.map((r) => {
+      const stat = byId.get(String(r._id));
+      return {
+        userId: String(r._id),
+        name:
+          [r.firstName, r.lastName].filter(Boolean).join(" ").trim() || r.email,
+        email: r.email,
+        code: r.crmCode ?? null,
+        kind: (r.crmAmbassadorKind as "marketing" | "sales" | null) ?? null,
+        active: r.crmCodeActive !== false,
+        addedAt: (r as { createdAt?: Date }).createdAt ?? null,
+        generated: stat?.n ?? 0,
+        converted: stat?.closed ?? 0,
       };
     }),
     total,

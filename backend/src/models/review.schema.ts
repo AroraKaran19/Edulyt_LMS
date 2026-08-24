@@ -54,6 +54,9 @@ reviewSchema.index({ approved: 1, createdAt: -1 }); // For filtering by approval
 reviewSchema.index({ rating: 1 }); // For sorting/filtering by rating
 reviewSchema.index({ comment: 1 }); // For searching reviews by comment
 
+// Keyed lookups by author: the role-change purge and the account-deletion
+// cascade both delete by `userId`, which was otherwise a collection scan.
+reviewSchema.index({ userId: 1 });
 reviewSchema.index({ createdAt: -1 }); // For listing reviews by creation date
 reviewSchema.index({ updatedAt: -1 }); // For listing reviews by update date
 

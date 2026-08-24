@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "react-toastify";
-import { ShieldCheck, X } from "lucide-react";
+import { ShieldCheck, TriangleAlert, X } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -50,6 +50,9 @@ export default function PromoteToStaffModal({
   const [role, setRole] = useState<StaffRole>("marketer");
   const [permissions, setPermissions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  // A destructive, irreversible action needs a deliberate second act, not just
+  // a button that happens to be under the cursor.
+  const [confirmed, setConfirmed] = useState(false);
 
   const name =
     [user.firstName, user.lastName].filter(Boolean).join(" ").trim() ||
@@ -131,11 +134,38 @@ export default function PromoteToStaffModal({
             <PermissionPicker value={permissions} onChange={setPermissions} />
           </div>
 
-          <p className="text-xs text-amber-700">
-            This changes their account type. A student promoted here keeps their
-            enrollments, but their learner dashboard is replaced by the admin
-            panel.
-          </p>
+          <div className="rounded-xl border border-red-200 bg-red-50 p-3.5">
+            <div className="flex items-start gap-2.5">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-red-600" />
+              <div className="text-xs text-red-900">
+                <p className="font-bold">
+                  This permanently deletes their learner data
+                </p>
+                <p className="mt-1 text-red-800">
+                  Staff hold no learner records, so promoting {name} queues a
+                  job that deletes their course and internship enrollments,
+                  orders, certificates, submissions, vouchers, notes, reviews
+                  and Q&amp;A. This cannot be undone, and demoting them later
+                  does not bring any of it back.
+                </p>
+                <p className="mt-1 text-red-800">
+                  A record of exactly what was deleted is kept against their
+                  account, so a mistake can be traced.
+                </p>
+              </div>
+            </div>
+            <label className="mt-3 flex cursor-pointer items-start gap-2">
+              <input
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 rounded border-red-300 text-red-600"
+              />
+              <span className="text-xs font-medium text-red-900">
+                I understand {name}&apos;s learner data will be deleted
+              </span>
+            </label>
+          </div>
         </div>
 
         <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-200 bg-white px-5 py-4">
@@ -145,7 +175,7 @@ export default function PromoteToStaffModal({
           <OrangeButton
             type="button"
             glow={false}
-            disabled={submitting}
+            disabled={submitting || !confirmed}
             onClick={submit}
           >
             {submitting ? "Saving…" : `Make ${ROLE_COPY[role].label}`}

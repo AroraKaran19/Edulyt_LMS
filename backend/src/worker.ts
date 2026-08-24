@@ -1,5 +1,6 @@
 /**
- * All-in-one worker: cron + certificate + offer-letter + collaboration + invoice (single process).
+ * All-in-one worker: cron + certificate + offer-letter + collaboration +
+ * invoice + role-change (single process).
  * Prefer PM2 apps `worker-cert` + `worker-collab` in production (see ecosystem.config.cjs).
  *
  * Usage: node dist/worker.js
@@ -13,6 +14,7 @@ import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import { startInvoiceWorker } from "./workers/invoice.worker";
+import { startRoleChangeWorker } from "./workers/roleChange.worker";
 import {
   installWorkerCrashAlerts,
   reportWorkerStartupFailure,
@@ -37,6 +39,7 @@ const startWorker = async () => {
     startCollaborationWorker();
     startTokenCleanupWorker();
     startInvoiceWorker();
+    startRoleChangeWorker();
 
     console.log(
       "✅ Worker process running (cron + certificate + offer-letter + collaboration + token-cleanup + invoice jobs)"

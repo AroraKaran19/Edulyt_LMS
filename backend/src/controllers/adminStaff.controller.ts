@@ -3,6 +3,7 @@ import {
   asyncHandler,
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
+import mongoose from "mongoose";
 import { Request, Response } from "express";
 import {
   listAdminsService,
@@ -30,6 +31,17 @@ export const listAdminsController = asyncHandler(
     sendSuccessResponse(res, result, "Admins fetched successfully", 200);
   },
 );
+
+/** Who requested a role change, recorded on the audit job. */
+const actorOf = (req: Request) => ({
+  userId: req.user?._id
+    ? new mongoose.Types.ObjectId(String(req.user._id))
+    : null,
+  name:
+    [req.user?.firstName, req.user?.lastName].filter(Boolean).join(" ").trim() ||
+    "",
+  email: req.user?.email ?? "",
+});
 
 /** Staff can be an admin, a marketer, or sales, so the copy names which. */
 const ROLE_LABELS: Record<string, string> = {
@@ -65,7 +77,12 @@ export const createAdminController = asyncHandler(
 export const promoteUserController = asyncHandler(
   async (req: Request, res: Response) => {
     const { email, permissions, role } = req.body;
-    const admin = await promoteUserToAdminService(email, permissions, role);
+    const admin = await promoteUserToAdminService(
+      email,
+      permissions,
+      role,
+      actorOf(req),
+    );
     sendSuccessResponse(
       res,
       admin,
@@ -97,7 +114,7 @@ export const updateAdminPermissionsController = asyncHandler(
 export const revokeAdminController = asyncHandler(
   async (req: Request, res: Response) => {
     const { adminId } = req.params;
-    const admin = await revokeAdminService(adminId);
+    const admin = await revokeAdminService(adminId, actorOf(req));
     sendSuccessResponse(res, admin, "Admin access revoked", 200);
   },
 );

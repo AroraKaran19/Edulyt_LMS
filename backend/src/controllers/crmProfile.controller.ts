@@ -22,6 +22,8 @@ import {
   getLeaderboards,
   listCrmPeople,
   listLeadsForPerson,
+  getCrmPerson,
+  listAmbassadorsForPerson,
   type PersonLeadScope,
 } from "../services/crmReporting.services";
 import { UserModel } from "../models/user.schema";
@@ -257,6 +259,37 @@ export const listPersonLeadsController = asyncHandler(
       res,
       await listLeadsForPerson(String(req.params.id), scope, page, limit),
       "Leads fetched",
+      200,
+    );
+  },
+);
+
+/**
+ * @route  GET /api/crm/people/:id
+ * @desc   One staff member's header row and counts
+ * @access Admin with `crm.team`, super-admin
+ */
+export const getCrmPersonController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const person = await getCrmPerson(String(req.params.id));
+    if (!person) throw new AppError("This person was not found", 404);
+    sendSuccessResponse(res, person, "Person fetched", 200);
+  },
+);
+
+/**
+ * @route  GET /api/crm/people/:id/ambassadors?page=&limit=
+ * @desc   The ambassadors this staff member has added
+ * @access Admin with `crm.team`, super-admin
+ */
+export const listPersonAmbassadorsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 20)));
+    sendSuccessResponse(
+      res,
+      await listAmbassadorsForPerson(String(req.params.id), page, limit),
+      "Ambassadors fetched",
       200,
     );
   },

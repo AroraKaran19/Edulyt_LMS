@@ -6,6 +6,8 @@ import {
   getCrmAnalyticsController,
   listCrmPeopleController,
   listPersonLeadsController,
+  getCrmPersonController,
+  listPersonAmbassadorsController,
   getCrmLeaderboard,
   getMyCrmProfile,
   getMyCrmStats,
@@ -60,8 +62,6 @@ router.get(
   "/analytics",
   requireStaffPageAccess("crm.analytics"),
   getCrmAnalyticsController,
-  listCrmPeopleController,
-  listPersonLeadsController,
 );
 
 /**
@@ -80,6 +80,28 @@ router.get(
   "/people/:id/leads",
   requireStaffPageAccess("crm.team"),
   listPersonLeadsController,
+);
+
+/**
+ * @route   GET /api/crm/people/:id
+ * @desc    One staff member's header row and counts
+ * @access  Admin with `crm.team`, super-admin
+ */
+router.get(
+  "/people/:id",
+  requireStaffPageAccess("crm.team"),
+  getCrmPersonController,
+);
+
+/**
+ * @route   GET /api/crm/people/:id/ambassadors?page=&limit=
+ * @desc    The ambassadors this staff member has added
+ * @access  Admin with `crm.team`, super-admin
+ */
+router.get(
+  "/people/:id/ambassadors",
+  requireStaffPageAccess("crm.team"),
+  listPersonAmbassadorsController,
 );
 
 /**

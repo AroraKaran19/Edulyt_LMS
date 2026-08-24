@@ -2,11 +2,37 @@
  * Super-admin-only staff (admin account) management.
  *
  */
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { validatePassword } from "../utils/passwordValidation";
 import { isValidPermissionKey } from "../config/adminPermissions";
+import {
+  assertNoRoleChangeInFlight,
+  enqueueRoleChangeJob,
+} from "./roleChange.services";
+import { ensureCrmCode } from "./crmProfile.services";
+
+/**
+ * Marketers and sales share a personal link, so their code is part of being
+ * that role. Minted here rather than on their first visit, or an admin could
+ * not see or hand out the link until the person happened to log in. Idempotent,
+ * and skipped for admins, who own no link.
+ */
+const mintCodeIfRoleGranted = async (
+  userId: mongoose.Types.ObjectId,
+  role: string,
+) => {
+  if (!isRoleGrantedStaff(role)) return;
+  try {
+    await ensureCrmCode(userId);
+  } catch (error) {
+    // A missing code is recoverable on their first visit; failing the whole
+    // role change over it is not.
+    console.error("[staff] could not mint a CRM code:", error);
+  }
+};
 
 /** Fields never returned to the client. */
 const SAFE_PROJECTION = "-password -refreshTokens -__v -successPointsHistory";
@@ -203,6 +229,11 @@ export const createAdminService = async (data: CreateAdminInput) => {
     status: "active",
   });
 
+  await mintCodeIfRoleGranted(
+    admin._id as unknown as mongoose.Types.ObjectId,
+    role,
+  );
+
   const { password: _password, ...safe } = admin.toObject();
   return safe;
 };
@@ -212,6 +243,7 @@ export const promoteUserToAdminService = async (
   email: string,
   permissions: unknown,
   role?: StaffRole,
+  actor?: { userId?: mongoose.Types.ObjectId | null; name?: string; email?: string },
 ) => {
   const normalized = normalizeEmail(email);
   const resolved = resolveRole(role);
@@ -230,12 +262,33 @@ export const promoteUserToAdminService = async (
       409,
     );
   }
+  await assertNoRoleChangeInFlight(
+    target._id as unknown as mongoose.Types.ObjectId,
+  );
 
   const updated = await UserModel.findByIdAndUpdate(
     target._id,
     { $set: { userType: resolved, permissions: perms } },
     { new: true, overwriteDiscriminatorKey: true, runValidators: true },
   ).select(SAFE_PROJECTION);
+
+  await mintCodeIfRoleGranted(
+    target._id as unknown as mongoose.Types.ObjectId,
+    resolved,
+  );
+
+  /*
+   * Queued after the write, so a queue failure cannot leave someone half
+   * promoted. The job is the audit record of what the purge destroyed, which
+   * is the only trace once those rows are gone.
+   */
+  await enqueueRoleChangeJob(
+    target._id as unknown as mongoose.Types.ObjectId,
+    "to-staff",
+    String(target.userType),
+    resolved,
+    actor ?? {},
+  );
 
   return updated;
 };
@@ -266,7 +319,10 @@ export const updateAdminPermissionsService = async (
 };
 
 /** Revoke a staff member — demote to a student and clear all permissions. */
-export const revokeAdminService = async (adminId: string) => {
+export const revokeAdminService = async (
+  adminId: string,
+  actor?: { userId?: mongoose.Types.ObjectId | null; name?: string; email?: string },
+) => {
   const target = await UserModel.findById(adminId).select("_id userType").lean();
   if (!target) throw new AppError("Admin not found", 404);
   if (target.userType === "super-admin") {
@@ -277,12 +333,23 @@ export const revokeAdminService = async (adminId: string) => {
   if (target.userType !== "admin" && !isRoleGrantedStaff(target.userType)) {
     throw new AppError("This user is not staff", 400);
   }
+  await assertNoRoleChangeInFlight(
+    target._id as unknown as mongoose.Types.ObjectId,
+  );
 
   const updated = await UserModel.findByIdAndUpdate(
     adminId,
     { $set: { userType: "student", permissions: [] } },
     { new: true, overwriteDiscriminatorKey: true, runValidators: true },
   ).select(SAFE_PROJECTION);
+
+  await enqueueRoleChangeJob(
+    target._id as unknown as mongoose.Types.ObjectId,
+    "to-student",
+    String(target.userType),
+    "student",
+    actor ?? {},
+  );
 
   return updated;
 };
