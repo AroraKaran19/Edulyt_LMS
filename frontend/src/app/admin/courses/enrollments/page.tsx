@@ -41,6 +41,9 @@ interface EnrollmentItem {
   date: string;
   trialExpiresAt?: string;
   giftFrom?: string;
+  /** Raw source. "paid" only means not-gift-not-trial, so collaboration
+   *  allotments ("promotion") arrive here looking like purchases. */
+  enrollmentSource?: string;
   /** Set on free category-sibling grants (which otherwise read as "paid"). */
   grantSource?: string;
   /** The purchased course that triggered a category-sibling grant. */
@@ -193,13 +196,22 @@ const EnrollmentsPage = () => {
 
   const renderTypeBadge = (item: EnrollmentItem) => {
     if (item.type === "paid") {
-      // Free category-sibling grant — a "paid"-sourced enrollment the user
-      // didn't actually pay for. Flag it distinctly.
+      // Two kinds of free enrollment land in the "paid" bucket, because that
+      // bucket is defined as not-gift-not-trial. Neither was purchased, so
+      // neither may render as "Paid".
       if (item.grantSource === "category-sibling") {
         return (
           <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
             <Gift className="w-3 h-3" />
-            Free · Bundle
+            Free · Legacy bundle
+          </span>
+        );
+      }
+      if (item.enrollmentSource === "promotion") {
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+            <Gift className="w-3 h-3" />
+            Free · Collaboration
           </span>
         );
       }

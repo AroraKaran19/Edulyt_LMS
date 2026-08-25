@@ -29,6 +29,8 @@ interface EnrollmentItem {
   giftFrom?: string;
   orderId?: string;
   txnId?: string;
+  /** Raw source: "promotion" is a collaboration-domain allotment, not a sale. */
+  enrollmentSource?: string;
   /** Set on free category-sibling grants (which otherwise read as "paid"). */
   grantSource?: string;
   /** The purchased course that triggered a category-sibling grant. */
@@ -96,24 +98,34 @@ const EnrollmentDetailsModal = ({
     </div>
   );
 
+  // "paid" means not-gift-not-trial, so both a discontinued bundle grant and a
+  // collaboration allotment arrive here unpurchased. Name each for what it is.
   const isCategoryGrant =
     enrollment.type === "paid" &&
     enrollment.grantSource === "category-sibling";
+  const isCollaborationGrant =
+    enrollment.type === "paid" &&
+    !isCategoryGrant &&
+    enrollment.enrollmentSource === "promotion";
 
   const typeLabel = isCategoryGrant
-    ? "Free · Bundle"
-    : enrollment.type === "paid"
-      ? "Paid"
-      : enrollment.type === "gift"
-        ? "Gift"
-        : "Trial";
+    ? "Free · Legacy bundle"
+    : isCollaborationGrant
+      ? "Free · Collaboration"
+      : enrollment.type === "paid"
+        ? "Paid"
+        : enrollment.type === "gift"
+          ? "Gift"
+          : "Trial";
   const typeBg = isCategoryGrant
     ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-    : enrollment.type === "paid"
-      ? "bg-green-100 text-green-800 border-green-200"
-      : enrollment.type === "gift"
-        ? "bg-purple-100 text-purple-800 border-purple-200"
-        : "bg-blue-100 text-blue-800 border-blue-200";
+    : isCollaborationGrant
+      ? "bg-amber-100 text-amber-800 border-amber-200"
+      : enrollment.type === "paid"
+        ? "bg-green-100 text-green-800 border-green-200"
+        : enrollment.type === "gift"
+          ? "bg-purple-100 text-purple-800 border-purple-200"
+          : "bg-blue-100 text-blue-800 border-blue-200";
 
   return (
     <Modal

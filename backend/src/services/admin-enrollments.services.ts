@@ -104,6 +104,12 @@ export interface AdminEnrollmentItem {
   giftFrom?: string;
   orderId?: string;
   txnId?: string;
+  /**
+   * The raw source, forwarded so the UI can tell a purchase from a free
+   * allotment. `type: "paid"` only means "not gift, not trial", which lumps
+   * collaboration-domain allotments (`promotion`) in with real purchases.
+   */
+  enrollmentSource?: string;
   /** Set on free category-sibling grants (enrollmentSource stays "direct"). */
   grantSource?: "category-sibling";
   /** The purchased course that triggered a category-sibling grant. */
@@ -231,6 +237,7 @@ export const getAdminEnrollmentsService = async (
         date: "$enrolledAt",
         orderId: { $arrayElemAt: ["$order._id", 0] },
         txnId: { $arrayElemAt: ["$order.txnId", 0] },
+        enrollmentSource: 1,
         grantSource: 1,
         grantedFromCourse: { $arrayElemAt: ["$grantedFromCourse", 0] },
       },
@@ -300,6 +307,7 @@ export const getAdminEnrollmentsService = async (
         date: e.date,
         orderId: e.orderId?.toString(),
         txnId: e.txnId,
+        enrollmentSource: e.enrollmentSource,
         grantSource: e.grantSource,
         grantedFromCourse: e.grantedFromCourse
           ? { title: e.grantedFromCourse.title, slug: e.grantedFromCourse.slug }
@@ -479,6 +487,7 @@ export const getAdminEnrollmentsService = async (
       giftFrom: "$giftFromName",
       orderId: { $arrayElemAt: ["$order._id", 0] },
       txnId: { $arrayElemAt: ["$order.txnId", 0] },
+      enrollmentSource: 1,
       grantSource: 1,
       grantedFromCourse: { $arrayElemAt: ["$grantedFromCourse", 0] },
     },
@@ -553,6 +562,7 @@ export const getAdminEnrollmentsService = async (
         ...base,
         orderId: e.orderId?.toString(),
         txnId: e.txnId,
+        enrollmentSource: e.enrollmentSource,
         grantSource: e.grantSource,
         grantedFromCourse: e.grantedFromCourse
           ? { title: e.grantedFromCourse.title, slug: e.grantedFromCourse.slug }
