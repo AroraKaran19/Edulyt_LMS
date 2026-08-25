@@ -24,10 +24,10 @@ router.use(verifyUser);
 router.post("/", createSubmissionController);
 
 /** GET /api/internship-submissions/admin — admin list */
-router.get("/admin", verifyAdmin, requireAnyPermission("internships.certification-exams", "internships.tasks"), listSubmissionsAdminController);
+router.get("/admin", verifyAdmin, requireAnyPermission("internships.certification-exams", "internships.tasks", "internships.entrance-exams"), listSubmissionsAdminController);
 
 /** GET /api/internship-submissions/admin/:submissionId — full detail for admin */
-router.get("/admin/:submissionId", verifyAdmin, requireAnyPermission("internships.certification-exams", "internships.tasks"), getSubmissionAdminController);
+router.get("/admin/:submissionId", verifyAdmin, requireAnyPermission("internships.certification-exams", "internships.tasks", "internships.entrance-exams"), getSubmissionAdminController);
 
 /**
  * POST /api/internship-submissions/admin/:submissionId/finalize-certification

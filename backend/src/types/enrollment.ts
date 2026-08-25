@@ -100,10 +100,11 @@ export interface Enrollment {
   promotionCode?: string;
   planType?: "elite" | "essential"; // If enrolled via promotion
 
-  // Category sibling grant metadata. Set only on enrollments auto-created because
-  // the user paid for another course sharing this course's primary category.
-  // The enrollment itself is a normal, fully-valid enrollment; these fields are
-  // traceability markers only. See createEnrollmentAfterPayment fan-out.
+  // Category sibling grant metadata. Historical: the perk that wrote these was
+  // removed, so nothing sets them any more. Kept because the rows it created
+  // were left in place, and the admin enrolment screens read these to show such
+  // a row as a free grant rather than a purchase. The enrollment itself is a
+  // normal, fully-valid one; these are traceability markers only.
   grantSource?: "category-sibling";
   grantedFromCourseId?: Course["_id"]; // The paid course that triggered this grant
   

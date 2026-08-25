@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { verifyUser } from "../middlewares/user.middleware";
-import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
+import {
+  verifyAdmin,
+  requirePermission,
+  requireAnyPermission,
+} from "../middlewares/admin.middleware";
 import {
   listInternshipTasksAdminController,
   createInternshipTaskAdminController,
@@ -14,20 +18,36 @@ const router = Router();
 
 router.use(verifyUser);
 router.use(verifyAdmin);
-router.use(requirePermission("internships.tasks"));
+
+/** Owning the templates themselves. */
+const OWNER = requirePermission("internships.tasks");
 
 /** POST /api/internship-tasks — create */
-router.post("/", createInternshipTaskAdminController);
+router.post("/", OWNER, createInternshipTaskAdminController);
 
 /** GET /api/internship-tasks/admin?page=1&limit=20&search=&status=all|active|inactive */
-router.get("/admin", listInternshipTasksAdminController);
+// Both the batch editor on Manage Internships and the course-internship
+// builder pick templates from this list, so neither needs to own the bank.
+router.get(
+  "/admin",
+  requireAnyPermission(
+    "internships.tasks",
+    "internships.manage",
+    "courses.course-internships",
+  ),
+  listInternshipTasksAdminController,
+);
 
 /** POST /api/internship-tasks/admin/reachability-preview */
-router.post("/admin/reachability-preview", previewTaskReachabilityController);
+router.post(
+  "/admin/reachability-preview",
+  requireAnyPermission("internships.tasks", "internships.manage"),
+  previewTaskReachabilityController,
+);
 
 /** GET/PATCH/DELETE /api/internship-tasks/admin/:taskId */
-router.get("/admin/:taskId", getInternshipTaskByIdAdminController);
-router.patch("/admin/:taskId", updateInternshipTaskAdminController);
-router.delete("/admin/:taskId", deleteInternshipTaskAdminController);
+router.get("/admin/:taskId", OWNER, getInternshipTaskByIdAdminController);
+router.patch("/admin/:taskId", OWNER, updateInternshipTaskAdminController);
+router.delete("/admin/:taskId", OWNER, deleteInternshipTaskAdminController);
 
 export default router;

@@ -104,6 +104,12 @@ export interface SendTemplateMailOptions {
   attachments?: MailAttachment[];
   /** Overrides the configured sender. Must still be on the verified domain. */
   from?: MailAddress;
+  /**
+   * Skips the ops alert a failed send would otherwise raise. Set by the ops
+   * alerter on its own mail: an alert that failed and then alerted about that
+   * failure would never stop.
+   */
+  suppressFailureAlert?: boolean;
 }
 
 export type MailSendResult =
@@ -401,6 +407,61 @@ const postBatch = async (
 };
 
 /**
+ * Pages ops when a send gives up, so a broken template is something more than a
+ * log file knows about.
+ *
+ * `opsAlert.services` is imported lazily because the alert is itself an email:
+ * it reaches back into this module through `mail/internalAlert.mail`. A
+ * top-level import would close that cycle at require time and leave
+ * `defineMailTemplate` undefined while `internalAlert.mail` evaluates.
+ *
+ * Queued rather than awaited. The throttle behind `sendOpsAlert` reads Mongo,
+ * and a Mongo outage is one of the things ops alerts exist to report, so
+ * awaiting it would hang the already-failed send for the driver's buffering
+ * timeout. Going through the mail queue keeps `flushMailQueue` covering it.
+ */
+const reportMailFailure = (
+  options: SendTemplateMailOptions,
+  error: string,
+  detail: { recipients?: string[]; httpStatus?: number } = {},
+): void => {
+  if (options.suppressFailureAlert) return;
+
+  const templateId = options.templateId?.trim() || "(no template id)";
+
+  enqueueMailJob(async () => {
+    try {
+      const { sendOpsAlert } = await import("../services/opsAlert.services");
+
+      const body = [
+        `Template: ${templateId}`,
+        detail.recipients?.length
+          ? `Recipients: ${detail.recipients.join(", ")}`
+          : null,
+        detail.httpStatus ? `HTTP status: ${detail.httpStatus}` : null,
+        `Error: ${error}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      await sendOpsAlert({
+        severity: "WARNING",
+        title: `Email send failed: ${templateId}`,
+        body,
+        // Keyed per template: one template MSG91 rejects every time must not
+        // bury the first failure of a different one.
+        key: `mail-send-failed:${templateId}`,
+      });
+    } catch (alertError) {
+      console.error(
+        "[Mailer] Could not raise the ops alert for a failed send:",
+        alertError instanceof Error ? alertError.message : alertError,
+      );
+    }
+  });
+};
+
+/**
  * Sends one MSG91 template to one or more recipients. Never throws: mail is
  * auxiliary to the request that triggered it, so callers decide whether a
  * failure matters by checking `result.ok`.
@@ -423,6 +484,7 @@ export const sendTemplateMail = async (
 
   const templateId = options.templateId?.trim();
   if (!templateId) {
+    reportMailFailure(options, "templateId is required");
     return { ok: false, outcome: "failed", error: "templateId is required", requestIds: [] };
   }
 
@@ -439,6 +501,7 @@ export const sendTemplateMail = async (
   }
 
   if (!recipients.length) {
+    reportMailFailure(options, "No valid recipients", { recipients: dropped });
     return { ok: false, outcome: "failed", error: "No valid recipients", requestIds: [] };
   }
 
@@ -454,11 +517,19 @@ export const sendTemplateMail = async (
     const outcome = await postBatch(payload, config.authKey);
 
     if (!outcome.ok) {
+      const addresses = batch
+        .map((r) => r.to[0]?.email)
+        .filter((email): email is string => Boolean(email));
+
       console.error(
-        `❌ Email send failed (template ${templateId}) for ${batch
-          .map((r) => r.to[0]?.email)
-          .join(", ")}: ${outcome.error}`,
+        `❌ Email send failed (template ${templateId}) for ${addresses.join(
+          ", ",
+        )}: ${outcome.error}`,
       );
+      reportMailFailure(options, outcome.error ?? "Email send failed", {
+        recipients: addresses,
+        ...(outcome.httpStatus ? { httpStatus: outcome.httpStatus } : {}),
+      });
       return {
         ok: false,
         outcome: "failed",
@@ -509,22 +580,28 @@ const pump = (): void => {
  * that triggered the mail is already persisted, so a failure is logged rather
  * than surfaced to the caller.
  */
+const enqueueMailJob = (job: () => Promise<void>): void => {
+  queue.push(job);
+  // Deferred so the queue never runs inside the caller's tick.
+  setImmediate(pump);
+};
+
 export const queueTemplateMail = (
   options: SendTemplateMailOptions,
   context?: string,
 ): void => {
-  queue.push(async () => {
+  enqueueMailJob(async () => {
     try {
       await sendTemplateMail(options);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       console.error(
         `❌ Unexpected mailer error${context ? ` (${context})` : ""}:`,
-        error instanceof Error ? error.message : error,
+        message,
       );
+      reportMailFailure(options, `Unexpected mailer error: ${message}`);
     }
   });
-  // Deferred so the queue never runs inside the caller's tick.
-  setImmediate(pump);
 };
 
 /** Queued but not yet finished sends. */

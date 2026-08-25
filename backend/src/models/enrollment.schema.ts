@@ -195,8 +195,9 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
       default: "essential",
     },
 
-    // Category sibling grant metadata (set only for enrollments auto-created
-    // because the user paid for another course in the same primary category).
+    // Category sibling grant metadata. Historical: the perk that wrote these was
+    // removed and nothing sets them now, but the enrolments it granted were left
+    // in place and the admin screens read these to label them.
     grantSource: {
       type: String,
       enum: ["category-sibling"],

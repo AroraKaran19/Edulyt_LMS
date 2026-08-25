@@ -27,6 +27,31 @@ export const requireStaffPageAccess =
   };
 
 /**
+ * Same check, but satisfied by any one of several pages. For shared data a
+ * page borrows from another section: the question bank is read by both the
+ * question-bank page and the campaign builder that embeds its picker.
+ */
+export const requireStaffAnyPageAccess =
+  (pageKeys: readonly string[]) =>
+  (req: Request, _res: Response, next: NextFunction) => {
+    const user = req.user;
+
+    if (!user) {
+      return next(new AppError("Authentication required", 401));
+    }
+
+    const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+    const allowed = pageKeys.some((key) =>
+      canAccessPageAsRole(user.userType, permissions, key),
+    );
+    if (allowed) {
+      return next();
+    }
+
+    return next(new AppError("You don't have access to this section", 403));
+  };
+
+/**
  * Guard chain for a page-keyed staff route:
  *
  *   router.get("/admin", ...staffGuard("scholarship.tests"), listCampaigns);

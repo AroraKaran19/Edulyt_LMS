@@ -322,8 +322,7 @@ export const createEnrollmentAfterPayment = async (order: any) => {
 
     // Status-agnostic ON PURPOSE: the unique { userId, courseId } index has no
     // partial filter, so a dropped/revoked row is invisible to a `$nin` lookup
-    // yet still collides on insert (E11000). Mirrors the same reasoning in
-    // grantCategorySiblingEnrollments.
+    // yet still collides on insert (E11000).
     const INACTIVE_STATUSES = ["dropped", "revoked"];
     let priorEnrollment = await EnrollmentModel.findOne({
       userId: order.userId,
@@ -404,27 +403,6 @@ export const createEnrollmentAfterPayment = async (order: any) => {
         } catch (e) {
           console.error("Success points redemption failed:", e);
         }
-      }
-
-      // Retry backfill: a prior attempt may have created the paid enrollment but
-      // failed to fan out the category siblings. Re-run the grant (idempotent —
-      // it skips courses the user already holds). Best-effort, never throws.
-      try {
-        const purchasedCourse = await CourseModel.findById(order.courseId).select(
-          "_id category"
-        );
-        if (purchasedCourse) {
-          const { grantCategorySiblingEnrollments } = await import(
-            "../enrollment.services"
-          );
-          await grantCategorySiblingEnrollments({
-            userId: String(order.userId),
-            purchasedCourse,
-            planType: order.planType,
-          });
-        }
-      } catch (grantErr) {
-        console.error("Category sibling enrollment grant (retry) failed:", grantErr);
       }
 
       await ensureCourseInternshipEnrollment(order);
@@ -604,22 +582,6 @@ export const createEnrollmentAfterPayment = async (order: any) => {
       } catch (e) {
         console.error("Success points redemption failed:", e);
       }
-    }
-
-    // Fan out free enrollments to sibling courses in the same primary category
-    // (gated behind CATEGORY_SIBLING_ENROLLMENT_ENABLED). Best-effort: a failure
-    // here must never fail an order whose payment already succeeded.
-    try {
-      const { grantCategorySiblingEnrollments } = await import(
-        "../enrollment.services"
-      );
-      await grantCategorySiblingEnrollments({
-        userId: String(order.userId),
-        purchasedCourse: course,
-        planType: order.planType,
-      });
-    } catch (grantErr) {
-      console.error("Category sibling enrollment grant failed:", grantErr);
     }
 
     await ensureCourseInternshipEnrollment(order);

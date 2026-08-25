@@ -23,10 +23,15 @@ const userSnapshotSchema = new mongoose.Schema(
 /**
  * What was removed from one collection. Ids are kept, capped, so a deletion can
  * be traced back to specific rows in a backup rather than only counted.
+ *
+ * `collectionName`, not `collection`: the latter is a reserved property on a
+ * Mongoose document (the driver's Collection handle), so a path of that name
+ * shadows it on any hydrated subdocument. Rows written before this rename hold
+ * the old key until `rename-role-change-job-collection-key` runs.
  */
 const removedSetSchema = new mongoose.Schema(
   {
-    collection: { type: String, required: true },
+    collectionName: { type: String, required: true },
     count: { type: Number, required: true, default: 0 },
     ids: { type: [String], default: [] },
     /** True when `count` exceeded the id cap, so `ids` is a sample. */

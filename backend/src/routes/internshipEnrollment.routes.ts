@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { verifyUser, denyPartners } from "../middlewares/user.middleware";
-import { verifyAdmin, requirePermission } from "../middlewares/admin.middleware";
+import {
+  verifyAdmin,
+  requirePermission,
+  requireAnyPermission,
+} from "../middlewares/admin.middleware";
 import {
   registerForExamController,
   switchInternshipBatchController,
@@ -93,7 +97,14 @@ router.get(
 router.get(
   "/admin",
   verifyAdmin,
-  requirePermission("internships.enrollments"),
+  // The doc-review queue and both exam cohort views are the same list under a
+  // different filter, so each of those pages reads it.
+  requireAnyPermission(
+    "internships.enrollments",
+    "internships.doc-review",
+    "internships.entrance-exams",
+    "internships.certification-exams",
+  ),
   listInternshipEnrollmentsAdminController,
 );
 
@@ -101,7 +112,7 @@ router.get(
 router.post(
   "/admin/approve-to-enrolled",
   verifyAdmin,
-  requirePermission("internships.enrollments"),
+  requireAnyPermission("internships.enrollments", "internships.entrance-exams"),
   adminBulkApproveToEnrolledController,
 );
 
@@ -133,7 +144,7 @@ router.post(
 router.delete(
   "/admin/:enrollmentId",
   verifyAdmin,
-  requirePermission("internships.enrollments"),
+  requireAnyPermission("internships.enrollments", "internships.entrance-exams"),
   deleteInternshipEnrollmentAdminController,
 );
 
@@ -141,7 +152,13 @@ router.delete(
 router.get(
   "/admin/:enrollmentId",
   verifyAdmin,
-  requirePermission("internships.enrollments"),
+  // The shared submission modal reads the enrolment behind a submission, and
+  // it opens from the certification-exam cohort and the task queue too.
+  requireAnyPermission(
+    "internships.enrollments",
+    "internships.certification-exams",
+    "internships.tasks",
+  ),
   getInternshipEnrollmentByIdAdminController,
 );
 
@@ -149,7 +166,7 @@ router.get(
 router.patch(
   "/admin/:enrollmentId/status",
   verifyAdmin,
-  requirePermission("internships.enrollments"),
+  requireAnyPermission("internships.enrollments", "internships.entrance-exams"),
   adminUpdateEnrollmentStatusController,
 );
 
@@ -173,7 +190,11 @@ router.patch(
 router.patch(
   "/admin/:enrollmentId/certificate-override",
   verifyAdmin,
-  requirePermission("internships.enrollments"),
+  requireAnyPermission(
+    "internships.enrollments",
+    "internships.certification-exams",
+    "internships.tasks",
+  ),
   adminSetCertificateOverrideController,
 );
 
@@ -181,7 +202,7 @@ router.patch(
 router.patch(
   "/admin/:enrollmentId/documentation",
   verifyAdmin,
-  requirePermission("internships.doc-review"),
+  requireAnyPermission("internships.doc-review", "internships.enrollments"),
   adminUpdateInternshipDocumentationController,
 );
 
@@ -189,7 +210,7 @@ router.patch(
 router.post(
   "/admin/:enrollmentId/documentation/verify",
   verifyAdmin,
-  requirePermission("internships.doc-review"),
+  requireAnyPermission("internships.doc-review", "internships.enrollments"),
   adminVerifyInternshipDocumentationController,
 );
 

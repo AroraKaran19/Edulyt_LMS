@@ -50,6 +50,8 @@
     "scripts:drop-scholarship-otp-throttles:apply": "ts-node src/scripts/drop-scholarship-otp-throttles.ts --apply",
     "scripts:cleanup-orphan-task-templates": "ts-node src/scripts/cleanup-orphan-task-templates.ts",
     "scripts:cleanup-orphan-task-templates:apply": "ts-node src/scripts/cleanup-orphan-task-templates.ts --apply",
+    "scripts:rename-role-change-collection-key": "ts-node src/scripts/rename-role-change-job-collection-key.ts",
+    "scripts:rename-role-change-collection-key:apply": "ts-node src/scripts/rename-role-change-job-collection-key.ts --apply",
     "scripts:seed-sample-certs": "ts-node src/scripts/seed-sample-certificates.ts",
     "scripts:remove-sample-certs": "ts-node src/scripts/remove-sample-certificates.ts",
     "scripts:diagnose-missing-duration": "ts-node src/scripts/diagnose-missing-program-duration.ts",

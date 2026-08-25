@@ -176,10 +176,16 @@ export const sendOpsAlert = async (
       year: new Date().getFullYear(),
     };
 
+    // `suppressFailureAlert` breaks the loop: the mailer raises an ops alert on
+    // every failed send, and this send is that alert.
     if (options.immediate) {
-      await internalAlertMail.sendNow(recipients, variables);
+      await internalAlertMail.sendNow(recipients, variables, {
+        suppressFailureAlert: true,
+      });
     } else {
-      internalAlertMail.send(recipients, variables);
+      internalAlertMail.send(recipients, variables, {
+        suppressFailureAlert: true,
+      });
     }
 
     return true;

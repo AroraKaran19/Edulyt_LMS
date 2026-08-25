@@ -139,7 +139,7 @@ export const enqueueRoleChangeJob = async (
  */
 const purgeLearnerData = async (userId: mongoose.Types.ObjectId) => {
   const removed: {
-    collection: string;
+    collectionName: string;
     count: number;
     ids: string[];
     truncated: boolean;
@@ -156,7 +156,7 @@ const purgeLearnerData = async (userId: mongoose.Types.ObjectId) => {
 
     await entry.model.deleteMany(filter);
     removed.push({
-      collection: entry.name,
+      collectionName: entry.name,
       count: total,
       ids: docs.map((d) => String((d as { _id: unknown })._id)),
       truncated: total > docs.length,
