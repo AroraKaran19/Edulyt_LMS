@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { Course } from "../types";
 import plansSchema from "./plans.schema";
 import {
-  richTextLengthInRange,
+  richTextWithinLength,
   validateAudience,
   validatePlans,
   validateUrl,
@@ -67,20 +67,26 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: true,
       trim: true,
+      // Authored as rich text, so the maximum counts visible text only (as the
+      // admin form does) — otherwise pasted markup blows a limit the author
+      // cannot see. The raw cap is a storage guard, the minimum stays on the
+      // raw string so existing markup-heavy values keep saving.
+      minlength: 25,
       maxlength: [20000, "Description contains too much formatting"],
       validate: {
-        validator: (value: string) => richTextLengthInRange(value, 25, 1000),
-        message: "Description must be between 25 and 1000 characters",
+        validator: (value: string) => richTextWithinLength(value, 1000),
+        message: "Description must be 1000 characters or fewer",
       },
     },
     shortDescription: {
       type: String,
       required: true,
       trim: true,
+      minlength: 10,
       maxlength: [5000, "Short description contains too much formatting"],
       validate: {
-        validator: (value: string) => richTextLengthInRange(value, 10, 300),
-        message: "Short description must be between 10 and 300 characters",
+        validator: (value: string) => richTextWithinLength(value, 300),
+        message: "Short description must be 300 characters or fewer",
       },
     },
     category: {
