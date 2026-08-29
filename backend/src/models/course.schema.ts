@@ -1,7 +1,12 @@
 import mongoose from "mongoose";
 import { Course } from "../types";
 import plansSchema from "./plans.schema";
-import { validateAudience, validatePlans, validateUrl } from "./validators";
+import {
+  richTextLengthInRange,
+  validateAudience,
+  validatePlans,
+  validateUrl,
+} from "./validators";
 
 // ===================
 // Highlights Schema
@@ -62,15 +67,21 @@ const courseSchema = new mongoose.Schema<Course>(
       type: String,
       required: true,
       trim: true,
-      minlength: 25,
-      maxlength: 1000,
+      maxlength: [20000, "Description contains too much formatting"],
+      validate: {
+        validator: (value: string) => richTextLengthInRange(value, 25, 1000),
+        message: "Description must be between 25 and 1000 characters",
+      },
     },
     shortDescription: {
       type: String,
       required: true,
       trim: true,
-      minlength: 10,
-      maxlength: 300,
+      maxlength: [5000, "Short description contains too much formatting"],
+      validate: {
+        validator: (value: string) => richTextLengthInRange(value, 10, 300),
+        message: "Short description must be between 10 and 300 characters",
+      },
     },
     category: {
       type: [mongoose.Schema.Types.ObjectId],
