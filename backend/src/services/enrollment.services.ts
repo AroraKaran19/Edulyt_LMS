@@ -48,7 +48,7 @@ export const isEnrollmentValid = (enrollment: Enrollment): boolean => {
 };
 
 // Create new enrollment
-export const CreateEnrollmentService = async (enrollmentData: {
+type CreateEnrollmentInput = {
   userId: string;
   courseId: string;
   enrollmentSource?: "direct" | "gift" | "promotion" | "trial";
@@ -62,7 +62,148 @@ export const CreateEnrollmentService = async (enrollmentData: {
   validUntil?: Date;
   isTrial?: boolean;
   trialDurationDays?: number;
-}): Promise<Enrollment | null> => {
+};
+
+/** Statuses that free the { userId, courseId } pair for a fresh grant. */
+const INACTIVE_ENROLLMENT_STATUSES = ["dropped", "revoked"];
+
+const DEFAULT_TRIAL_DAYS = 7;
+const NON_TRIAL_VALIDITY_YEARS = 4;
+
+/**
+ * Re-grant a course on a revoked/dropped enrollment by resetting the existing
+ * document instead of inserting a new one.
+ *
+ * `{ userId, courseId }` is uniquely indexed with no status filter, so a second
+ * row for the same pair is impossible; the revoked row has to become the new
+ * grant. Everything earned under the previous grant (progress, completed
+ * contents, certificate flags, time spent) is cleared so the learner starts
+ * clean, while `createdAt` still records when the pair was first enrolled.
+ *
+ * The status guard in the filter makes this safe under concurrent grants: only
+ * one caller can move the row out of an inactive status, and the loser gets the
+ * same "already enrolled" error it would have got from the duplicate check.
+ *
+ * Deliberately does NOT touch course/instructor analytics counters. Revoking
+ * never decremented them, so the revoked enrollment is still counted; adding
+ * again here would double-count it.
+ */
+const reviveInactiveEnrollment = async ({
+  enrollmentId,
+  enrollmentData,
+  giftFromSnapshot,
+  courseTitle,
+}: {
+  enrollmentId: mongoose.Types.ObjectId | string;
+  enrollmentData: CreateEnrollmentInput;
+  giftFromSnapshot?: { displayName: string; email?: string };
+  courseTitle?: string;
+}): Promise<Enrollment> => {
+  const now = new Date();
+  const isTrial = enrollmentData.isTrial || false;
+
+  // Mirrors the pre-save hook, which findOneAndUpdate does not run.
+  const trialDurationDays = isTrial
+    ? enrollmentData.trialDurationDays || DEFAULT_TRIAL_DAYS
+    : undefined;
+  let trialExpiresAt: Date | undefined;
+  let validUntil: Date | undefined;
+  if (isTrial) {
+    trialExpiresAt = new Date(now);
+    trialExpiresAt.setDate(trialExpiresAt.getDate() + trialDurationDays!);
+  } else {
+    validUntil = enrollmentData.validUntil;
+    if (!validUntil) {
+      validUntil = new Date(now);
+      validUntil.setFullYear(validUntil.getFullYear() + NON_TRIAL_VALIDITY_YEARS);
+    }
+  }
+
+  const set: Record<string, unknown> = {
+    status: "active",
+    enrolledAt: now,
+    lastUpdated: now,
+    lastActivityAt: now,
+    enrollmentSource: enrollmentData.enrollmentSource || "direct",
+    promotionCode: enrollmentData.promotionCode ?? null,
+    giftFrom: enrollmentData.giftFrom ?? null,
+    planType: enrollmentData.planType || "essential",
+    accessControl: enrollmentData.accessControl || null,
+    isTrial,
+    progress: {
+      overallCompletion: 0,
+      totalModules: 0,
+      completedModules: 0,
+      totalLessons: 0,
+      completedLessons: 0,
+      lastActivityAt: now,
+    },
+    completedContents: [],
+    lastContentAccessed: null,
+    totalTimeSpent: 0,
+    completedAt: null,
+    certificateIssued: false,
+    certificateIssuedAt: null,
+    successPointsCompletionAwarded: false,
+  };
+
+  // Left alone when the course row is gone, so the old title snapshot survives.
+  if (courseTitle) {
+    set.courseName = courseTitle;
+  }
+
+  const unset: Record<string, ""> = {
+    // Certificate send markers: the new grant has not been mailed anything.
+    certificateEmailSentAt: "",
+    certificatePendingEmailSentAt: "",
+    // Historical category-sibling labels; a re-grant is not a sibling grant.
+    grantSource: "",
+    grantedFromCourseId: "",
+  };
+
+  if (giftFromSnapshot) {
+    set.giftFromSnapshot = giftFromSnapshot;
+  } else {
+    unset.giftFromSnapshot = "";
+  }
+
+  if (enrollmentData.collaborationTopNSettings) {
+    set.collaborationTopNSettings = enrollmentData.collaborationTopNSettings;
+  } else {
+    unset.collaborationTopNSettings = "";
+  }
+
+  if (isTrial) {
+    set.trialExpiresAt = trialExpiresAt;
+    set.trialDurationDays = trialDurationDays;
+    unset.validUntil = "";
+  } else {
+    set.validUntil = validUntil;
+    unset.trialExpiresAt = "";
+    unset.trialDurationDays = "";
+  }
+
+  const revived = await EnrollmentModel.findOneAndUpdate(
+    { _id: enrollmentId, status: { $in: INACTIVE_ENROLLMENT_STATUSES } },
+    { $set: set, $unset: unset },
+    { new: true },
+  );
+
+  if (!revived) {
+    throw new AppError("User is already enrolled in this course", 400);
+  }
+
+  // Revoking never pulled the id, so this is normally already present.
+  await StudentModel.findByIdAndUpdate(enrollmentData.userId, {
+    $addToSet: { enrollments: revived._id },
+  });
+
+  return revived as Enrollment;
+};
+
+export const CreateEnrollmentService = async (
+  enrollmentData: CreateEnrollmentInput,
+): Promise<Enrollment | null> => {
   try {
     let giftFromSnapshot: { displayName: string; email?: string } | undefined;
     if (enrollmentData.enrollmentSource === "gift" && enrollmentData.giftFrom) {
@@ -84,20 +225,34 @@ export const CreateEnrollmentService = async (enrollmentData: {
       }
     }
 
-    // Check if enrollment already exists
+    // Look up any prior enrollment on the exact unique-index key
+    // ({ userId, courseId }) rather than filtering by status. Revoked and
+    // dropped rows still occupy that key, so they have to be revived in place:
+    // inserting a second row for the same pair fails with E11000.
     const existingEnrollment = await EnrollmentModel.findOne({
       userId: enrollmentData.userId,
       courseId: enrollmentData.courseId,
-      status: { $nin: ["dropped", "revoked"] },
-    });
+    }).select("_id status");
 
-    if (existingEnrollment) {
+    if (
+      existingEnrollment &&
+      !INACTIVE_ENROLLMENT_STATUSES.includes(existingEnrollment.status)
+    ) {
       throw new AppError("User is already enrolled in this course", 400);
     }
 
     // Fetch the course once: used for the courseName snapshot here AND the
     // instructor analytics update below.
     const course = await CourseModel.findById(enrollmentData.courseId);
+
+    if (existingEnrollment) {
+      return await reviveInactiveEnrollment({
+        enrollmentId: existingEnrollment._id,
+        enrollmentData,
+        giftFromSnapshot,
+        courseTitle: course?.title,
+      });
+    }
 
     const enrollment = new EnrollmentModel({
       ...enrollmentData,
