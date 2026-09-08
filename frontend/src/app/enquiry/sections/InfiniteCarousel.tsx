@@ -27,9 +27,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * animation and the drag offset each consume a copy width of travel, so
  * coverage needs two copies more than it takes to span the viewport.
  *
- * The duplicates are `inert`, not just `aria-hidden`: these rows contain
- * buttons, and hiding a focusable element from assistive tech without removing
- * it from the tab order is worse than not hiding it at all.
+ * Every card on screen is a duplicate. The wrapper rests a copy to the left and
+ * each copy slides at most its own width, so copy 0 never reaches the viewport.
+ * That rules out `inert` on the duplicates: it suppresses their click events
+ * too, which left rows like the CV strip with no working click target at all.
+ * They are hidden from assistive tech and pulled out of the tab order by hand
+ * instead, which is the half of `inert` this actually wanted.
  *
  * Reduced motion is handled globally by the `[data-enquiry]` block in
  * globals.css, so there is no per-element opt-out here.
@@ -37,6 +40,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Past this, a pointer press was a drag and the click it ends with is not real. */
 const DRAG_SLOP_PX = 5;
+
+/** What `inert` would have taken out of the tab order on the duplicate rows. */
+const FOCUSABLE =
+  'a[href],button,input,select,textarea,summary,[tabindex]:not([tabindex="-1"])';
 
 export default function InfiniteCarousel({
   children,
@@ -93,6 +100,18 @@ export default function InfiniteCarousel({
   }, [applyOffset]);
 
   useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    // Copy 0 is the one assistive tech reads and tabs through; the duplicates
+    // stay clickable but must not be stops of their own.
+    for (const copy of Array.from(wrap.children).slice(1)) {
+      for (const node of copy.querySelectorAll<HTMLElement>(FOCUSABLE)) {
+        node.tabIndex = -1;
+      }
+    }
+  }, [copies, children]);
+
+  useEffect(() => {
     const viewport = viewportRef.current;
     const wrap = wrapRef.current;
     if (!viewport || !wrap) return;
@@ -106,16 +125,24 @@ export default function InfiniteCarousel({
       }
     };
 
-    const onPointerDown = (event: PointerEvent) => {
+    const onPointerDown = () => {
       draggingRef.current = true;
       movedRef.current = 0;
       setPaused(true);
-      viewport.setPointerCapture(event.pointerId);
     };
 
     const onPointerMove = (event: PointerEvent) => {
       if (!draggingRef.current) return;
       movedRef.current += Math.abs(event.movementX);
+      // Captured once the press is a drag, not on pointerdown: a capture that
+      // is still held at pointerup retargets the click to the capturing
+      // element, so a plain press never reached the card it landed on.
+      if (
+        movedRef.current > DRAG_SLOP_PX &&
+        !viewport.hasPointerCapture(event.pointerId)
+      ) {
+        viewport.setPointerCapture(event.pointerId);
+      }
       offsetRef.current += event.movementX;
       applyOffset();
     };
@@ -168,7 +195,7 @@ export default function InfiniteCarousel({
           <ul
             key={copy}
             ref={copy === 0 ? trackRef : undefined}
-            {...(copy > 0 ? { inert: true } : {})}
+            {...(copy > 0 ? { "aria-hidden": true } : {})}
             style={{ gap, paddingRight: gap, animationDuration: `${seconds}s` }}
             className="flex w-max flex-none animate-eq-slide items-stretch"
           >
