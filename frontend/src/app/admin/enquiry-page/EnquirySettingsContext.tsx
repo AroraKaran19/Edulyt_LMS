@@ -32,8 +32,10 @@ interface ContextValue {
     getValue: () => EnquiryPageSettings[K],
   ) => () => void;
   saveActiveSection: () => Promise<boolean>;
-  setActiveDirty: (dirty: boolean) => void;
+  reportDirty: (key: EnquirySectionKey, dirty: boolean) => void;
   isActiveDirty: boolean;
+  /** Bumped on every successful save so the open section can rebase. */
+  saveNonce: number;
 }
 
 const Ctx = createContext<ContextValue | null>(null);
@@ -50,6 +52,7 @@ export function EnquirySettingsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isActiveDirty, setIsActiveDirty] = useState(false);
+  const [saveNonce, setSaveNonce] = useState(0);
 
   const activeSectionRef = useRef<{
     key: EnquirySectionKey;
@@ -100,6 +103,16 @@ export function EnquirySettingsProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  /** Keyed, so a section that has already been navigated away from cannot flip
+   *  the flag the shell reads for the one now on screen. */
+  const reportDirty = useCallback(
+    (key: EnquirySectionKey, dirty: boolean) => {
+      if (activeSectionRef.current?.key !== key) return;
+      setIsActiveDirty(dirty);
+    },
+    [],
+  );
+
   const registerActiveSection = useCallback(
     <K extends EnquirySectionKey>(
       key: K,
@@ -127,7 +140,10 @@ export function EnquirySettingsProvider({ children }: { children: ReactNode }) {
       return false;
     }
     const ok = await saveSection(active.key, active.getValue());
-    if (ok) setIsActiveDirty(false);
+    if (ok) {
+      setIsActiveDirty(false);
+      setSaveNonce((n) => n + 1);
+    }
     return ok;
   }, [saveSection]);
 
@@ -140,8 +156,9 @@ export function EnquirySettingsProvider({ children }: { children: ReactNode }) {
       saveSection,
       registerActiveSection,
       saveActiveSection,
-      setActiveDirty: setIsActiveDirty,
+      reportDirty,
       isActiveDirty,
+      saveNonce,
     }),
     [
       settings,
@@ -151,7 +168,9 @@ export function EnquirySettingsProvider({ children }: { children: ReactNode }) {
       saveSection,
       registerActiveSection,
       saveActiveSection,
+      reportDirty,
       isActiveDirty,
+      saveNonce,
     ],
   );
 
@@ -168,6 +187,25 @@ export function useEnquirySettings(): ContextValue {
   return ctx;
 }
 
+/** Structural comparison, since every section value is plain JSON. */
+function isSameValue(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return (
+      a.length === b.length && a.every((item, i) => isSameValue(item, b[i]))
+    );
+  }
+  const ao = a as Record<string, unknown>;
+  const bo = b as Record<string, unknown>;
+  const keys = new Set([...Object.keys(ao), ...Object.keys(bo)]);
+  for (const k of keys) {
+    if (!isSameValue(ao[k], bo[k])) return false;
+  }
+  return true;
+}
+
 /**
  * Registers the page with the shell's Save button and tracks dirty state.
  * `buildInitial` fills defaults so `state` is never null.
@@ -176,21 +214,28 @@ export function useSectionState<K extends EnquirySectionKey, T>(
   key: K,
   buildInitial: (settings: EnquiryPageSettings | null) => T,
 ) {
-  const { settings, registerActiveSection, setActiveDirty, isLoading } =
+  const { settings, registerActiveSection, reportDirty, isLoading, saveNonce } =
     useEnquirySettings();
   const [state, setStateRaw] = useState<T>(() => buildInitial(settings));
   const stateRef = useRef(state);
   stateRef.current = state;
+  /** What is on the server: the yardstick for "unsaved changes". */
+  const savedRef = useRef(state);
 
   useEffect(() => {
     if (!isLoading) {
       const next = buildInitial(settings);
       setStateRaw(next);
       stateRef.current = next;
-      setActiveDirty(false);
+      savedRef.current = next;
+      reportDirty(key, false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading]);
+
+  useEffect(() => {
+    savedRef.current = stateRef.current;
+  }, [saveNonce]);
 
   useEffect(() => {
     return registerActiveSection(
@@ -201,17 +246,17 @@ export function useSectionState<K extends EnquirySectionKey, T>(
 
   const setState = useCallback(
     (updater: T | ((prev: T) => T)) => {
-      setStateRaw((prev) => {
-        const next =
-          typeof updater === "function"
-            ? (updater as (p: T) => T)(prev)
-            : updater;
-        stateRef.current = next;
-        return next;
-      });
-      setActiveDirty(true);
+      const next =
+        typeof updater === "function"
+          ? (updater as (p: T) => T)(stateRef.current)
+          : updater;
+      stateRef.current = next;
+      setStateRaw(next);
+      // A widget that rewrites its own value on mount is not an edit, so the
+      // flag follows the value, not the fact that a setter ran.
+      reportDirty(key, !isSameValue(next, savedRef.current));
     },
-    [setActiveDirty],
+    [key, reportDirty],
   );
 
   return { state, setState, isLoading };

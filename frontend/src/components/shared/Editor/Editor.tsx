@@ -46,8 +46,14 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
   }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const quillRef = useRef<Quill | null>(null);
-    const initializedRef = useRef(false);
     const [characterCount, setCharacterCount] = useState(0);
+
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+
+    /** The HTML last written in or reported out, so content the parent echoes
+     *  back is not pasted over the caret while someone is typing. */
+    const lastAppliedRef = useRef(initialHtml);
 
     // Calculate height based on rows or use provided height
     const calculateHeight = () => {
@@ -71,104 +77,70 @@ const Editor = forwardRef<EditorHandle, EditorProps>(
     const isMinLengthMet = minLength ? characterCount >= minLength : true;
     const isMaxLengthExceeded = maxLength ? characterCount > maxLength : false;
 
-    // Update character count when text changes
-    const updateCharacterCount = () => {
-      if (quillRef.current) {
-        const text = quillRef.current.getText();
-        const html = quillRef.current.root.innerHTML;
-        const count = getCharacterCount(text);
-        
-        setCharacterCount(count);
-        
-        // Call onChange with HTML content
-        if (onChange) {
-          onChange(html);
-        }
-      }
+    const applyHtml = (html: string) => {
+      const quill = quillRef.current;
+      if (!quill || html === lastAppliedRef.current) return;
+      quill.clipboard.dangerouslyPasteHTML(html || "");
+      lastAppliedRef.current = html;
+      setCharacterCount(getCharacterCount(quill.getText()));
     };
 
     useEffect(() => {
-      if (containerRef.current && !quillRef.current && !initializedRef.current) {
-        quillRef.current = new Quill(containerRef.current, {
-          theme: "snow",
-          placeholder,
-          modules: modules ?? {
-            toolbar: [
-              [{ header: [1, 2, 3, false] }],
-              ["bold", "italic", "underline", "strike"],
-              [{ list: "ordered" }, { list: "bullet" }],
-              ["link"],
-              ["clean"],
-            ],
-          },
-        });
+      if (!containerRef.current || quillRef.current) return;
 
-        if (initialHtml) {
-          quillRef.current.clipboard.dangerouslyPasteHTML(initialHtml);
-        }
+      const quill = new Quill(containerRef.current, {
+        theme: "snow",
+        placeholder,
+        modules: modules ?? {
+          toolbar: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline", "strike"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            ["link"],
+            ["clean"],
+          ],
+        },
+      });
+      quillRef.current = quill;
 
-        // Add text change listener
-        const quillInstance = quillRef.current;
-        quillInstance.on('text-change', () => {
-          // Get the complete text content from the current editor state
-          const text = quillInstance.getText();
-          const html = quillInstance.root.innerHTML;
-          const count = getCharacterCount(text);
-          
-          setCharacterCount(count);
-          
-          // Call onChange with HTML content
-          if (onChange) {
-            onChange(html);
-          }
-        });
-        
-        // Set initial character count after a small delay to ensure content is loaded
-        setTimeout(() => {
-          if (quillRef.current) {
-            const text = quillRef.current.getText();
-            const html = quillRef.current.root.innerHTML;
-            const count = getCharacterCount(text);
-            
-            setCharacterCount(count);
-            
-            if (onChange) {
-              onChange(html);
-            }
-          }
-        }, 100);
-        
-        initializedRef.current = true;
+      if (initialHtml) {
+        quill.clipboard.dangerouslyPasteHTML(initialHtml);
       }
+      lastAppliedRef.current = initialHtml;
+      setCharacterCount(getCharacterCount(quill.getText()));
+
+      const handleTextChange = (
+        _delta: unknown,
+        _oldDelta: unknown,
+        source: string,
+      ) => {
+        const html = quill.root.innerHTML;
+        setCharacterCount(getCharacterCount(quill.getText()));
+        // Seeding and programmatic writes are not edits. Reporting them would
+        // hand the parent a change nobody made, which reads as unsaved work.
+        if (source !== "user") return;
+        lastAppliedRef.current = html;
+        onChangeRef.current?.(html);
+      };
+      quill.on("text-change", handleTextChange);
 
       return () => {
-        if (quillRef.current) {
-          quillRef.current.off('text-change', updateCharacterCount);
-        }
+        quill.off("text-change", handleTextChange);
         quillRef.current = null;
       };
-    }, [initialHtml, modules, placeholder]);
+      // Seeded once: `initialHtml` is a starting value, not a bound one, and
+      // re-running this would drop the live instance the toolbar is wired to.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Update character count when initialHtml changes
     useEffect(() => {
-      if (quillRef.current && initialHtml) {
-        quillRef.current.clipboard.dangerouslyPasteHTML(initialHtml);
-        setTimeout(() => {
-          updateCharacterCount();
-        }, 100);
-      }
+      applyHtml(initialHtml);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialHtml]);
 
     useImperativeHandle(ref, () => ({
       getHTML: () => quillRef.current?.root.innerHTML || "",
-      setHTML: (html: string) => {
-        if (quillRef.current) {
-          quillRef.current.clipboard.dangerouslyPasteHTML(html);
-          setTimeout(() => {
-            updateCharacterCount();
-          }, 100);
-        }
-      },
+      setHTML: (html: string) => applyHtml(html),
       getText: () => quillRef.current?.getText() || "",
       isEmpty: () => {
         if (!quillRef.current) return true;
