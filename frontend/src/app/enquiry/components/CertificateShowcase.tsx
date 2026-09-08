@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { CERTIFICATES, type Certificate } from "../plans";
 
 /** How long each certificate holds before the list advances on its own. */
-const AUTO_ADVANCE_MS = 2000;
+const AUTO_ADVANCE_MS = 1400;
 
 /** Quiet needed after the last scroll event before the page counts as settled. */
 const SETTLE_AFTER_MS = 250;

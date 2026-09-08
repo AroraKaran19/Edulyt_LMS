@@ -35,7 +35,7 @@ export default function ResumeSection() {
         </div>
 
         <div data-reveal className={`${REVEAL} mt-10 delay-[80ms]`}>
-          <InfiniteCarousel seconds={52}>
+          <InfiniteCarousel seconds={24}>
             {resumes.map((resume) => (
               <li
                 key={resume.src}

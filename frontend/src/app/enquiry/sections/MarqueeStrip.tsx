@@ -23,7 +23,7 @@ export default function MarqueeStrip() {
       {[0, 1].map((copy) => (
         <div
           key={copy}
-          className="flex min-w-full flex-none animate-eq-slide items-center justify-around gap-[22px]"
+          className="flex min-w-full flex-none animate-eq-slide items-center justify-around gap-[22px] [animation-duration:18s]"
         >
           {items.map((item) => (
             <Fragment key={item}>

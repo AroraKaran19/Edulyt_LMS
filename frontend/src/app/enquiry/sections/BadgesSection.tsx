@@ -30,7 +30,7 @@ export default function BadgesSection() {
         </div>
 
         <div data-reveal className={`${REVEAL} mt-10 delay-[80ms]`}>
-          <InfiniteCarousel seconds={38}>
+          <InfiniteCarousel seconds={18}>
             {badges.map((badge) => (
               <li
                 key={badge.src}
