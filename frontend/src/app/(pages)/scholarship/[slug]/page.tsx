@@ -394,12 +394,16 @@ export default function ScholarshipCampaignPage() {
               {/* Names the bargain without naming the prize: the size of the
                   reward is the thing they are playing for.
 
+                  No question count in here, deliberately. It is already in the
+                  rule row below, and printing it twice reads as thin rather
+                  than short when a campaign has two or three of them.
+
                   Drops to the smaller size when there is an image, so the two
                   together do not push the email field below the fold. */}
               <h1
                 className={`${campaign.imageUrl ? DISPLAY_SM : DISPLAY} mt-4`}
               >
-                {campaign.questionCount} questions stand between you and it.
+                Your scholarship is a few questions away.
               </h1>
               {campaign.description ? (
                 <p className="mt-5 max-w-md text-base leading-relaxed text-sch-on-ink-dim">
