@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
+import { formatStoredPhone } from "@/lib/phone";
 import useAuth from "@/hooks/useAuth";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
@@ -23,6 +24,7 @@ import useCrm from "@/hooks/useCrm";
 import LeadDetailsModal from "./LeadDetailsModal";
 import AssignLeadsModal from "./AssignLeadsModal";
 import LeadContextCell from "./LeadContextCell";
+import BrandBadge from "./BrandBadge";
 import {
   LEAD_SOURCE_LABELS,
   LEAD_SOURCE_OPTIONS,
@@ -364,12 +366,15 @@ export default function LeadsPage() {
                       />
                     </td>
                     <td className="min-w-[220px] px-3 py-2.5 sm:px-4">
-                      <div className="font-medium text-gray-900">
-                        {lead.name}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="font-medium text-gray-900">
+                          {lead.name}
+                        </span>
+                        <BrandBadge brand={lead.source?.brand} />
                       </div>
                       <div className="text-[11px] text-gray-500">{lead.email}</div>
                       <div className="text-[11px] text-gray-500">
-                        +91 {lead.phone}
+                        {formatStoredPhone(lead.phone)}
                       </div>
                       {(lead.duplicateEmailCount ?? 1) > 1 ? (
                         <button

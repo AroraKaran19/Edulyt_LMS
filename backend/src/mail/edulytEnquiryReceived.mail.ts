@@ -33,9 +33,6 @@ export type EdulytEnquiryReceivedVariables = {
  *
  * Subject in the dashboard: `We have your enquiry, {{name}}`.
  */
-// TODO: replace with the real id once `edulyt-enquiry-received.html` has been
-// uploaded to the MSG91 dashboard and approved. Sending against a placeholder
-// fails loudly rather than silently delivering nothing.
 const EDULYT_ENQUIRY_RECEIVED_TEMPLATE_ID = "edulyt_enquiry_received";
 
 export const edulytEnquiryReceivedMail =

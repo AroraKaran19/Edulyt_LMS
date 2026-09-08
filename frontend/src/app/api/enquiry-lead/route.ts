@@ -8,7 +8,8 @@ const leadSchema = z.object({
     .trim()
     .max(160)
     .regex(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/),
-  phone: z.string().regex(/^[6-9]\d{9}$/),
+  /** Bare Indian 10-digit, or E.164 for anywhere else. Mirrors the backend. */
+  phone: z.string().regex(/^(?:[6-9]\d{9}|\+\d{8,15})$/),
   college: z.string().trim().min(2).max(240),
   /** Shape-checked, never trusted: the backend re-reads the college itself. */
   collegeId: z

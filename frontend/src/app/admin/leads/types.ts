@@ -74,6 +74,8 @@ export interface Lead {
   _id: string;
   source: {
     kind: "enquiry" | "scholarship";
+    /** Which site it came from. Absent on rows predating two brands. */
+    brand?: "airkrit" | "edulyt";
     testId?: string | null;
     title?: string;
     slug?: string;

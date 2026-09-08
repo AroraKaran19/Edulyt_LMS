@@ -27,6 +27,14 @@ const leadSourceSchema = new mongoose.Schema(
       enum: ["enquiry", "scholarship"],
       default: "enquiry",
     },
+    /** Defaulted, not required: rows written before two brands existed are
+     *  all Airkrit, and reading them must not fail. */
+    brand: {
+      type: String,
+      required: false,
+      enum: ["airkrit", "edulyt"],
+      default: "airkrit",
+    },
     testId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ScholarshipTest",

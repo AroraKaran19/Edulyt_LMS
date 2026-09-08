@@ -4,8 +4,9 @@ import { UserModel } from "../models/user.schema";
 import { ScholarshipTestModel } from "../models/scholarshipTest.schema";
 import { resolveCrmCode } from "./crmProfile.services";
 import { buildAttribution } from "../lib/leadAttribution";
+import { isValidPhone } from "./phoneVerification.services";
 
-const PHONE_RE = /^[6-9]\d{9}$/;
+
 
 /**
  * A readable name for a funnel that only proves an email and a phone.
@@ -54,7 +55,7 @@ export const captureScholarshipLead = async (
   try {
     const email = input.email.trim().toLowerCase();
     const phone = input.phone.trim();
-    if (!PHONE_RE.test(phone)) return;
+    if (!isValidPhone(phone)) return;
 
     const testId = new mongoose.Types.ObjectId(input.testId);
 
