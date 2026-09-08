@@ -12,6 +12,8 @@ import { scoreAttempt } from "../lib/scholarshipScoring";
 import { rollDiscountPercent } from "../lib/scholarshipDiscountRoll";
 import { generateScholarshipCouponCode } from "../lib/scholarshipTestValidation";
 import { bumpDailyStat } from "./scholarshipOtp.services";
+import { scholarshipCouponMail } from "../mail";
+import { formatIstDate } from "../utils/ist";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -30,13 +32,16 @@ export interface AttemptView {
   answers: { questionId: string; selectedOptionIds: string[] }[];
 }
 
+/**
+ * Deliberately carries nothing but the fact of having finished.
+ *
+ * The percentage, the code and the score all used to be here, keyed on an email
+ * the caller supplied. Once the gate stops proving that address, anything in
+ * this shape is readable by anyone who can type it, so the reward moved to the
+ * mail and this became a yes/no.
+ */
 export interface ResultView {
-  correctCount: number;
-  totalQuestions: number;
-  couponCode: string;
-  couponExpiresAt: Date;
-  discountPercent: number;
-  expired: boolean;
+  submitted: true;
 }
 
 const isDuplicateKeyError = (error: unknown): boolean =>
@@ -166,8 +171,18 @@ export const startAttempt = async (
   })
     .select("_id")
     .lean();
+  /*
+   * Both refusals are 409s and the page has to tell them apart, because only
+   * one of them has a coupon behind it. Finishing issues the entitlement, so
+   * "check your email" is true here; running out of attempts without finishing
+   * issues nothing, and sending those people to an inbox is a wild goose chase.
+   */
   if (finished) {
-    throw new AppError("You have already finished this test", 409);
+    throw new AppError(
+      "You have already finished this test",
+      409,
+      "ALREADY_FINISHED",
+    );
   }
 
   // Every prior attempt counts, expired ones included. A timeout has to burn an
@@ -175,7 +190,11 @@ export const startAttempt = async (
   // infinite and the clock meaningless.
   const used = await ScholarshipAttemptModel.countDocuments({ testId, email });
   if (used >= campaign.attemptsAllowed) {
-    throw new AppError("You have no attempts left for this test", 409);
+    throw new AppError(
+      "You have no attempts left for this test",
+      409,
+      "NO_ATTEMPTS_LEFT",
+    );
   }
 
   const creator = await UserModel.findById(campaign.createdBy)
@@ -398,18 +417,47 @@ export const issueEntitlement = async (
  * deleted when spent or first found expired, and this screen still has to
  * name the code and explain the deadline afterwards.
  */
-const buildResult = (
+/**
+ * Emails the code to the address that won it.
+ *
+ * The only delivery. The result page used to reveal the percentage and the
+ * code, which made both readable by anyone who typed a participant's address
+ * into the gate, so the reward now travels to the inbox that owns the address
+ * instead of back down the wire to whoever asked.
+ *
+ * Queued rather than awaited, so a slow MSG91 cannot hold up a submit. The
+ * trade-off is real and deliberate: nothing else shows a winner their code, so
+ * a send that fails is a support ticket, and the entitlement row is the source
+ * of truth for answering it.
+ */
+const mailCoupon = (
+  email: string,
+  campaignTitle: string,
   reward: { awardedPercent: number; couponCode: string; expiresAt: Date },
-  correctCount: number,
-  totalQuestions: number,
-): ResultView => ({
-  correctCount,
-  totalQuestions,
-  couponCode: reward.couponCode,
-  couponExpiresAt: reward.expiresAt,
-  discountPercent: reward.awardedPercent,
-  expired: new Date(reward.expiresAt).getTime() < Date.now(),
-});
+): void => {
+  const base = (process.env.FRONTEND_URL || "http://localhost:3000").replace(
+    /\/+$/,
+    "",
+  );
+  scholarshipCouponMail.send(
+    { email },
+    {
+      campaignTitle,
+      discountPercent: reward.awardedPercent,
+      couponCode: reward.couponCode,
+      validUntil: formatIstDate(reward.expiresAt),
+      /*
+       * The course listing, because that is where the code is spent. Built from
+       * FRONTEND_URL rather than hardcoded, so a mail sent from staging does
+       * not walk people into production, and `/programs` rather than
+       * `/courses`, which is only a 301 alias kept for old bookmarks.
+       */
+      ctaUrl: `${base}/programs`,
+      ctaLabel: "Browse courses",
+      year: new Date().getFullYear(),
+    },
+  );
+};
 
 export const submitAttempt = async (
   testId: string,
@@ -468,45 +516,33 @@ export const submitAttempt = async (
   // Scoring never gates the reward: an all-wrong paper earns the same roll.
   const reward = await issueEntitlement(campaign as never, attempt._id, email);
 
+  // After the entitlement, so a mail is never sent for a reward that failed to
+  // mint. `issueEntitlement` is idempotent on (testId, email), so a resubmit
+  // that somehow got here would re-send the same code rather than a new one.
+  mailCoupon(email, campaign.title, reward);
+
   await bumpDailyStat(campaign._id, "submitted");
 
-  return buildResult(
-    reward,
-    correctCount,
-    attempt.totalQuestions ?? attempt.questionOrder.length,
-  );
+  return { submitted: true };
 };
 
 /**
- * The recovery path. Nothing emails the coupon, so this is the only way back to
- * it for anyone who closed the tab.
+ * Whether this address has already finished the test.
+ *
+ * Used to be the recovery path for the coupon, which is why it returned the
+ * code. The coupon is emailed now, so this answers the only question the page
+ * still needs: has this address been here before. One indexed hit on the unique
+ * (testId, email) entitlement index, and no second query for a score nobody
+ * shows any more.
  */
 export const getResultForEmail = async (
   testId: string,
   email: string,
 ): Promise<ResultView | null> => {
-  const entitlement = await ScholarshipCouponEntitlementModel.findOne({
+  const issued = await ScholarshipCouponEntitlementModel.exists({
     testId,
     email,
     revokedAt: null,
-  }).lean();
-  if (!entitlement) return null;
-
-  const attempt = await ScholarshipAttemptModel.findOne({
-    testId,
-    email,
-    status: "submitted",
-  })
-    .select("correctCount totalQuestions")
-    .lean();
-
-  return buildResult(
-    {
-      awardedPercent: entitlement.awardedPercent as number,
-      couponCode: entitlement.couponCode as string,
-      expiresAt: entitlement.expiresAt as Date,
-    },
-    attempt?.correctCount ?? 0,
-    attempt?.totalQuestions ?? 0,
-  );
+  });
+  return issued ? { submitted: true } : null;
 };

@@ -24,13 +24,22 @@ type Props = {
    * `phoneVerified` is always false for a code-verified session, but it is read
    * from the response rather than assumed so every entry path into the page
    * hands back the same shape.
+   *
+   * `email` rides along because the page needs it after the test: the result
+   * screen names the address the coupon was emailed to, and carries it into the
+   * enquiry form.
    */
-  onVerified: (token: string, phoneVerified: boolean) => void;
+  onVerified: (token: string, phoneVerified: boolean, email: string) => void;
 };
 
 /**
- * Email then code, in one place with no navigation between them. Both steps
- * occupy the same slot so the change reads as progress rather than a new page.
+ * Email, then a code only if one was sent.
+ *
+ * Both steps occupy the same slot so the change reads as progress rather than a
+ * new page. Whether there is a second step at all is decided by the server:
+ * with email verification off the first call answers with the session itself,
+ * and the code row is never rendered. The address is still collected either
+ * way, because the reward is emailed to it.
  *
  * The mobile step that follows lives in `PhoneGate`, which the page renders
  * into this same slot. It is kept out of here because a signed-in candidate
@@ -65,10 +74,19 @@ export default function EmailGate({ slug, onVerified }: Props) {
       const res = await scholarshipClient.post(ENDPOINTS.scholarshipPublic.otp(slug), {
         email: clean,
       });
+      const data = res.data?.data;
       setEmail(clean);
+
+      // With verification off the gate answers with the session a verify would
+      // have issued, so there is no code to ask for and nothing to announce.
+      if (data?.sessionToken) {
+        onVerified(data.sessionToken, Boolean(data.phoneVerified), clean);
+        return;
+      }
+
       setStep("code");
       setDigits(Array(OTP_LENGTH).fill(""));
-      setCooldown(res.data?.data?.cooldownSeconds ?? 60);
+      setCooldown(data?.cooldownSeconds ?? 60);
       toast.success("Code sent, check your inbox");
     } catch (error) {
       toast.error(errorMessage(error, "Could not send the code"));
@@ -87,6 +105,7 @@ export default function EmailGate({ slug, onVerified }: Props) {
       onVerified(
         res.data?.data?.sessionToken,
         Boolean(res.data?.data?.phoneVerified),
+        email,
       );
     } catch (error) {
       toast.error(errorMessage(error, "Could not verify that code"));
@@ -149,17 +168,20 @@ export default function EmailGate({ slug, onVerified }: Props) {
             className="w-full rounded-2xl border-[1.5px] border-sch-ink-line bg-sch-ink-raised py-3.5 pl-11 pr-4 text-base text-sch-on-ink placeholder:text-[#6d5f56] focus:border-sch-gold focus:outline-none"
           />
         </div>
-        {/* Said before they type, not after they have lost the coupon. */}
+        {/* Said before they type, not after they have lost the coupon. The
+            code is emailed and nowhere else, so this is now literal. */}
         <p className="text-xs text-sch-on-ink-dim">
-          The reward is locked to this address, so use one you can open.
+          Your reward is emailed to this address, so use one you can open.
         </p>
+        {/* Neutral label: whether this sends a code or opens the test is the
+            server's call, and it is not known until it answers. */}
         <button
           type="button"
           disabled={busy}
           onClick={() => void sendCode()}
           className="mt-1 w-full rounded-2xl bg-linear-to-br from-sch-foil to-[#f0763c] px-6 py-4 text-[0.9375rem] font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
         >
-          {busy ? "Sending…" : "Send me a code"}
+          {busy ? "Working…" : "Continue"}
         </button>
       </div>
     );

@@ -18,10 +18,16 @@ import {
   revokeRefreshTokenFamily,
 } from "../services/auth.services";
 import {
+  normalizeEmail,
   resendSignupOtp,
   startSignupVerification,
   verifySignupOtp,
+  type VerifiedSignup,
 } from "../services/signupVerification.services";
+import {
+  EMAIL_OTP_DISABLED_MESSAGE,
+  EMAIL_OTP_ENABLED,
+} from "../config/featureFlags";
 import { validatePassword } from "../utils/passwordValidation";
 import { createRefreshToken, rotateRefreshToken } from "../utils/refreshToken";
 import { ACCESS_TOKEN_TTL, REFRESH_GRACE_MS } from "../constants/tokens";
@@ -144,6 +150,52 @@ async function finalizeCredentialLogin(
   );
 }
 
+/**
+ * Creates the account and everything that hangs off a first registration.
+ *
+ * Shared by both halves of the flow rather than living in the verify handler:
+ * with `EMAIL_OTP_ENABLED` off there is no verify step, and the welcome bonus,
+ * collaboration allotment and partnership import must not quietly stop
+ * happening because of it.
+ *
+ * Takes a `VerifiedSignup` either way. With the flag off the caller builds one
+ * straight from the form, so "verified" names the shape rather than a claim
+ * that anything was proved.
+ */
+const createAccountFromSignup = async (verified: VerifiedSignup) => {
+  const newUser = await createVerifiedUser({
+    email: verified.email,
+    password: verified.passwordHash, // already hashed - do not re-hash
+    userType: verified.userType as User["userType"],
+    provider: verified.provider as User["provider"],
+    firstName: verified.firstName,
+    lastName: verified.lastName,
+    ...verified.extra,
+  });
+
+  void enqueueCollaborationAllotmentAfterRegister(
+    newUser._id,
+    verified.email,
+    verified.userType,
+  );
+  void tryPartnershipImportWhitelistAfterRegister(
+    newUser._id,
+    verified.email,
+    verified.userType,
+  );
+
+  const accessToken = await generateAccessToken(newUser._id);
+  // One-time welcome bonus is granted at registration (never on login).
+  try {
+    await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
+  } catch (e) {
+    // A bonus failure must never block account creation.
+    console.error("Registration bonus failed:", e);
+  }
+
+  return { user: await protectedUser(newUser), accessToken };
+};
+
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const {
     email,
@@ -172,6 +224,30 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   // email a code rather than after the learner has typed it in.
   validatePassword(password);
 
+  /*
+   * With verification off this is the whole of registration, so it answers with
+   * the account and a token rather than a `pendingId`. The frontend branches on
+   * which of the two came back, which keeps the flag in one place instead of
+   * mirroring it into a NEXT_PUBLIC_ var that could drift.
+   *
+   * No pre-check for an existing address: the unique index on `email` already
+   * rejects a duplicate atomically, and `createVerifiedUser` maps that to the
+   * same message and code `startSignupVerification` would have returned.
+   */
+  if (!EMAIL_OTP_ENABLED) {
+    const created = await createAccountFromSignup({
+      email: normalizeEmail(email),
+      firstName: String(firstName).trim(),
+      lastName: String(lastName ?? "").trim(),
+      passwordHash: await bcrypt.hash(password, 10),
+      userType,
+      provider,
+      extra: restData,
+    });
+    sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
+    return;
+  }
+
   const started = await startSignupVerification({
     email,
     password,
@@ -192,6 +268,10 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
  */
 export const verifyRegistrationOtp = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!EMAIL_OTP_ENABLED) {
+      throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+    }
+
     const { pendingId, otp } = req.body;
 
     if (!pendingId || !otp) {
@@ -199,49 +279,19 @@ export const verifyRegistrationOtp = asyncHandler(
     }
 
     const verified = await verifySignupOtp(String(pendingId), String(otp));
+    const created = await createAccountFromSignup(verified);
 
-    const newUser = await createVerifiedUser({
-      email: verified.email,
-      password: verified.passwordHash, // already hashed - do not re-hash
-      userType: verified.userType as User["userType"],
-      provider: verified.provider as User["provider"],
-      firstName: verified.firstName,
-      lastName: verified.lastName,
-      ...verified.extra,
-    });
-
-    void enqueueCollaborationAllotmentAfterRegister(
-      newUser._id,
-      verified.email,
-      verified.userType,
-    );
-    void tryPartnershipImportWhitelistAfterRegister(
-      newUser._id,
-      verified.email,
-      verified.userType,
-    );
-
-    const accessToken = await generateAccessToken(newUser._id);
-    // One-time welcome bonus is granted at registration (never on login).
-    try {
-      await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
-    } catch (e) {
-      // A bonus failure must never block account creation.
-      console.error("Registration bonus failed:", e);
-    }
-
-    sendSuccessResponse(
-      res,
-      { user: await protectedUser(newUser), accessToken },
-      SIGNUP_MESSAGES.REGISTERED,
-      201,
-    );
+    sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
   },
 );
 
 /** Issues a fresh code for a signup still awaiting verification. */
 export const resendRegistrationOtp = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!EMAIL_OTP_ENABLED) {
+      throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+    }
+
     const { pendingId } = req.body;
 
     if (!pendingId) {

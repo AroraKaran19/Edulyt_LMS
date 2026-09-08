@@ -31,6 +31,13 @@ const errorMessage = (error: unknown, fallback: string): string => {
   );
 };
 
+/** For refusals the page has to act on rather than print. */
+const errorCode = (error: unknown): string =>
+  String(
+    (error as { response?: { data?: { error?: { code?: string } } } })?.response
+      ?.data?.error?.code ?? "",
+  );
+
 const EYEBROW =
   "font-sch-mono text-[0.6875rem] uppercase tracking-[0.22em] text-sch-gold";
 const DISPLAY =
@@ -64,7 +71,15 @@ export default function ScholarshipCampaignPage() {
   const [stage, setStage] = useState<Stage>("gate");
   const [attempt, setAttempt] = useState<AttemptView | null>(null);
   const [result, setResult] = useState<ScholarshipResult | null>(null);
+  /**
+   * The address this session belongs to. Held here because the result screen
+   * names the inbox the coupon went to and carries it into the enquiry form,
+   * and because it arrives from three different entry paths.
+   */
+  const [sessionEmail, setSessionEmail] = useState("");
   const [deadReason, setDeadReason] = useState("");
+  /** Set when the dead end is a spent attempt, which has no coupon behind it. */
+  const [deadTitle, setDeadTitle] = useState("");
   const [starting, setStarting] = useState(false);
   const [autoVerifying, setAutoVerifying] = useState(false);
   /**
@@ -110,9 +125,10 @@ export default function ScholarshipCampaignPage() {
   }, [slug]);
 
   /**
-   * With a fully verified session in hand, the result is checked before
-   * anything else. A returning finisher must land on their coupon, not be
-   * pushed into an attempt the server will refuse to start.
+   * With a session in hand, the result is checked before anything else. A
+   * returning finisher must land on the confirmation, not be pushed into an
+   * attempt the server will refuse to start. It answers a bare yes/no now: the
+   * coupon itself was emailed.
    */
   const resolveStage = useCallback(
     async (sessionToken: string) => {
@@ -159,8 +175,9 @@ export default function ScholarshipCampaignPage() {
    * past it.
    */
   const afterSession = useCallback(
-    async (sessionToken: string, phoneVerified: boolean) => {
+    async (sessionToken: string, phoneVerified: boolean, email: string) => {
       setToken(sessionToken);
+      setSessionEmail(email);
       if (!phoneVerified) {
         setNeedsPhone(true);
         return;
@@ -191,6 +208,9 @@ export default function ScholarshipCampaignPage() {
         await afterSession(
           res.data?.data?.sessionToken,
           Boolean(res.data?.data?.phoneVerified),
+          // From the account, not the form: the endpoint reads it off the user
+          // record, which is what stops this being a way to name any address.
+          String(res.data?.data?.email ?? user?.email ?? ""),
         );
       } catch {
         // Fall back to the email gate rather than stranding them.
@@ -245,13 +265,33 @@ export default function ScholarshipCampaignPage() {
       setAttempt(res.data?.data as AttemptView);
       setStage("running");
     } catch (error) {
+      /*
+       * A refused start is a dead end, not a transient failure, so it gets the
+       * screen rather than a toast that vanishes and leaves the button armed.
+       * Which dead end it is decides whether we can honestly say a coupon is
+       * waiting in their inbox.
+       */
+      const code = errorCode(error);
+      if (code === "ALREADY_FINISHED") {
+        setResult({ submitted: true });
+        setStage("result");
+        return;
+      }
+      if (code === "NO_ATTEMPTS_LEFT") {
+        setDeadTitle("You have used all your attempts.");
+        setDeadReason(
+          "Every attempt counts, including one that ran out of time, and this test only issues a code to someone who finishes it. Nothing was emailed to you.",
+        );
+        setStage("dead");
+        return;
+      }
       toast.error(errorMessage(error, "Could not start the test"));
     } finally {
       setStarting(false);
     }
   };
 
-  const revealed = stage === "result" && !!result && !result.expired;
+  const revealed = stage === "result" && !!result;
 
   /**
    * `narrow` is for the short dead ends, where a wide column would leave one
@@ -442,23 +482,30 @@ export default function ScholarshipCampaignPage() {
 
       {stage === "result" && result ? (
         <div className="mx-auto w-full max-w-xl">
-          <ResultCard result={result} />
+          <ResultCard email={sessionEmail} />
         </div>
       ) : null}
 
       {stage === "dead" ? (
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
           <span className="font-sch-mono text-[0.6875rem] uppercase tracking-[0.22em] text-sch-foil">
-            Time up
+            {deadTitle ? "No attempts left" : "Time up"}
           </span>
-          <h1 className={DISPLAY_SM}>You ran out of time.</h1>
+          <h1 className={DISPLAY_SM}>
+            {deadTitle || "You ran out of time."}
+          </h1>
           <p className="text-[0.9375rem] leading-relaxed text-sch-on-ink-dim">
             {deadReason}
           </p>
-          <p className="text-[0.9375rem] leading-relaxed text-sch-on-ink-dim">
-            If you have attempts left, reload this page and use the same email
-            to try again.
-          </p>
+          {/* Only offered when a retry is actually possible. The default
+              `attemptsAllowed` is 1, so telling everyone to reload and try
+              again sends most people back to the same refusal. */}
+          {deadTitle ? null : (
+            <p className="text-[0.9375rem] leading-relaxed text-sch-on-ink-dim">
+              If you have attempts left, reload this page and use the same email
+              to try again.
+            </p>
+          )}
           <Link href="/programs" className={GHOST_LINK}>
             Browse courses
           </Link>

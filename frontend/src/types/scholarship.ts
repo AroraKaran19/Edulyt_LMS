@@ -54,9 +54,8 @@ export interface PublicCampaign {
   slug: string;
   description: string;
   /**
-   * No discount of any kind, not even the range. The size of the reward is
-   * revealed only by the result endpoint, after the test is finished, so it is
-   * never in devtools beforehand.
+   * No discount of any kind, not even the range. The size of the reward is now
+   * named only in the email sent at submit, so it is never in devtools at all.
    */
   durationMinutes: number;
   attemptsAllowed: number;
@@ -86,10 +85,5 @@ export interface AttemptView {
 }
 
 export interface ScholarshipResult {
-  correctCount: number;
-  totalQuestions: number;
-  couponCode: string;
-  couponExpiresAt: string;
-  discountPercent: number;
-  expired: boolean;
+  submitted: true;
 }

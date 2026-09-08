@@ -5,6 +5,7 @@ import {
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
 import {
+  changeEmailWithoutOtp,
   requestEmailChange,
   resendEmailChangeOtp,
   verifyEmailChange,
@@ -13,6 +14,10 @@ import {
   EMAIL_CHANGE_ERROR_CODES,
   EMAIL_CHANGE_MESSAGES,
 } from "../constants/emailChangeMessages";
+import {
+  EMAIL_OTP_DISABLED_MESSAGE,
+  EMAIL_OTP_ENABLED,
+} from "../config/featureFlags";
 
 /**
  * Verified email change for the signed-in learner.
@@ -44,6 +49,22 @@ export const requestUserEmailChange = asyncHandler(
       throw new AppError(EMAIL_CHANGE_MESSAGES.PASSWORD_REQUIRED, 400);
     }
 
+    /*
+     * With verification off this one call is the whole change, so it answers
+     * with the applied address rather than a countdown to a code. The frontend
+     * branches on `changedAt` being present, which keeps the flag on the server
+     * instead of mirrored into a NEXT_PUBLIC_ var that could drift.
+     */
+    if (!EMAIL_OTP_ENABLED) {
+      const done = await changeEmailWithoutOtp(
+        requireUserId(req),
+        currentPassword,
+        newEmail,
+      );
+      sendSuccessResponse(res, done, EMAIL_CHANGE_MESSAGES.EMAIL_CHANGED, 200);
+      return;
+    }
+
     const started = await requestEmailChange(
       requireUserId(req),
       currentPassword,
@@ -59,6 +80,10 @@ export const requestUserEmailChange = asyncHandler(
  */
 export const verifyUserEmailChange = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!EMAIL_OTP_ENABLED) {
+      throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+    }
+
     const otp = req.body?.otp;
 
     if (!otp) {
@@ -80,6 +105,10 @@ export const verifyUserEmailChange = asyncHandler(
  */
 export const resendUserEmailChangeOtp = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!EMAIL_OTP_ENABLED) {
+      throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+    }
+
     const started = await resendEmailChangeOtp(requireUserId(req));
     sendSuccessResponse(res, started, EMAIL_CHANGE_MESSAGES.CODE_RESENT, 200);
   },

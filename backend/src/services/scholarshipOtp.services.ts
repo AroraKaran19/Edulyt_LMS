@@ -7,8 +7,10 @@ import { todayIst } from "../utils/ist";
 import {
   requestEmailOtp,
   startSessionForAccount as startContactSessionForAccount,
+  startUnverifiedSession,
   verifyEmailOtp,
 } from "./publicContactVerification.services";
+import { EMAIL_OTP_ENABLED } from "../config/featureFlags";
 
 /**
  * The scholarship campaign's slice of `publicContactVerification.services`.
@@ -94,11 +96,42 @@ export const bumpDailyStat = async (
 const sessionMinutesFor = (campaign: OpenCampaign): number =>
   (campaign.durationMinutes ?? 15) + SESSION_GRACE_MINUTES;
 
+export interface ScholarshipSession {
+  sessionToken: string;
+  expiresAt: Date;
+  phoneVerified: boolean;
+}
+
+/**
+ * What the gate hands back for a typed address: a code was sent, or the session
+ * itself when no code is being sent at all.
+ */
+export type ScholarshipGateResult =
+  | { sent: true; expiryMinutes: number; cooldownSeconds: number }
+  | ScholarshipSession;
+
 export const requestScholarshipOtp = async (
   slug: string,
   rawEmail: string,
-): Promise<{ sent: true; expiryMinutes: number; cooldownSeconds: number }> => {
+): Promise<ScholarshipGateResult> => {
   const campaign = await loadOpenCampaign(slug);
+
+  /*
+   * With verification off the gate opens on the typed address, so this returns
+   * the session a verify would have issued and the candidate never sees a code
+   * field. The counter is still bumped: it measures how many people entered the
+   * gate, and zeroing that funnel stage would read as a traffic collapse rather
+   * than as a flag being flipped.
+   */
+  if (!EMAIL_OTP_ENABLED) {
+    const session = await startUnverifiedSession({
+      scope: scopeOf(campaign._id),
+      email: rawEmail,
+      sessionMinutes: sessionMinutesFor(campaign),
+    });
+    await bumpDailyStat(campaign._id, "otpRequested");
+    return session;
+  }
 
   const result = await requestEmailOtp({
     scope: scopeOf(campaign._id),

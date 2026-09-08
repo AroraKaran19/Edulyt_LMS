@@ -14,6 +14,7 @@ type Props = {
   onCompare: () => void;
   initialCollege: string;
   initialCollegeId: string;
+  initialEmail: string;
   /** Resolved once by EnquiryLanding and passed down; see LeadForm's props. */
   refCode: string;
   extraQuestions: ExtraQuestion[];
@@ -60,6 +61,7 @@ export default function HeroSection({
   onCompare,
   initialCollege,
   initialCollegeId,
+  initialEmail,
   refCode,
   extraQuestions,
 }: Props) {
@@ -204,6 +206,7 @@ export default function HeroSection({
             onCompare={onCompare}
             initialCollege={initialCollege}
             initialCollegeId={initialCollegeId}
+            initialEmail={initialEmail}
             refCode={refCode}
             extraQuestions={extraQuestions}
           />

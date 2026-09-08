@@ -23,6 +23,10 @@ import {
   getPublicCampaignBySlug,
   recordCampaignView,
 } from "../services/scholarshipTest.services";
+import {
+  EMAIL_OTP_DISABLED_MESSAGE,
+  EMAIL_OTP_ENABLED,
+} from "../config/featureFlags";
 
 /**
  * Public, unauthenticated campaign endpoints. Nothing here calls `verifyUser`:
@@ -72,6 +76,10 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {
+  if (!EMAIL_OTP_ENABLED) {
+    throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+  }
+
   const result = await verifyScholarshipOtp(
     String(req.params.slug),
     String(req.body?.email ?? ""),

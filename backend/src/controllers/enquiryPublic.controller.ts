@@ -17,6 +17,10 @@ import {
   ENQUIRY_SCOPE,
   ENQUIRY_SESSION_MINUTES,
 } from "../constants/enquiry";
+import {
+  EMAIL_OTP_DISABLED_MESSAGE,
+  EMAIL_OTP_ENABLED,
+} from "../config/featureFlags";
 
 /**
  * Email and phone verification for the enquiry form, for visitors with no
@@ -51,6 +55,10 @@ export const startEnquirySession = asyncHandler(
 
 export const requestEnquiryOtp = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!EMAIL_OTP_ENABLED) {
+      throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+    }
+
     const result = await requestEmailOtp({
       scope: ENQUIRY_SCOPE,
       email: String(req.body?.email ?? ""),
@@ -63,6 +71,10 @@ export const requestEnquiryOtp = asyncHandler(
 
 export const verifyEnquiryOtp = asyncHandler(
   async (req: Request, res: Response) => {
+    if (!EMAIL_OTP_ENABLED) {
+      throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
+    }
+
     const result = await verifyEmailOtp({
       scope: ENQUIRY_SCOPE,
       email: String(req.body?.email ?? ""),

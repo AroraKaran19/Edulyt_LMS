@@ -48,6 +48,12 @@ type Props = {
   initialCollege?: string;
   initialCollegeId?: string;
   /**
+   * Address carried in from the scholarship result screen or the coupon email,
+   * already validated by the caller. Beats the profile for the same reason
+   * `initialCollege` does: it is what this visit arrived with.
+   */
+  initialEmail?: string;
+  /**
    * Referral code and the extra questions it resolves to, owned by
    * EnquiryLanding so one lookup feeds every consumer. Prices are not passed
    * down: they come from the pricing context, which already knows this visit.
@@ -99,6 +105,7 @@ export default function LeadForm({
   onCompare,
   initialCollege = "",
   initialCollegeId = "",
+  initialEmail = "",
   refCode,
   extraQuestions,
 }: Props) {
@@ -122,7 +129,9 @@ export default function LeadForm({
   const profileCollegeId = student?.college ?? "";
 
   const [nameInput, setNameInput] = useState<string | null>(null);
-  const [emailInput, setEmailInput] = useState<string | null>(null);
+  const [emailInput, setEmailInput] = useState<string | null>(
+    initialEmail || null,
+  );
   const [phoneInput, setPhoneInput] = useState<string | null>(null);
   const [collegeInput, setCollegeInput] = useState<string | null>(
     initialCollege || null,

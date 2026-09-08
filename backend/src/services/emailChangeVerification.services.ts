@@ -264,19 +264,22 @@ const displayName = (user: { firstName?: string; lastName?: string }): string =>
   user.firstName ||
   "there";
 
+type ChangeCandidate = Awaited<ReturnType<typeof loadUserForChange>>;
+
 /**
- * Records the requested change and emails the code to the NEW address.
+ * Everything that has to be true before an address change may proceed, in the
+ * order the learner should hear about it.
  *
- * The account keeps its current email throughout. Re-requesting for a different
- * address updates the same record rather than opening a second one, and is
- * subject to the same cooldown and cap as a resend, so the budget cannot be
- * bypassed by simply retargeting.
+ * Shared by both entry points rather than living in `requestEmailChange`: with
+ * `EMAIL_OTP_ENABLED` off the change is applied by the request itself, and
+ * these checks are then the only thing standing between a stolen session and
+ * the account's password-reset channel.
  */
-export const requestEmailChange = async (
+const assertChangeAllowed = async (
   userId: string,
   currentPassword: string,
   rawNewEmail: unknown,
-): Promise<StartedEmailChange> => {
+): Promise<{ newEmail: string; user: ChangeCandidate }> => {
   const newEmail = normalizeEmail(rawNewEmail);
   if (!EMAIL_PATTERN.test(newEmail)) {
     throw new AppError(
@@ -332,6 +335,85 @@ export const requestEmailChange = async (
   }
 
   await assertEmailAvailable(userId, newEmail);
+
+  return { newEmail, user };
+};
+
+/**
+ * Moves the account onto the new address and tells the old one.
+ *
+ * Two callers reach it: the verified path once a code has matched and its
+ * pending record has been claimed, and the unverified path, which has no record
+ * to claim in the first place.
+ */
+const applyEmailChange = async (
+  userId: string,
+  user: ChangeCandidate,
+  newEmail: string,
+): Promise<CompletedEmailChange> => {
+  const oldEmail = user.email;
+  const name = displayName(user);
+  const changedAt = new Date();
+
+  const updated = await UserModel.findByIdAndUpdate(
+    userId,
+    // `emailChangedAt` starts the cooldown. Stamped here rather than at request
+    // time because an abandoned request should cost the learner nothing.
+    {
+      $set: { email: newEmail, emailChangedAt: changedAt, updatedAt: changedAt },
+    },
+    { new: true, runValidators: true },
+  )
+    .select("_id")
+    .lean();
+
+  if (!updated) {
+    throw new AppError(EMAIL_CHANGE_MESSAGES.USER_NOT_FOUND, 404);
+  }
+
+  notifyOldAddress(oldEmail, name, newEmail, changedAt);
+
+  return { email: newEmail, changedAt };
+};
+
+/**
+ * Applies the change on the password check alone, for when no code is being
+ * sent.
+ *
+ * The 7-day cooldown still applies, and still starts here, so this cannot be
+ * used to walk an account from address to address in a single session.
+ */
+export const changeEmailWithoutOtp = async (
+  userId: string,
+  currentPassword: string,
+  rawNewEmail: unknown,
+): Promise<CompletedEmailChange> => {
+  const { newEmail, user } = await assertChangeAllowed(
+    userId,
+    currentPassword,
+    rawNewEmail,
+  );
+  return applyEmailChange(userId, user, newEmail);
+};
+
+/**
+ * Records the requested change and emails the code to the NEW address.
+ *
+ * The account keeps its current email throughout. Re-requesting for a different
+ * address updates the same record rather than opening a second one, and is
+ * subject to the same cooldown and cap as a resend, so the budget cannot be
+ * bypassed by simply retargeting.
+ */
+export const requestEmailChange = async (
+  userId: string,
+  currentPassword: string,
+  rawNewEmail: unknown,
+): Promise<StartedEmailChange> => {
+  const { newEmail, user } = await assertChangeAllowed(
+    userId,
+    currentPassword,
+    rawNewEmail,
+  );
 
   const otp = generateOtp();
   const now = new Date();
@@ -528,8 +610,6 @@ export const verifyEmailChange = async (
   await assertEmailAvailable(userId, newEmail);
 
   const user = await loadUserForChange(userId);
-  const oldEmail = user.email;
-  const name = displayName(user);
 
   // Atomic claim: whoever deletes the document owns the write below.
   const claimed = await PendingEmailChangeModel.findOneAndDelete({
@@ -543,22 +623,5 @@ export const verifyEmailChange = async (
     );
   }
 
-  const changedAt = new Date();
-  const updated = await UserModel.findByIdAndUpdate(
-    userId,
-    // `emailChangedAt` starts the cooldown. Stamped here rather than at request
-    // time because an abandoned request should cost the learner nothing.
-    { $set: { email: newEmail, emailChangedAt: changedAt, updatedAt: changedAt } },
-    { new: true, runValidators: true },
-  )
-    .select("_id")
-    .lean();
-
-  if (!updated) {
-    throw new AppError(EMAIL_CHANGE_MESSAGES.USER_NOT_FOUND, 404);
-  }
-
-  notifyOldAddress(oldEmail, name, newEmail, changedAt);
-
-  return { email: newEmail, changedAt };
+  return applyEmailChange(userId, user, newEmail);
 };

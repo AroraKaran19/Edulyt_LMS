@@ -57,6 +57,16 @@ export default function EnquiryLanding({
   });
   const initialCollege = params.get("college") ?? "";
   const initialCollegeId = params.get("collegeId") ?? "";
+  /*
+   * Carried here from the scholarship result screen and from the coupon email,
+   * so someone arriving from either does not retype an address they just gave.
+   * Validated before use: a junk param would otherwise seed a field that fails
+   * on submit for a reason nobody typed.
+   */
+  const initialEmail = (() => {
+    const raw = (params.get("email") ?? "").trim().toLowerCase().slice(0, 254);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw) ? raw : "";
+  })();
   const [docked, setDocked] = useState(false);
 
   /*
@@ -105,8 +115,11 @@ export default function EnquiryLanding({
    */
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (!url.searchParams.has("ref")) return;
-    url.searchParams.delete("ref");
+    // `email` goes too, and for a second reason: an address left in the address
+    // bar rides into browser history, shared links and referrer headers.
+    const carried = ["ref", "email"].filter((k) => url.searchParams.has(k));
+    if (carried.length === 0) return;
+    carried.forEach((k) => url.searchParams.delete(k));
     window.history.replaceState({}, "", url.toString());
   }, []);
 
@@ -242,6 +255,7 @@ export default function EnquiryLanding({
               onCompare={toPlans}
               initialCollege={initialCollege}
               initialCollegeId={initialCollegeId}
+              initialEmail={initialEmail}
               refCode={refCode}
               extraQuestions={extraQuestions}
             />

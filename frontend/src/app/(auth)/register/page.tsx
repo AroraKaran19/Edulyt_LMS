@@ -227,8 +227,13 @@ const RegisterPage = () => {
       
       const normalizedEmail = email.trim().toLowerCase();
 
-      // Registering only stores a pending signup and emails a code. The account
-      // is created by VerifyEmailStep once that code is confirmed.
+      /*
+       * With email verification on, this only stores a pending signup and
+       * emails a code, and VerifyEmailStep creates the account once the code is
+       * confirmed. With it off, the account is created here and the response
+       * carries it instead of a `pendingId`, so the shape of the answer is what
+       * decides which of the two happened.
+       */
       try {
         const response = await apiClient.post("/auth/register", {
           email: normalizedEmail,
@@ -248,6 +253,10 @@ const RegisterPage = () => {
             expiryMinutes: data.expiryMinutes ?? 10,
           });
           toast.success("We emailed you a verification code");
+        } else if (data?.user) {
+          // No code step: the account already exists, so this is the same
+          // sign-in VerifyEmailStep would have triggered on success.
+          await handleVerified();
         } else {
           toast.error(
             (response.data as any)?.error?.message ||

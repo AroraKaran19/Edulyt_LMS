@@ -164,6 +164,19 @@ const ChangeEmailModal: React.FC<ChangeEmailModalProps> = ({
       });
 
       const data = response.data?.data;
+
+      /*
+       * With verification off this one call is the whole change, and the
+       * response says so by carrying the applied address instead of a countdown
+       * to a code. There is no verify step to advance to.
+       */
+      if (data?.changedAt) {
+        toast.success("Email updated successfully");
+        await onChanged(String(data.email ?? newEmail));
+        onClose();
+        return;
+      }
+
       setExpiryMinutes(Number(data?.expiryMinutes) || 5);
       setCooldown(Number(data?.cooldownSeconds) || 60);
       setSendLimitMinutes(null);
