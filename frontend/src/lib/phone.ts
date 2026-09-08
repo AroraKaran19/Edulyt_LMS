@@ -87,3 +87,13 @@ export const fromE164 = (
 
   return best ?? { countryIso: DEFAULT_COUNTRY_ISO, national: digits };
 };
+
+/**
+ * A stored number as it should read on screen. E.164 values already carry
+ * their country code; the bare 10-digit rows are Indian.
+ */
+export const formatStoredPhone = (stored: string): string => {
+  const text = (stored ?? "").trim();
+  if (!text) return "";
+  return text.startsWith("+") ? text : `+91 ${text}`;
+};

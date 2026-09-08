@@ -11,6 +11,8 @@ import {
   X,
 } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
+import { formatStoredPhone } from "@/lib/phone";
+import BrandBadge from "./BrandBadge";
 import useAuth from "@/hooks/useAuth";
 import { toast } from "react-toastify";
 import Select from "@/components/ui/inputs/Select";
@@ -229,9 +231,12 @@ export default function LeadDetailsModal({
       >
         <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white px-5 py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-bold text-gray-900">
-              {loading ? "Loading lead" : lead?.name}
-            </h2>
+            <div className="flex items-center gap-2">
+              <h2 className="truncate text-lg font-bold text-gray-900">
+                {loading ? "Loading lead" : lead?.name}
+              </h2>
+              {lead ? <BrandBadge brand={lead.source?.brand} /> : null}
+            </div>
             <p className="text-xs text-gray-500">
               {lead
                 ? (LEAD_SOURCE_LABELS[lead.source?.kind] ?? lead.source?.kind)
@@ -275,7 +280,7 @@ export default function LeadDetailsModal({
               >
                 <Phone className="size-4 shrink-0 text-orange-500" />
                 <span className="text-sm font-medium text-gray-900">
-                  +91 {lead.phone}
+                  {formatStoredPhone(lead.phone)}
                 </span>
               </a>
             </div>

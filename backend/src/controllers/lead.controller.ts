@@ -23,9 +23,11 @@ import {
   scholarshipViewFor,
 } from "../services/scholarshipLeadEnrichment.services";
 import { Lead, LeadAnswer, LeadStatus } from "../types/lead";
+import { asBrand, BRAND_MAIL } from "../constants/brands";
+import { edulytEnquiryReceivedMail } from "../mail";
+import { isValidPhone } from "../services/phoneVerification.services";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const PHONE_RE = /^[6-9]\d{9}$/;
 
 const LEAD_STATUSES: LeadStatus[] = [
   "new",
@@ -110,7 +112,18 @@ async function resolveEmailsOnPlatform(leads: Lead[]): Promise<void> {
  * since a lead could then be posted straight here with anything in it.
  */
 export const createLead = asyncHandler(async (req: Request, res: Response) => {
-  const { name, answers = [], pageQuery, ref, collegeId } = req.body ?? {};
+  const {
+    name,
+    answers = [],
+    pageQuery,
+    ref,
+    collegeId,
+    brand: rawBrand,
+  } = req.body ?? {};
+
+  // Which site the enquiry came from. Absent on the LMS form, which is what
+  // keeps its behaviour unchanged: only Edulyt has an acknowledgement template.
+  const brand = asBrand(rawBrand);
 
   const proved = req.verifiedContact;
   if (!proved) {
@@ -130,11 +143,10 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
   if (!EMAIL_RE.test(cleanEmail)) {
     throw new AppError("A valid email is required", 400);
   }
-  if (!PHONE_RE.test(cleanPhone)) {
-    throw new AppError(
-      "Enter a 10-digit Indian mobile number starting with 6, 7, 8 or 9",
-      400
-    );
+  // Shared with the verification path, so a number that was provable is never
+  // then refused here. Accepts bare Indian 10-digit and E.164 alike.
+  if (!isValidPhone(cleanPhone)) {
+    throw new AppError("Enter a valid mobile number", 400);
   }
 
   const submittedByUserId = proved.userId;
@@ -209,8 +221,8 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const lead = await LeadModel.create({
-    // The endpoint decides the kind; the caller never asserts it.
-    source: { kind: "enquiry" },
+    // The endpoint decides the kind; the caller only says which site it is.
+    source: { kind: "enquiry", brand },
     ...attribution,
     ...college,
     name: cleanName,
@@ -226,6 +238,21 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
         : undefined,
     pageQuery: pageQuery ? String(pageQuery).slice(0, 500) : undefined,
   });
+
+  // Queued, not awaited: a mail failure must never fail a captured lead. Only
+  // Edulyt has an acknowledgement template, and it is brand-locked, so an
+  // Airkrit enquiry would otherwise get Edulyt artwork.
+  if (brand === "edulyt") {
+    edulytEnquiryReceivedMail.send(
+      { email: cleanEmail, name: cleanName },
+      {
+        name: cleanName.split(/\s+/)[0] || cleanName,
+        ctaUrl: BRAND_MAIL.edulyt.siteUrl,
+        ctaLabel: "Visit our website",
+        year: new Date().getFullYear(),
+      },
+    );
+  }
 
   sendSuccessResponse(res, { id: lead._id }, "Lead captured", 201);
 });

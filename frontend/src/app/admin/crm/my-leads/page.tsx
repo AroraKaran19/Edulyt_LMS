@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2, Mail, Phone } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
+import { formatStoredPhone } from "@/lib/phone";
 import Select from "@/components/ui/inputs/Select";
 import Pagination from "@/components/admin/Pagination";
 import useCrm from "@/hooks/useCrm";
@@ -130,7 +131,7 @@ export default function MyLeadsPage() {
                         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-orange-600"
                       >
                         <Phone className="size-3" />
-                        +91 {lead.phone}
+                        {formatStoredPhone(lead.phone)}
                       </a>
                     </td>
                     <td className="px-5 py-3 text-gray-700">

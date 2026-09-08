@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Mail, Phone, Users } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
+import { formatStoredPhone } from "@/lib/phone";
 import Pagination from "@/components/admin/Pagination";
 import LeadDetailsModal from "../../../leads/LeadDetailsModal";
 import { LEAD_STATUSES, STATUS_STYLES, type Lead } from "../../../leads/types";
@@ -300,7 +301,7 @@ export default function CrmPersonPage() {
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
                             <Phone className="size-3" />
-                            +91 {lead.phone}
+                            {formatStoredPhone(lead.phone)}
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-gray-700 sm:px-4">

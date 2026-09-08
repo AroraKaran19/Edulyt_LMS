@@ -1,10 +1,13 @@
 import { Document, Types } from "mongoose";
+import { Brand } from "../constants/brands";
 
 export type LeadSourceKind = "enquiry" | "scholarship";
 
 /** Object rather than a string so a scholarship lead carries its campaign. */
 export interface LeadSource {
   kind: LeadSourceKind;
+  /** Which site the lead came from. Absent on rows predating two brands. */
+  brand?: Brand;
   /** Nulled when the campaign is deleted; title and slug survive as history. */
   testId?: Types.ObjectId | null;
   title?: string;
