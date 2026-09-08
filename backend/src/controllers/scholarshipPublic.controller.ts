@@ -72,7 +72,13 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
     String(req.params.slug),
     String(req.body?.email ?? ""),
   );
-  sendSuccessResponse(res, result, "Code sent");
+  // The gate either sent a code or opened the session outright, and saying the
+  // wrong one of those is how a log stops being worth reading.
+  sendSuccessResponse(
+    res,
+    result,
+    "sessionToken" in result ? "Verified" : "Code sent",
+  );
 });
 
 export const verifyOtp = asyncHandler(async (req: Request, res: Response) => {

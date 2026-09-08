@@ -21,6 +21,12 @@ const errorMessage = (error: unknown, fallback: string): string => {
 type Props = {
   slug: string;
   /**
+   * Carried in from the enquiry page's scholarship link, already validated
+   * there. Prefills the field and nothing more: opening the gate on their
+   * behalf would start a session from a link click they may not have read.
+   */
+  initialEmail?: string;
+  /**
    * `phoneVerified` is always false for a code-verified session, but it is read
    * from the response rather than assumed so every entry path into the page
    * hands back the same shape.
@@ -45,9 +51,13 @@ type Props = {
  * into this same slot. It is kept out of here because a signed-in candidate
  * skips the email gate entirely and can still owe a number.
  */
-export default function EmailGate({ slug, onVerified }: Props) {
+export default function EmailGate({
+  slug,
+  initialEmail = "",
+  onVerified,
+}: Props) {
   const [step, setStep] = useState<"email" | "code">("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [busy, setBusy] = useState(false);
   const [cooldown, setCooldown] = useState(0);

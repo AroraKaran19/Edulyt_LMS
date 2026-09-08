@@ -244,11 +244,29 @@ export default function ScholarshipCampaignPage() {
     }
   });
 
-  /** Drop it from the address bar without a navigation. */
+  /**
+   * The address typed on the enquiry page, carried over on its scholarship
+   * link so the gate does not ask for one they just gave. Read as lazy initial
+   * state, and only when it is actually an address, so a junk param leaves the
+   * field empty rather than seeding something that cannot pass.
+   */
+  const [initialEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const raw = (new URLSearchParams(window.location.search).get("email") ?? "")
+      .trim()
+      .toLowerCase()
+      .slice(0, 254);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(raw) ? raw : "";
+  });
+
+  /** Drop them from the address bar without a navigation. */
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (!url.searchParams.has("ref")) return;
-    url.searchParams.delete("ref");
+    // `email` goes too: an address left in the address bar rides into browser
+    // history, shared links and referrer headers.
+    const carried = ["ref", "email"].filter((k) => url.searchParams.has(k));
+    if (carried.length === 0) return;
+    carried.forEach((k) => url.searchParams.delete(k));
     window.history.replaceState({}, "", url.toString());
   }, []);
 
@@ -415,7 +433,11 @@ export default function ScholarshipCampaignPage() {
                 }}
               />
             ) : (
-              <EmailGate slug={slug} onVerified={afterSession} />
+              <EmailGate
+                slug={slug}
+                initialEmail={initialEmail}
+                onVerified={afterSession}
+              />
             )}
           </div>
         </div>

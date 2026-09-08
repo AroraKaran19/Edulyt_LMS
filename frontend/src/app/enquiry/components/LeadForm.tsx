@@ -232,13 +232,26 @@ export default function LeadForm({
    * The code travels with the link because the scholarship page reads `?ref=`
    * into the same sessionStorage key this page does, so a lead captured over
    * there is credited to whoever sent the visitor here.
+   *
+   * The address travels for the mirror of the reason it comes back the other
+   * way: the gate over there opens on an email, and asking again for one that
+   * was typed on this page a second ago is the kind of friction that loses
+   * people mid-funnel.
    */
   const scholarship = useScholarship();
-  const scholarshipHref = scholarship
-    ? `/scholarship/${encodeURIComponent(scholarship.slug)}${
-        refCode ? `?ref=${encodeURIComponent(refCode)}` : ""
-      }`
-    : "";
+  const scholarshipHref = (() => {
+    if (!scholarship) return "";
+    const query = new URLSearchParams();
+    if (refCode) query.set("ref", refCode);
+    // Only once it is actually an address. Carrying a half-typed one would
+    // prefill the gate with something that cannot pass its own check.
+    const typed = email.trim().toLowerCase();
+    if (EMAIL.test(typed)) query.set("email", typed);
+    const qs = query.toString();
+    return `/scholarship/${encodeURIComponent(scholarship.slug)}${
+      qs ? `?${qs}` : ""
+    }`;
+  })();
   const freeCert = selected === 3;
   const addonCost = cert && !freeCert ? mncAddonPrice : 0;
   const total = chosenPlan.price + addonCost;
