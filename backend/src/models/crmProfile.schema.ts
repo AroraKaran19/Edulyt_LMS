@@ -77,6 +77,24 @@ const crmProfileSchema = new mongoose.Schema<CrmProfile>(
       required: false,
       default: false,
     },
+    /** This member's own link. Validated against `createdBy` on write. */
+    scholarshipTestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScholarshipTest",
+      required: false,
+      default: null,
+    },
+    /**
+     * This owner's ambassadors' links. Read from the parent at resolve time,
+     * like `hideAmbassadorPlanPrices`, so re-homing an ambassador switches
+     * their campaign with no fan-out.
+     */
+    ambassadorScholarshipTestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScholarshipTest",
+      required: false,
+      default: null,
+    },
   },
   { timestamps: true },
 );

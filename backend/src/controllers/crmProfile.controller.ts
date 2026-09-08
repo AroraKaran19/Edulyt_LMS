@@ -19,6 +19,10 @@ import {
   resolveCrmCode,
 } from "../services/crmProfile.services";
 import {
+  listOwnCampaignOptions,
+  resolveAttachableCampaignId,
+} from "../services/scholarshipAttach.services";
+import {
   getCrmAnalytics,
   getCrmStats,
   getLeaderboards,
@@ -110,6 +114,8 @@ export const getMyCrmProfile = asyncHandler(
       {
         hidePlanPrices: 1,
         hideAmbassadorPlanPrices: 1,
+        scholarshipTestId: 1,
+        ambassadorScholarshipTestId: 1,
         allowAmbassadorQuestions: 1,
         extraQuestions: 1,
         parentUserId: 1,
@@ -128,6 +134,14 @@ export const getMyCrmProfile = asyncHandler(
         hidePlanPrices: isStaff && Boolean(settings?.hidePlanPrices),
         hideAmbassadorPlanPrices:
           isStaff && Boolean(settings?.hideAmbassadorPlanPrices),
+        scholarshipTestId:
+          isStaff && settings?.scholarshipTestId
+            ? String(settings.scholarshipTestId)
+            : null,
+        ambassadorScholarshipTestId:
+          isStaff && settings?.ambassadorScholarshipTestId
+            ? String(settings.ambassadorScholarshipTestId)
+            : null,
         allowAmbassadorQuestions:
           isStaff && Boolean(settings?.allowAmbassadorQuestions),
         questions: settings?.extraQuestions ?? [],
@@ -451,7 +465,7 @@ export const updateMyExtraQuestion = asyncHandler(
 
 /**
  * @route  PATCH /api/crm/me/link-settings
- * @desc   Toggle whether this member's enquiry link shows plan prices
+ * @desc   Plan prices and the attached scholarship, for this member's links
  * @access Marketer, sales
  *
  * Ambassadors are deliberately excluded: their link follows whoever currently
@@ -469,6 +483,14 @@ export const updateMyLinkSettings = asyncHandler(
     );
     const allowAmbassadorQuestions = Boolean(req.body?.allowAmbassadorQuestions);
 
+    // Both resolved before the write, so a rejected pointer fails the whole
+    // save rather than leaving one link attached and the other not.
+    const actor = String(actorId(req));
+    const [scholarshipTestId, ambassadorScholarshipTestId] = await Promise.all([
+      resolveAttachableCampaignId(req.body?.scholarshipTestId, actor),
+      resolveAttachableCampaignId(req.body?.ambassadorScholarshipTestId, actor),
+    ]);
+
     await ensureCrmProfile(actorId(req));
     await CrmProfileModel.updateOne(
       { userId: actorId(req) },
@@ -477,14 +499,43 @@ export const updateMyLinkSettings = asyncHandler(
           hidePlanPrices,
           hideAmbassadorPlanPrices,
           allowAmbassadorQuestions,
+          scholarshipTestId,
+          ambassadorScholarshipTestId,
         },
       },
     );
 
     sendSuccessResponse(
       res,
-      { hidePlanPrices, hideAmbassadorPlanPrices, allowAmbassadorQuestions },
+      {
+        hidePlanPrices,
+        hideAmbassadorPlanPrices,
+        allowAmbassadorQuestions,
+        scholarshipTestId: scholarshipTestId ? String(scholarshipTestId) : null,
+        ambassadorScholarshipTestId: ambassadorScholarshipTestId
+          ? String(ambassadorScholarshipTestId)
+          : null,
+      },
       "Link settings saved",
+      200,
+    );
+  },
+);
+
+/**
+ * @route  GET /api/crm/me/scholarship-options
+ * @desc   The caller's own campaigns, to populate the attach pickers
+ * @access Marketer, sales
+ */
+export const listMyScholarshipOptions = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!canSetExtraQuestion(req.user?.userType)) {
+      throw new AppError("You don't have access to this section", 403);
+    }
+    sendSuccessResponse(
+      res,
+      { items: await listOwnCampaignOptions(String(actorId(req))) },
+      "Campaigns fetched",
       200,
     );
   },

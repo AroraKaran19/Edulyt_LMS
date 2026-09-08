@@ -49,6 +49,19 @@ export interface CrmProfile {
    * Meaningless on an ambassador's own profile.
    */
   hideAmbassadorPlanPrices?: boolean;
+  /**
+   * The scholarship campaign shown on this member's OWN enquiry link. Always
+   * one they created; the pointer is validated against `createdBy` on write.
+   */
+  scholarshipTestId?: mongoose.Types.ObjectId | null;
+  /**
+   * The campaign shown on this owner's ambassadors' links. Separate from
+   * `scholarshipTestId` for the same reason the two price flags are separate:
+   * a roster can run a different campaign from the owner's own link, and an
+   * ambassador cannot create one to attach. Meaningless on an ambassador's own
+   * profile.
+   */
+  ambassadorScholarshipTestId?: mongoose.Types.ObjectId | null;
   createdAt?: Date;
   updatedAt?: Date;
 }

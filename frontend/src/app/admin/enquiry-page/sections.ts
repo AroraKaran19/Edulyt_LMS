@@ -14,6 +14,13 @@ export const ENQUIRY_SECTIONS: ReadonlyArray<{
     description: "The orange bar above the hero. Can be switched off.",
   },
   {
+    slug: "scholarship",
+    key: "scholarship",
+    title: "Scholarship",
+    description:
+      "The scholarship line in the lead form, under the plan tiles. Main page only.",
+  },
+  {
     slug: "hero",
     key: "hero",
     title: "Hero",

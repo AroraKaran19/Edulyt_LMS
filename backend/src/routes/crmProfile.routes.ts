@@ -12,6 +12,7 @@ import {
   getMyCrmProfile,
   getMyCrmStats,
   listMyAmbassadors,
+  listMyScholarshipOptions,
   removeMyAmbassador,
   requireCrmOwner,
   updateMyExtraQuestion,
@@ -47,10 +48,17 @@ router.patch("/me/questions", updateMyExtraQuestion);
 
 /**
  * @route   PATCH /api/crm/me/link-settings
- * @desc    Toggle plan prices on this member's enquiry link
+ * @desc    Plan prices and attached scholarship for this member's links
  * @access  Marketer, sales
  */
 router.patch("/me/link-settings", requireCrmOwner, updateMyLinkSettings);
+
+/**
+ * @route   GET /api/crm/me/scholarship-options
+ * @desc    The caller's own campaigns, for the attach pickers
+ * @access  Marketer, sales
+ */
+router.get("/me/scholarship-options", requireCrmOwner, listMyScholarshipOptions);
 
 /**
  * @route   GET /api/crm/leaderboard?from=&to=

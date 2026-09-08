@@ -530,6 +530,8 @@ export const ENDPOINTS = {
   /** Public marketing home page CMS — read-only. */
   homePageSettings: "/home-page-settings",
   enquiryPageSettings: "/enquiry-page-settings",
+  /** Per-visit and uncached: the answer depends on the `?ref=` link. */
+  enquiryScholarship: "/enquiry-page-settings/scholarship",
 
   /** Public legal documents (course + internship T&C) — read-only. */
   legalSettings: "/legal-settings",
@@ -539,6 +541,8 @@ export const ENDPOINTS = {
     pointsSettings: "/admin/points-settings",
     homePageSettings: "/admin/home-page-settings",
     enquiryPageSettings: "/admin/enquiry-page-settings",
+    /** The signed-in admin's own campaigns, for the attach picker. */
+    enquiryScholarshipOptions: "/admin/enquiry-page-settings/scholarship-options",
     legalSettings: "/admin/legal-settings",
   },
 };

@@ -13,6 +13,9 @@ import useCrm, {
   type AmbassadorKind,
   type CrmProfile,
 } from "@/hooks/useCrm";
+import ScholarshipAttachSelect, {
+  useOwnCampaigns,
+} from "@/components/admin/ScholarshipAttachSelect";
 import ExtraQuestionsEditor, {
   MAX_EXTRA_QUESTIONS,
   toDrafts,
@@ -46,6 +49,16 @@ export default function MyTeamPage() {
   const [loading, setLoading] = useState(true);
   const [hidePrices, setHidePrices] = useState(false);
   const [hideCaPrices, setHideCaPrices] = useState(false);
+  const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [caCampaignId, setCaCampaignId] = useState<string | null>(null);
+
+  // Literal, like every other CRM call in this tree: useCrm addresses these
+  // routes by path rather than through ENDPOINTS.
+  const {
+    options: campaigns,
+    isLoading: campaignsLoading,
+    failed: campaignsFailed,
+  } = useOwnCampaigns("/crm/me/scholarship-options");
 
   const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
   const [allowCaQuestions, setAllowCaQuestions] = useState(false);
@@ -61,6 +74,8 @@ export default function MyTeamPage() {
       setProfile(p);
       setHidePrices(Boolean(p?.hidePlanPrices));
       setHideCaPrices(Boolean(p?.hideAmbassadorPlanPrices));
+      setCampaignId(p?.scholarshipTestId ?? null);
+      setCaCampaignId(p?.ambassadorScholarshipTestId ?? null);
       setAllowCaQuestions(Boolean(p?.allowAmbassadorQuestions));
       setDrafts(toDrafts(p?.questions ?? []));
       setAmbassadors(list.ambassadors);
@@ -89,31 +104,37 @@ export default function MyTeamPage() {
     hidePlanPrices?: boolean;
     hideAmbassadorPlanPrices?: boolean;
     allowAmbassadorQuestions?: boolean;
+    scholarshipTestId?: string | null;
+    ambassadorScholarshipTestId?: string | null;
   }) => {
     const previous = {
       hidePlanPrices: hidePrices,
       hideAmbassadorPlanPrices: hideCaPrices,
       allowAmbassadorQuestions: allowCaQuestions,
+      scholarshipTestId: campaignId,
+      ambassadorScholarshipTestId: caCampaignId,
     };
-    // The endpoint replaces all three, so an unchanged one has to be sent as it
-    // stands or toggling any switch would silently reset the other two.
+    // The endpoint replaces every field, so an unchanged one has to be sent as
+    // it stands or changing any would silently reset the rest.
     const next = { ...previous, ...patch };
 
-    setHidePrices(next.hidePlanPrices);
-    setHideCaPrices(next.hideAmbassadorPlanPrices);
-    setAllowCaQuestions(next.allowAmbassadorQuestions);
+    const apply = (v: typeof previous) => {
+      setHidePrices(v.hidePlanPrices);
+      setHideCaPrices(v.hideAmbassadorPlanPrices);
+      setAllowCaQuestions(v.allowAmbassadorQuestions);
+      setCampaignId(v.scholarshipTestId);
+      setCaCampaignId(v.ambassadorScholarshipTestId);
+    };
+
+    apply(next);
 
     const res = await saveLinkSettings(next);
     if (!res.ok) {
-      setHidePrices(previous.hidePlanPrices);
-      setHideCaPrices(previous.hideAmbassadorPlanPrices);
-      setAllowCaQuestions(previous.allowAmbassadorQuestions);
+      apply(previous);
       toast.error(res.message);
       return;
     }
-    setHidePrices(res.hidePlanPrices);
-    setHideCaPrices(res.hideAmbassadorPlanPrices);
-    setAllowCaQuestions(res.allowAmbassadorQuestions);
+    apply(res);
   };
 
   const copyLink = async () => {
@@ -249,6 +270,34 @@ export default function MyTeamPage() {
             </span>
           </span>
         </label>
+
+        <div className="mt-4 flex flex-col gap-4 border-t border-gray-100 pt-4">
+          <ScholarshipAttachSelect
+            label="Scholarship on my link"
+            helperText="Adds one line to the lead form, under the plan tiles, linking to the test. Only campaigns you created."
+            options={campaigns}
+            isLoading={campaignsLoading}
+            failed={campaignsFailed}
+            disabled={isLoading}
+            value={campaignId}
+            onChange={(scholarshipTestId) =>
+              void saveSettings({ scholarshipTestId })
+            }
+          />
+
+          <ScholarshipAttachSelect
+            label="Scholarship on my ambassadors' links"
+            helperText="Separate from your own, so your roster can run a different campaign. Your ambassadors cannot create one, so they show this or nothing."
+            options={campaigns}
+            isLoading={campaignsLoading}
+            failed={campaignsFailed}
+            disabled={isLoading}
+            value={caCampaignId}
+            onChange={(ambassadorScholarshipTestId) =>
+              void saveSettings({ ambassadorScholarshipTestId })
+            }
+          />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-5">

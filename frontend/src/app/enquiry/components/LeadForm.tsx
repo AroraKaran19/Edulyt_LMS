@@ -31,6 +31,7 @@ import EnquiryButton from "./EnquiryButton";
 import OtpBoxes from "./OtpBoxes";
 import { ISSUERS, type PlanId } from "../plans";
 import { usePlanData } from "../usePlanData";
+import { useScholarship } from "../settings";
 
 type Props = {
   selected: PlanId;
@@ -213,6 +214,18 @@ export default function LeadForm({
 
   const { plans, mncAddonPrice, planById, hasPrices } = usePlanData();
   const chosenPlan = planById(selected);
+
+  /*
+   * The code travels with the link because the scholarship page reads `?ref=`
+   * into the same sessionStorage key this page does, so a lead captured over
+   * there is credited to whoever sent the visitor here.
+   */
+  const scholarship = useScholarship();
+  const scholarshipHref = scholarship
+    ? `/scholarship/${encodeURIComponent(scholarship.slug)}${
+        refCode ? `?ref=${encodeURIComponent(refCode)}` : ""
+      }`
+    : "";
   const freeCert = selected === 3;
   const addonCost = cert && !freeCert ? mncAddonPrice : 0;
   const total = chosenPlan.price + addonCost;
@@ -966,7 +979,24 @@ export default function LeadForm({
             ))}
           </div>
 
-          <div className="mt-2.5">
+          {scholarship && (
+            /*
+             * A new tab, not a navigation: the form above may already hold a
+             * half-finished entry and a verified OTP session, and neither
+             * survives leaving the page.
+             */
+            <a
+              href={scholarshipHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2.5 flex items-center justify-center gap-1 rounded-lg border-[1.5px] border-[#f2d6c2] bg-[#fff6f1] px-2.5 py-2 text-center text-[11.5px] font-bold text-[#c4551a] transition-colors duration-150 hover:border-primary hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              We offer a scholarship on this too. Click here
+              <ArrowRight size={13} strokeWidth={2.6} className="flex-none" />
+            </a>
+          )}
+
+          <div className="mt-3">
             <div className="mb-1 flex items-baseline justify-between gap-2">
               <label
                 className="block text-[11.5px] font-bold text-text-primary"

@@ -10,8 +10,10 @@ import { usePlanData } from "../usePlanData";
 import { useReveal } from "../useReveal";
 import {
   EnquiryPricingProvider,
+  EnquiryScholarshipProvider,
   EnquirySettingsProvider,
   type EnquiryPricing,
+  type EnquiryScholarship,
 } from "../settings";
 import type { EnquiryPageSettings } from "@/types/enquiry-page-settings";
 import SiteHeader from "../sections/SiteHeader";
@@ -93,6 +95,8 @@ export default function EnquiryLanding({
     plans: [],
     mncAddonPrice: null,
   });
+  /** Null until the fetch lands, so no line ever flashes and then vanishes. */
+  const [scholarship, setScholarship] = useState<EnquiryScholarship>(null);
 
   /*
    * Take the code out of the address bar. `history.replaceState` rather than
@@ -159,6 +163,29 @@ export default function EnquiryLanding({
     };
   }, [refCode]);
 
+  /*
+   * The scholarship line, per visit. Same precedence as pricing: a referred
+   * visit carries its link owner's campaign, every other one the admin's.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    publicClient
+      .get("/enquiry-page-settings/scholarship", {
+        params: refCode ? { ref: refCode } : undefined,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        const slug = res.data?.data?.slug;
+        setScholarship(typeof slug === "string" && slug ? { slug } : null);
+      })
+      .catch(() => {
+        if (!cancelled) setScholarship(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refCode]);
+
   useReveal(rootRef);
 
   useEffect(() => {
@@ -188,61 +215,67 @@ export default function EnquiryLanding({
   return (
     <EnquirySettingsProvider value={settings}>
       <EnquiryPricingProvider value={pricing}>
-        <div
-          data-enquiry
-          ref={rootRef}
-          className="relative isolate overflow-x-clip bg-[#fff6f1] font-[family-name:var(--font-eq-body)] text-text-secondary antialiased"
-        >
+        <EnquiryScholarshipProvider value={scholarship}>
           <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(rgba(247,113,36,0.16)_1.2px,transparent_1.2px)] bg-[size:24px_24px] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.35)_60%,transparent)]"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-[-10%] top-[-280px] z-0 h-[900px] bg-[radial-gradient(50%_50%_at_20%_30%,rgba(247,173,36,0.22),transparent_70%),radial-gradient(45%_45%_at_82%_8%,rgba(247,113,36,0.16),transparent_70%)]"
-          />
+            data-enquiry
+            ref={rootRef}
+            className="relative isolate overflow-x-clip bg-[#fff6f1] font-[family-name:var(--font-eq-body)] text-text-secondary antialiased"
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(rgba(247,113,36,0.16)_1.2px,transparent_1.2px)] bg-[size:24px_24px] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.35)_60%,transparent)]"
+            />
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-[-10%] top-[-280px] z-0 h-[900px] bg-[radial-gradient(50%_50%_at_20%_30%,rgba(247,173,36,0.22),transparent_70%),radial-gradient(45%_45%_at_82%_8%,rgba(247,113,36,0.16),transparent_70%)]"
+            />
 
-          <SiteHeader />
+            <SiteHeader />
 
-          <OfferStrip />
+            <OfferStrip />
 
-          <HeroSection
-            plan={plan}
-            onPlan={setPlan}
-            cert={cert}
-            onCert={setCert}
-            onCompare={toPlans}
-            initialCollege={initialCollege}
-            initialCollegeId={initialCollegeId}
-            refCode={refCode}
-            extraQuestions={extraQuestions}
-          />
+            <HeroSection
+              plan={plan}
+              onPlan={setPlan}
+              cert={cert}
+              onCert={setCert}
+              onCompare={toPlans}
+              initialCollege={initialCollege}
+              initialCollegeId={initialCollegeId}
+              refCode={refCode}
+              extraQuestions={extraQuestions}
+            />
 
-          <MarqueeStrip />
+            <MarqueeStrip />
 
-          <CertificatesSection />
+            <CertificatesSection />
 
-          <BadgesSection />
+            <BadgesSection />
 
-          <ResumeSection />
+            <ResumeSection />
 
-          <LanguageNote />
+            <LanguageNote />
 
-          <PlansSection
-            plan={plan}
-            onPlan={setPlan}
-            cert={cert}
-            onCert={setCert}
-          />
+            <PlansSection
+              plan={plan}
+              onPlan={setPlan}
+              cert={cert}
+              onCert={setCert}
+            />
 
-          <HowItRunsSection />
+            <HowItRunsSection />
 
-          <TrackRecordSection />
+            <TrackRecordSection />
 
-          <ClosingSection planName={picked.name} onCta={toForm} />
+            <ClosingSection planName={picked.name} onCta={toForm} />
 
-          <MobileDock planName={picked.name} visible={docked} onCta={toForm} />
-        </div>
+            <MobileDock
+              planName={picked.name}
+              visible={docked}
+              onCta={toForm}
+            />
+          </div>
+        </EnquiryScholarshipProvider>
       </EnquiryPricingProvider>
     </EnquirySettingsProvider>
   );

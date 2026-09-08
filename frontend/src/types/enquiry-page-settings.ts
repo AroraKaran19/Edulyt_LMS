@@ -31,6 +31,16 @@ export interface EnquiryOfferSettings {
   body?: string;
 }
 
+/**
+ * The scholarship campaign advertised in the lead form on the bare `/enquiry`
+ * page. A visit carrying a referral link follows that link owner's campaign
+ * instead, and never falls back to this one.
+ */
+export interface EnquiryScholarshipSettings {
+  /** A campaign the signed-in admin created, or null for none. */
+  testId?: string | null;
+}
+
 export interface EnquiryPartnerLogo {
   name?: string;
   src?: string;
@@ -206,6 +216,7 @@ export interface EnquiryClosingSettings {
 
 export interface EnquiryPageSettings {
   offer?: EnquiryOfferSettings;
+  scholarship?: EnquiryScholarshipSettings;
   hero?: EnquiryHeroSettings;
   certificates?: EnquiryCertificatesSettings;
   badges?: EnquiryBadgesSettings;
@@ -220,6 +231,7 @@ export interface EnquiryPageSettings {
 /** Mirrors the backend allowlist. */
 export const ENQUIRY_SECTION_KEYS = [
   "offer",
+  "scholarship",
   "hero",
   "certificates",
   "badges",

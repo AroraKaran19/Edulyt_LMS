@@ -42,6 +42,35 @@ export function usePricing(): EnquiryPricing {
   return useContext(PricingContext);
 }
 
+/**
+ * The scholarship campaign this visit advertises, or null for none.
+ *
+ * Per visit like pricing, and for the same reason: which campaign applies, if
+ * any, depends on the referral link. Kept in its own context rather than added
+ * to the pricing one so a failure on either side leaves the other alone.
+ */
+export type EnquiryScholarship = { slug: string } | null;
+
+const ScholarshipContext = createContext<EnquiryScholarship>(null);
+
+export function EnquiryScholarshipProvider({
+  value,
+  children,
+}: {
+  value: EnquiryScholarship;
+  children: React.ReactNode;
+}) {
+  return (
+    <ScholarshipContext.Provider value={value}>
+      {children}
+    </ScholarshipContext.Provider>
+  );
+}
+
+export function useScholarship(): EnquiryScholarship {
+  return useContext(ScholarshipContext);
+}
+
 export function EnquirySettingsProvider({
   value,
   children,

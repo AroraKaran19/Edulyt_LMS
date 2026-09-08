@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
 import { EnquiryPageSettingsModel } from "../models/enquiryPageSettings.schema";
+import { ScholarshipTestModel } from "../models/scholarshipTest.schema";
+import { resolveAttachableCampaignId } from "./scholarshipAttach.services";
 import { AppError } from "../middlewares/error.middleware";
 
 const GLOBAL_KEY = "global";
@@ -19,6 +22,7 @@ export function invalidateEnquiryPageSettingsCache(): void {
 /** Mirrors `ENQUIRY_SECTION_KEYS` on the frontend. */
 export const ENQUIRY_PAGE_SECTION_KEYS = [
   "offer",
+  "scholarship",
   "hero",
   "certificates",
   "badges",
@@ -63,10 +67,13 @@ export const getEnquiryPageSettings = async (): Promise<
  * Replaces a section wholesale rather than merging: a merge makes deleting a
  * list item impossible, since the shorter array merges back over the longer one.
  */
-export const updateEnquiryPageSection = async (body: {
-  section?: unknown;
-  value?: unknown;
-}): Promise<Record<string, unknown>> => {
+export const updateEnquiryPageSection = async (
+  body: {
+    section?: unknown;
+    value?: unknown;
+  },
+  actorId: string,
+): Promise<Record<string, unknown>> => {
   const { section, value } = body;
 
   if (!isValidSectionKey(section)) {
@@ -76,9 +83,21 @@ export const updateEnquiryPageSection = async (body: {
     throw new AppError("Section value must be an object", 400);
   }
 
+  // The one section whose value is a pointer into another collection, so it is
+  // the one section that cannot be stored as sent.
+  const next: Record<string, unknown> =
+    section === "scholarship"
+      ? {
+          testId: await resolveAttachableCampaignId(
+            (value as Record<string, unknown>).testId,
+            actorId,
+          ),
+        }
+      : (value as Record<string, unknown>);
+
   const updated = await EnquiryPageSettingsModel.findOneAndUpdate(
     { key: GLOBAL_KEY },
-    { $set: { [section]: value } },
+    { $set: { [section]: next } },
     {
       new: true,
       upsert: true,
@@ -92,23 +111,27 @@ export const updateEnquiryPageSection = async (body: {
 };
 
 /**
- * The plans section with every price removed.
+ * The settings document with everything that is decided per visit removed.
  *
- * The public settings response is cache-headered, so it cannot vary per
- * referral link. Leaving prices in it is exactly what made a marketer's
- * per-link hiding cosmetic: the numbers arrived anyway and the client merely
- * declined to draw them. Prices now come only from `getEnquiryPricing`, which
- * is per-request and uncached.
+ * The public response is cache-headered, so it cannot vary per referral link.
+ * Leaving these in is exactly what made a marketer's per-link price hiding
+ * cosmetic: the numbers arrived anyway and the client merely declined to draw
+ * them. They come instead from `getEnquiryPricing` and `getEnquiryScholarship`,
+ * which are per-request and uncached.
  */
-export const stripPricesFromSettings = (
+export const stripPerVisitFields = (
   data: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const plans = data.plans as Record<string, unknown> | undefined;
-  if (!plans) return data;
+  // The bare page's campaign, which a referred visit must never receive.
+  const { scholarship, ...rest } = data;
+  void scholarship;
+
+  const plans = rest.plans as Record<string, unknown> | undefined;
+  if (!plans) return rest;
 
   const list = Array.isArray(plans.plans) ? plans.plans : [];
   return {
-    ...data,
+    ...rest,
     plans: {
       ...plans,
       mncAddonPrice: undefined,
@@ -182,6 +205,53 @@ export const getEnquiryPricing = async (
 
   if (section.showPrices === false) return empty;
   return pricesFrom(section);
+};
+
+/** All the public page needs to draw the line and link it somewhere. */
+export interface EnquiryScholarship {
+  slug: string;
+}
+
+/**
+ * The scholarship campaign advertised on one visit, or none.
+ *
+ * The same single-authority rule as `getEnquiryPricing`, and deliberately not
+ * folded into it: a failure to read a campaign must not withhold prices, nor
+ * the reverse. A referred visit carries its link owner's campaign or nothing at
+ * all; it never falls back to the admin's, which belongs to the bare page.
+ *
+ * Resolved live rather than snapshotted, so pausing or deleting a campaign
+ * pulls the line off every page at once.
+ */
+export const getEnquiryScholarship = async (
+  ref?: string,
+): Promise<EnquiryScholarship | null> => {
+  if (ref?.trim()) {
+    // Lazy, for the same reason `getEnquiryPricing` is: crmProfile.services
+    // pulls in the user models, and this module loads on every cold start.
+    const { resolveCrmCode } = await import("./crmProfile.services");
+    const resolved = await resolveCrmCode(ref);
+    // An unknown code is not a referral, so it falls through to the bare-page
+    // rule rather than suppressing a campaign the admin is running.
+    if (resolved) return liveCampaign(resolved.scholarshipTestId);
+  }
+
+  const settings = await getEnquiryPageSettings();
+  const section = (settings.scholarship ?? {}) as Record<string, unknown>;
+  return liveCampaign(section.testId);
+};
+
+const liveCampaign = async (
+  testId: unknown,
+): Promise<EnquiryScholarship | null> => {
+  const id = testId ? String(testId) : "";
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+  const test = await ScholarshipTestModel.findOne(
+    { _id: new mongoose.Types.ObjectId(id), isActive: true },
+    { slug: 1 },
+  ).lean();
+  return test?.slug ? { slug: test.slug } : null;
 };
 
 const pricesFrom = (section: Record<string, unknown>): EnquiryPricing => {

@@ -274,10 +274,28 @@ const closingSchema = new Schema(
   { _id: false },
 );
 
+/**
+ * The scholarship campaign advertised in the lead form on the bare `/enquiry`
+ * page. Governs only visits with no working referral link, exactly like
+ * `plans.showPrices`: a visit carrying one follows that link owner's own
+ * campaign, or shows none, and never falls back to this.
+ */
+const scholarshipSchema = new Schema(
+  {
+    testId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ScholarshipTest",
+      default: null,
+    },
+  },
+  { _id: false },
+);
+
 const enquiryPageSettingsSchema = new Schema(
   {
     key: { type: String, required: true, unique: true, default: "global" },
     offer: { type: offerSchema, default: () => ({}) },
+    scholarship: { type: scholarshipSchema, default: () => ({}) },
     hero: { type: heroSchema, default: () => ({}) },
     certificates: { type: certificatesSchema, default: () => ({}) },
     badges: { type: badgesSchema, default: () => ({}) },

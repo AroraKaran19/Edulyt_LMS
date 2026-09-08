@@ -2,6 +2,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import {
   getEnquiryPageSettingsController,
   getEnquiryPricingController,
+  getEnquiryScholarshipController,
 } from "../controllers/enquiryPageSettings.controller";
 
 const router = Router();
@@ -26,5 +27,16 @@ router.get("/", publicCacheHeaders, getEnquiryPageSettingsController);
  * shared cache would serve one visitor's pricing to another.
  */
 router.get("/pricing", getEnquiryPricingController);
+
+/**
+ * @route   GET /api/enquiry-page-settings/scholarship?ref=CODE
+ * @desc    The campaign this visit advertises, or null
+ * @access  Public
+ *
+ * Uncached for the same reason as `/pricing`: the answer depends on the
+ * referral link, and a shared cache would serve one visitor's campaign to
+ * another.
+ */
+router.get("/scholarship", getEnquiryScholarshipController);
 
 export default router;

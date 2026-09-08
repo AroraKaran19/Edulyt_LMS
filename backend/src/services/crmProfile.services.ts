@@ -133,6 +133,12 @@ export interface ResolvedCrmCode {
   questions: CrmExtraQuestion[];
   /** Whether the enquiry page should render plan prices for this link. */
   hidePlanPrices: boolean;
+  /**
+   * The scholarship campaign this link advertises, or null. Still just a
+   * pointer: whether it is live, and so whether anything renders, is settled by
+   * the enquiry page's own resolver.
+   */
+  scholarshipTestId: string | null;
 }
 
 /**
@@ -158,6 +164,7 @@ export const resolveCrmCode = async (
       ambassadorKind: 1,
       extraQuestions: 1,
       hidePlanPrices: 1,
+      scholarshipTestId: 1,
     },
   ).lean();
   if (!profile) return null;
@@ -181,6 +188,9 @@ export const resolveCrmCode = async (
   // switches them to the new owner's settings with no fan-out and nothing to
   // drift. One extra lookup, and only for an ambassador's link.
   let hidePlanPrices = Boolean(profile.hidePlanPrices);
+  let scholarshipTestId = profile.scholarshipTestId
+    ? String(profile.scholarshipTestId)
+    : null;
   let questions = enabled(profile.extraQuestions as CrmExtraQuestion[]);
 
   if (profile.parentUserId) {
@@ -188,6 +198,7 @@ export const resolveCrmCode = async (
       { userId: profile.parentUserId },
       {
         hideAmbassadorPlanPrices: 1,
+        ambassadorScholarshipTestId: 1,
         allowAmbassadorQuestions: 1,
         extraQuestions: 1,
       },
@@ -195,6 +206,11 @@ export const resolveCrmCode = async (
     // The owner's ambassador setting, not their own: a marketer may keep prices
     // on their personal link while their roster sends an unpriced page.
     hidePlanPrices = Boolean(parent?.hideAmbassadorPlanPrices);
+    // Same split for the campaign, and an ambassador has none of their own to
+    // fall back to: they cannot create one.
+    scholarshipTestId = parent?.ambassadorScholarshipTestId
+      ? String(parent.ambassadorScholarshipTestId)
+      : null;
 
     // Their own questions only while the owner permits them. Otherwise the
     // owner's questions apply across their whole roster, which is also what
@@ -215,6 +231,7 @@ export const resolveCrmCode = async (
       [owner.firstName, owner.lastName].filter(Boolean).join(" ").trim() || "",
     questions,
     hidePlanPrices,
+    scholarshipTestId,
   };
 };
 

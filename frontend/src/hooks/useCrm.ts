@@ -35,6 +35,10 @@ export interface CrmProfile {
   hidePlanPrices?: boolean;
   /** Hides plan prices on this owner's ambassadors' links. Staff only. */
   hideAmbassadorPlanPrices?: boolean;
+  /** Campaign advertised on this member's own link, or null. Staff only. */
+  scholarshipTestId?: string | null;
+  /** Campaign advertised on this owner's ambassadors' links. Staff only. */
+  ambassadorScholarshipTestId?: string | null;
 }
 
 export interface CrmExtraQuestion {
@@ -164,6 +168,8 @@ const useCrm = () => {
       hidePlanPrices: boolean;
       hideAmbassadorPlanPrices: boolean;
       allowAmbassadorQuestions: boolean;
+      scholarshipTestId: string | null;
+      ambassadorScholarshipTestId: string | null;
     }) => {
       setIsLoading(true);
       try {
@@ -177,6 +183,10 @@ const useCrm = () => {
           allowAmbassadorQuestions: Boolean(
             res.data?.data?.allowAmbassadorQuestions,
           ),
+          scholarshipTestId: (res.data?.data?.scholarshipTestId ??
+            null) as string | null,
+          ambassadorScholarshipTestId: (res.data?.data
+            ?.ambassadorScholarshipTestId ?? null) as string | null,
         };
       } catch (e) {
         const err = e as { response?: { data?: { message?: string } } };

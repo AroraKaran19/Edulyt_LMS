@@ -6,9 +6,12 @@ import {
 import {
   getEnquiryPageSettings,
   getEnquiryPricing,
-  stripPricesFromSettings,
+  getEnquiryScholarship,
+  stripPerVisitFields,
   updateEnquiryPageSection,
 } from "../services/enquiryPageSettings.services";
+import { listOwnCampaignOptions } from "../services/scholarshipAttach.services";
+import { AppError } from "../middlewares/error.middleware";
 import {
   REVALIDATE_TAGS,
   triggerRevalidate,
@@ -21,11 +24,11 @@ import {
 export const getEnquiryPageSettingsController = asyncHandler(
   async (_req: Request, res: Response) => {
     const data = await getEnquiryPageSettings();
-    // Prices are stripped because this response is cache-headered and so cannot
-    // vary per referral link. They come from the pricing route instead.
+    // Cache-headered, so it cannot vary per referral link: anything the link
+    // decides is stripped here and served by its own uncached route.
     sendSuccessResponse(
       res,
-      stripPricesFromSettings(data),
+      stripPerVisitFields(data),
       "Enquiry page settings fetched",
       200,
     );
@@ -52,12 +55,54 @@ export const getEnquiryPricingController = asyncHandler(
 );
 
 /**
+ * @route GET /api/enquiry-page-settings/scholarship?ref=CODE
+ * @desc  The scholarship campaign this visit should advertise, or null.
+ *
+ * Its own route rather than part of `/pricing`, though both are per-visit and
+ * uncached: a campaign lookup that fails must not withhold prices, and prices
+ * that fail must not hide a campaign.
+ */
+export const getEnquiryScholarshipController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const ref = typeof req.query.ref === "string" ? req.query.ref : undefined;
+    sendSuccessResponse(
+      res,
+      await getEnquiryScholarship(ref),
+      "Scholarship fetched",
+      200,
+    );
+  },
+);
+
+/**
+ * @route GET /api/admin/enquiry-page-settings/scholarship-options
+ * @desc  The admin's own campaigns, to populate the attach picker.
+ */
+export const getEnquiryScholarshipOptionsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const actorId = req.user?._id;
+    if (!actorId) throw new AppError("Authentication required", 401);
+    sendSuccessResponse(
+      res,
+      { items: await listOwnCampaignOptions(String(actorId)) },
+      "Campaigns fetched",
+      200,
+    );
+  },
+);
+
+/**
  * @route PATCH /api/admin/enquiry-page-settings
  * @desc  Replaces a single section. Body: `{ section, value }`.
  */
 export const patchEnquiryPageSettingsController = asyncHandler(
   async (req: Request, res: Response) => {
-    const data = await updateEnquiryPageSection(req.body ?? {});
+    const actorId = req.user?._id;
+    if (!actorId) throw new AppError("Authentication required", 401);
+    const data = await updateEnquiryPageSection(
+      req.body ?? {},
+      String(actorId),
+    );
 
     // Bust the Next cache so the edit shows on the public page right away. Not
     // awaited: the write already succeeded, and a slow or dead frontend must not

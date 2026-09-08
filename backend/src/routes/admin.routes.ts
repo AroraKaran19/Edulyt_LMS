@@ -21,6 +21,7 @@ import {
 } from "../controllers/homePageSettings.controller";
 import {
   getEnquiryPageSettingsController,
+  getEnquiryScholarshipOptionsController,
   patchEnquiryPageSettingsController,
 } from "../controllers/enquiryPageSettings.controller";
 import {
@@ -109,6 +110,9 @@ router.get("/home-page-settings", requirePermission("settings.home-page"), getHo
 router.patch("/home-page-settings", requirePermission("settings.home-page"), patchHomePageSettingsController);
 
 router.get("/enquiry-page-settings", requirePermission("leads.enquiry-page"), getEnquiryPageSettingsController);
+// Hard-scoped to the caller's own campaigns inside, so this permission never
+// becomes a back door onto the campaign list it does not otherwise grant.
+router.get("/enquiry-page-settings/scholarship-options", requirePermission("leads.enquiry-page"), getEnquiryScholarshipOptionsController);
 router.patch("/enquiry-page-settings", requirePermission("leads.enquiry-page"), patchEnquiryPageSettingsController);
 
 // Legal documents singleton (course + internship T&C) — admin editor under
