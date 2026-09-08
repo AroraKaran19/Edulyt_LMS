@@ -47,25 +47,12 @@ const SidebarMenuItem = ({
     if (item.submenu) onToggle?.(item.href);
   };
 
-  const getRedirectHref = (item: MenuItem) => {
-    if (item.submenu) {
-      if (item.href === "/admin/courses") {
-        return "/admin/courses/manage-courses";
-      } else if (item.href === "/admin/internships") {
-        return "/admin/internships/manage-internships";
-      } else if (item.href === "/admin/users") {
-        return "/admin/users/manage-users";
-      } else if (item.href === "/admin/settings") {
-        return "/admin/settings/authentication-media";
-      }
-    }
-    return item.href;
-  };
-
   return (
     <div className="relative flex flex-col gap-2">
       <Link
-        href={getRedirectHref(menuItem)}
+        // Already the first child the reader is allowed to open: Sidebar
+        // rewrites a group's href after filtering its submenu by permission.
+        href={menuItem.href}
         className={cn(
           `w-full p-3 rounded-lg transition-all duration-300 relative`,
           {

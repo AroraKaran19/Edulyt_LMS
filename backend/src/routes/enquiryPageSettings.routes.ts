@@ -1,5 +1,8 @@
 import { NextFunction, Request, Response, Router } from "express";
-import { getEnquiryPageSettingsController } from "../controllers/enquiryPageSettings.controller";
+import {
+  getEnquiryPageSettingsController,
+  getEnquiryPricingController,
+} from "../controllers/enquiryPageSettings.controller";
 
 const router = Router();
 
@@ -13,5 +16,15 @@ function publicCacheHeaders(_req: Request, res: Response, next: NextFunction) {
 }
 
 router.get("/", publicCacheHeaders, getEnquiryPageSettingsController);
+
+/**
+ * @route   GET /api/enquiry-page-settings/pricing?ref=CODE
+ * @desc    Plan prices for this visit, or none when withheld
+ * @access  Public
+ *
+ * No cache headers on purpose: the answer depends on the referral link, and a
+ * shared cache would serve one visitor's pricing to another.
+ */
+router.get("/pricing", getEnquiryPricingController);
 
 export default router;

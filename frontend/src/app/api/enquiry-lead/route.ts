@@ -18,13 +18,20 @@ const leadSchema = z.object({
     .optional(),
   /** Raw CRM code from `?ref=`. The backend resolves it; this only forwards. */
   ref: z.string().trim().max(32).optional(),
-  /** Answer to the one question the link owner added, if any. */
-  extraQuestion: z
-    .object({
-      key: z.string().trim().max(60),
-      label: z.string().trim().max(200),
-      value: z.string().trim().max(500),
-    })
+  /**
+   * Answers to the questions the link owner added, if any. Capped at two here
+   * as well as server-side, so a crafted request cannot pad the lead's answer
+   * list with arbitrary rows.
+   */
+  extraAnswers: z
+    .array(
+      z.object({
+        key: z.string().trim().max(60),
+        label: z.string().trim().max(200),
+        value: z.string().trim().max(500),
+      }),
+    )
+    .max(2)
     .optional(),
   /**
    * Either the contact-session token from the anonymous OTP flow, or a
@@ -75,7 +82,7 @@ export async function POST(request: Request) {
 
   const answers = [
     { key: "college", label: "College", value: lead.college },
-    ...(lead.extraQuestion?.value ? [lead.extraQuestion] : []),
+    ...(lead.extraAnswers ?? []).filter((a) => a.value),
     {
       key: "plan",
       label: "Plan you are interested in",

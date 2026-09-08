@@ -8,6 +8,40 @@ import type {
 
 const SettingsContext = createContext<EnquiryPageSettings>({});
 
+/**
+ * Plan prices for this visit, fetched per request rather than shipped.
+ *
+ * Deliberately separate from the settings context: settings are cached and
+ * shared, while whether prices may be shown depends on the referral link, so
+ * they cannot travel together. An empty `plans` list means prices are withheld,
+ * and there is then no number anywhere on the page or in its payload.
+ */
+export type EnquiryPricing = {
+  plans: { id: number; price: number }[];
+  mncAddonPrice: number | null;
+};
+
+const PricingContext = createContext<EnquiryPricing>({
+  plans: [],
+  mncAddonPrice: null,
+});
+
+export function EnquiryPricingProvider({
+  value,
+  children,
+}: {
+  value: EnquiryPricing;
+  children: React.ReactNode;
+}) {
+  return (
+    <PricingContext.Provider value={value}>{children}</PricingContext.Provider>
+  );
+}
+
+export function usePricing(): EnquiryPricing {
+  return useContext(PricingContext);
+}
+
 export function EnquirySettingsProvider({
   value,
   children,

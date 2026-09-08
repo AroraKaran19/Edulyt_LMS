@@ -20,6 +20,8 @@ export interface CouponFilters {
   limit?: number;
   search?: string;
   isActive?: boolean;
+  /** Which tab: ordinary coupons, or the ones minted by scholarship winners. */
+  source?: "regular" | "scholarship";
 }
 
 export const useCoupon = () => {
@@ -60,6 +62,7 @@ export const useCoupon = () => {
         if (filters.search) params.append("search", filters.search);
         if (filters.isActive !== undefined)
           params.append("isActive", filters.isActive.toString());
+        if (filters.source) params.append("source", filters.source);
 
         const response = await apiClient.get(`/coupons?${params.toString()}`);
         return response.data.data;

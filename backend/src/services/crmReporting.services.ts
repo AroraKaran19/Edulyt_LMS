@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { LeadModel } from "../models/lead.schema";
 import { UserModel } from "../models/user.schema";
+import { CrmProfileModel } from "../models/crmProfile.schema";
 
 export interface DateRange {
   from?: Date;
@@ -249,9 +250,9 @@ const countsForPeople = async (ids: mongoose.Types.ObjectId[]) => {
     countLeadsBy("convertedBy.userId", ids),
     (async () => {
       if (ids.length === 0) return new Map<string, number>();
-      const out = await UserModel.aggregate([
-        { $match: { crmParentUserId: { $in: ids } } },
-        { $group: { _id: "$crmParentUserId", n: { $sum: 1 } } },
+      const out = await CrmProfileModel.aggregate([
+        { $match: { parentUserId: { $in: ids } } },
+        { $group: { _id: "$parentUserId", n: { $sum: 1 } } },
       ] as unknown as mongoose.PipelineStage[]);
       return new Map(out.map((r) => [String(r._id), r.n]));
     })(),
@@ -289,11 +290,18 @@ export const listCrmPeople = async (
   const term = search.trim();
   if (term) {
     const safe = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // The code lives on the profile now, so it is resolved to ids first and
+    // joined in as a fourth branch. That keeps this one paginated, sorted
+    // query on User instead of a post-join match that would scan.
+    const codeMatches = await CrmProfileModel.find(
+      { code: { $regex: `^${safe}`, $options: "i" } },
+      { userId: 1 },
+    ).lean();
     filter.$or = [
       { firstName: { $regex: safe, $options: "i" } },
       { lastName: { $regex: safe, $options: "i" } },
       { email: { $regex: safe, $options: "i" } },
-      { crmCode: { $regex: `^${safe}`, $options: "i" } },
+      { _id: { $in: codeMatches.map((m) => m.userId) } },
     ];
   }
 
@@ -303,8 +311,6 @@ export const listCrmPeople = async (
       lastName: 1,
       email: 1,
       userType: 1,
-      crmCode: 1,
-      crmCodeActive: 1,
     })
       .sort({ firstName: 1 })
       .skip((page - 1) * limit)
@@ -314,20 +320,29 @@ export const listCrmPeople = async (
   ]);
 
   const ids = rows.map((r) => r._id as unknown as mongoose.Types.ObjectId);
+
+  // The page's codes, keyed by user, so the row shape is unchanged.
+  const profiles = await CrmProfileModel.find(
+    { userId: { $in: ids } },
+    { userId: 1, code: 1, codeActive: 1 },
+  ).lean();
+  const profileByUser = new Map(profiles.map((p) => [String(p.userId), p]));
+
   const { generated, teamGenerated, converted, ambassadors } =
     await countsForPeople(ids);
 
   return {
     people: rows.map((r) => {
       const id = String(r._id);
+      const profile = profileByUser.get(id);
       return {
         userId: id,
         name:
           [r.firstName, r.lastName].filter(Boolean).join(" ").trim() || r.email,
         email: r.email,
         userType: r.userType as "marketer" | "sales",
-        code: r.crmCode ?? null,
-        active: r.crmCodeActive !== false,
+        code: profile?.code ?? null,
+        active: profile?.codeActive !== false,
         ambassadors: ambassadors.get(id) ?? 0,
         generated: generated.get(id) ?? 0,
         teamGenerated: teamGenerated.get(id) ?? 0,
@@ -365,11 +380,14 @@ export const getCrmPerson = async (
       lastName: 1,
       email: 1,
       userType: 1,
-      crmCode: 1,
-      crmCodeActive: 1,
     },
   ).lean();
   if (!row) return null;
+
+  const profile = await CrmProfileModel.findOne(
+    { userId: id },
+    { code: 1, codeActive: 1 },
+  ).lean();
 
   const { generated, teamGenerated, converted, ambassadors } =
     await countsForPeople([id]);
@@ -382,8 +400,8 @@ export const getCrmPerson = async (
       row.email,
     email: row.email,
     userType: row.userType as "marketer" | "sales",
-    code: row.crmCode ?? null,
-    active: row.crmCodeActive !== false,
+    code: profile?.code ?? null,
+    active: profile?.codeActive !== false,
     ambassadors: ambassadors.get(key) ?? 0,
     generated: generated.get(key) ?? 0,
     teamGenerated: teamGenerated.get(key) ?? 0,
@@ -411,26 +429,33 @@ export const listAmbassadorsForPerson = async (
     return { ambassadors: [], total: 0, totalPages: 1 };
   }
   const ownerId = new mongoose.Types.ObjectId(userId);
-  const filter = { crmParentUserId: ownerId };
+  const filter = { parentUserId: ownerId };
 
-  const [rows, total] = await Promise.all([
-    UserModel.find(filter, {
-      firstName: 1,
-      lastName: 1,
-      email: 1,
-      crmCode: 1,
-      crmCodeActive: 1,
-      crmAmbassadorKind: 1,
+  // Paginated on the profile, which owns the roster relationship and the sort,
+  // then joined back to User for the identity fields.
+  const [profiles, total] = await Promise.all([
+    CrmProfileModel.find(filter, {
+      userId: 1,
+      code: 1,
+      codeActive: 1,
+      ambassadorKind: 1,
       createdAt: 1,
     })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean(),
-    UserModel.countDocuments(filter),
+    CrmProfileModel.countDocuments(filter),
   ]);
 
-  const ids = rows.map((r) => r._id as unknown as mongoose.Types.ObjectId);
+  const ids = profiles.map(
+    (p) => p.userId as unknown as mongoose.Types.ObjectId,
+  );
+  const people = await UserModel.find(
+    { _id: { $in: ids } },
+    { firstName: 1, lastName: 1, email: 1 },
+  ).lean();
+  const personById = new Map(people.map((u) => [String(u._id), u]));
   // One pass keyed on `creator.userId`, splitting out the closed ones inline,
   // rather than a second aggregation filtered by status.
   const tally =
@@ -454,17 +479,20 @@ export const listAmbassadorsForPerson = async (
   );
 
   return {
-    ambassadors: rows.map((r) => {
-      const stat = byId.get(String(r._id));
+    ambassadors: profiles.map((p) => {
+      const key = String(p.userId);
+      const stat = byId.get(key);
+      const u = personById.get(key);
       return {
-        userId: String(r._id),
+        userId: key,
         name:
-          [r.firstName, r.lastName].filter(Boolean).join(" ").trim() || r.email,
-        email: r.email,
-        code: r.crmCode ?? null,
-        kind: (r.crmAmbassadorKind as "marketing" | "sales" | null) ?? null,
-        active: r.crmCodeActive !== false,
-        addedAt: (r as { createdAt?: Date }).createdAt ?? null,
+          [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim() ||
+          (u?.email ?? ""),
+        email: u?.email ?? "",
+        code: p.code ?? null,
+        kind: (p.ambassadorKind as "marketing" | "sales" | null) ?? null,
+        active: p.codeActive !== false,
+        addedAt: (p as { createdAt?: Date }).createdAt ?? null,
         generated: stat?.n ?? 0,
         converted: stat?.closed ?? 0,
       };

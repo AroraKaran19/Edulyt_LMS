@@ -55,7 +55,10 @@ export default function ScholarshipTestUpsertModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selected, setSelected] = useState<PickerQuestion[]>([]);
-  const [discountPercent, setDiscountPercent] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageS3Key, setImageS3Key] = useState("");
+  const [minDiscountPercent, setMinDiscountPercent] = useState("");
+  const [maxDiscountPercent, setMaxDiscountPercent] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("15");
   const [attemptsAllowed, setAttemptsAllowed] = useState("1");
   const [couponValidForDays, setCouponValidForDays] = useState("30");
@@ -70,7 +73,10 @@ export default function ScholarshipTestUpsertModal({
     setTitle("");
     setDescription("");
     setSelected([]);
-    setDiscountPercent("");
+    setImageUrl("");
+    setImageS3Key("");
+    setMinDiscountPercent("");
+    setMaxDiscountPercent("");
     setDurationMinutes("15");
     setAttemptsAllowed("1");
     setCouponValidForDays("30");
@@ -100,7 +106,10 @@ export default function ScholarshipTestUpsertModal({
         setStep(0);
         setTitle(d.title ?? "");
         setDescription(d.description ?? "");
-        setDiscountPercent(String(d.discountPercent ?? ""));
+        setImageUrl(d.image?.url ?? "");
+        setImageS3Key(d.image?.s3Key ?? "");
+        setMinDiscountPercent(String(d.minDiscountPercent ?? ""));
+        setMaxDiscountPercent(String(d.maxDiscountPercent ?? ""));
         setDurationMinutes(String(d.durationMinutes ?? ""));
         setAttemptsAllowed(String(d.attemptsAllowed ?? 1));
         setCouponValidForDays(String(d.couponValidForDays ?? 30));
@@ -177,9 +186,21 @@ export default function ScholarshipTestUpsertModal({
         setStep(2);
         return;
       }
-      const discount = Number(discountPercent);
-      if (!Number.isFinite(discount) || discount < 1 || discount > 100) {
-        toast.error("The discount must be between 1 and 100 percent");
+      const minDiscount = Number(minDiscountPercent);
+      const maxDiscount = Number(maxDiscountPercent);
+      for (const bound of [minDiscount, maxDiscount]) {
+        if (!Number.isInteger(bound) || bound < 1 || bound > 100) {
+          toast.error(
+            "The discount must be a whole number between 1 and 100 percent",
+          );
+          setStep(2);
+          return;
+        }
+      }
+      if (minDiscount > maxDiscount) {
+        // Same wording the backend returns, so the two can never disagree
+        // about why a campaign was rejected.
+        toast.error("The lowest discount cannot be above the highest");
         setStep(2);
         return;
       }
@@ -199,6 +220,9 @@ export default function ScholarshipTestUpsertModal({
           description: description.trim(),
           couponValidForDays: Number(couponValidForDays),
           isActive,
+          // Editable, unlike the reward range. `null` clears it and the server
+          // deletes whatever object the old one left in the bucket.
+          image: imageUrl ? { url: imageUrl, s3Key: imageS3Key } : null,
         };
         // Only send the paper while it is still changeable; the server refuses
         // it once anyone has attempted, and sending it would 409 a no-op edit.
@@ -217,7 +241,9 @@ export default function ScholarshipTestUpsertModal({
           questionIds: selected.map((q) => q._id),
           durationMinutes: Number(durationMinutes),
           attemptsAllowed: Number(attemptsAllowed),
-          discountPercent: Number(discountPercent),
+          minDiscountPercent: Number(minDiscountPercent),
+          maxDiscountPercent: Number(maxDiscountPercent),
+          image: imageUrl ? { url: imageUrl, s3Key: imageS3Key } : null,
           couponValidForDays: Number(couponValidForDays),
           isActive,
         });
@@ -318,6 +344,16 @@ export default function ScholarshipTestUpsertModal({
                   setTitle={setTitle}
                   description={description}
                   setDescription={setDescription}
+                  imageUrl={imageUrl}
+                  imageS3Key={imageS3Key}
+                  onImageChange={({ url, s3Key }) => {
+                    setImageUrl(url);
+                    setImageS3Key(s3Key);
+                  }}
+                  onImageRemove={() => {
+                    setImageUrl("");
+                    setImageS3Key("");
+                  }}
                 />
               ))}
 
@@ -331,8 +367,10 @@ export default function ScholarshipTestUpsertModal({
 
             {step === 2 && (
               <StepReward
-                discountPercent={discountPercent}
-                setDiscountPercent={setDiscountPercent}
+                minDiscountPercent={minDiscountPercent}
+                setMinDiscountPercent={setMinDiscountPercent}
+                maxDiscountPercent={maxDiscountPercent}
+                setMaxDiscountPercent={setMaxDiscountPercent}
                 durationMinutes={durationMinutes}
                 setDurationMinutes={setDurationMinutes}
                 attemptsAllowed={attemptsAllowed}
@@ -350,7 +388,8 @@ export default function ScholarshipTestUpsertModal({
             questionCount={selected.length}
             durationMinutes={durationMinutes}
             attemptsAllowed={attemptsAllowed}
-            discountPercent={discountPercent}
+            minDiscountPercent={minDiscountPercent}
+            maxDiscountPercent={maxDiscountPercent}
             couponValidForDays={couponValidForDays}
           />
 

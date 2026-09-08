@@ -27,6 +27,7 @@ export type Plan = {
   id: PlanId;
   no: string;
   name: string;
+  /** Filled from the pricing endpoint; 0 until then, and 0 when withheld. */
   price: number;
   tagline: string;
   /** Shown as the card's footer strapline. */
@@ -35,13 +36,21 @@ export type Plan = {
   badge?: string;
 };
 
-/** Listing prices only. The internal minimum selling price is not public. */
-export const PLANS: Plan[] = [
+/**
+ * Names, taglines and ordering only. Prices are deliberately NOT here.
+ *
+ * This module ships in the client bundle, so a number written here is readable
+ * in devtools no matter what the page chooses to render. Prices come from the
+ * pricing endpoint per visit, which is what lets a link owner or an admin
+ * actually withhold them rather than merely not draw them.
+ */
+export type ShippedPlan = Omit<Plan, "price">;
+
+export const PLANS: ShippedPlan[] = [
   {
     id: 1,
     no: "01",
     name: "Blended",
-    price: 5999,
     tagline:
       "Self-paced learning with weekly live doubt support, plus your Airkrit certificates.",
     bestFor: "Best for flexible learners",
@@ -50,7 +59,6 @@ export const PLANS: Plan[] = [
     id: 2,
     no: "02",
     name: "Mentor-Led",
-    price: 11999,
     tagline:
       "Live guidance from experts to upskill, build projects and grow your confidence.",
     bestFor: "Best for guided learners",
@@ -59,7 +67,6 @@ export const PLANS: Plan[] = [
     id: 3,
     no: "03",
     name: "Mentor-to-Placement",
-    price: 18999,
     tagline:
       "Everything in Mentor-Led, plus a full placement pipeline into top MNCs.",
     bestFor: "Best for guaranteed placement support",
@@ -67,7 +74,12 @@ export const PLANS: Plan[] = [
   },
 ];
 
-export const MNC_ADDON_PRICE = 3999;
+/**
+ * Zero, not the real number: see the note on PLANS. The live value arrives from
+ * the pricing endpoint. This exists only so the perk matrix can mark a row as
+ * an add-on without knowing what it costs.
+ */
+export const MNC_ADDON_PRICE = 0;
 
 const all = (note?: string): Record<PlanId, PerkState> => ({
   1: { kind: "included", note },

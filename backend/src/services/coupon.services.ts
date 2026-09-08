@@ -11,7 +11,8 @@ export const getAllCouponsService = async (
   page: number,
   limit: number,
   search: string,
-  isActive?: boolean
+  isActive?: boolean,
+  source?: "regular" | "scholarship"
 ): Promise<{
   coupons: Coupon[];
   total: number;
@@ -31,6 +32,15 @@ export const getAllCouponsService = async (
 
   if (isActive !== undefined) {
     filters.isActive = isActive;
+  }
+
+  // A popular campaign mints one coupon per winner, so the two kinds get
+  // separate tabs rather than being interleaved. Plain null, not { $eq: null },
+  // is deliberate: it also matches legacy documents where the field is absent.
+  if (source === "scholarship") {
+    filters.sourceScholarshipTestId = { $ne: null };
+  } else if (source === "regular") {
+    filters.sourceScholarshipTestId = null;
   }
 
   const total = await CouponModel.countDocuments(filters);
@@ -273,6 +283,18 @@ export const validateCouponService = async (
   }
 
   if (now > new Date(coupon.validUntil)) {
+    if (coupon.sourceScholarshipTestId) {
+      // A campaign coupon belongs to exactly one winner and can be spent once,
+      // so a lapsed deadline makes it permanently dead: drop it on first touch
+      // rather than letting inert rows accumulate. Reported as unknown rather
+      // than expired by product decision. The result page still explains the
+      // expiry properly, because it reads the entitlement, which outlives this.
+      await CouponModel.deleteOne({ _id: coupon._id });
+      return {
+        valid: false,
+        message: "Invalid coupon code",
+      };
+    }
     return {
       valid: false,
       message: "This coupon has expired",

@@ -33,7 +33,12 @@ export interface LeadCouponView {
 export interface LeadScholarshipView {
   attempt: LeadAttemptView | null;
   coupon: LeadCouponView | null;
-  /** From the attempt snapshot, so a later campaign edit cannot rewrite it. */
+  /**
+   * What this person actually rolled, read from their entitlement. Null until
+   * they finish: the percentage is drawn at submit, so an attempt alone has
+   * none, and a campaign-wide number would be meaningless when two winners of
+   * one campaign hold different percentages.
+   */
   discountPercent: number | null;
 }
 
@@ -46,7 +51,7 @@ interface AttemptRow {
   totalQuestions: number;
   startedAt: Date;
   submittedAt?: Date | null;
-  testSnapshot?: { discountPercent?: number };
+  testSnapshot?: { minDiscountPercent?: number; maxDiscountPercent?: number };
 }
 
 /**
@@ -167,7 +172,8 @@ export const buildScholarshipViews = async (
         totalQuestions: 1,
         startedAt: 1,
         submittedAt: 1,
-        "testSnapshot.discountPercent": 1,
+        "testSnapshot.minDiscountPercent": 1,
+        "testSnapshot.maxDiscountPercent": 1,
       }).lean<AttemptRow[]>(),
       ScholarshipCouponEntitlementModel.find(filter, {
         testId: 1,
@@ -175,6 +181,7 @@ export const buildScholarshipViews = async (
         expiresAt: 1,
         redeemedAt: 1,
         revokedAt: 1,
+        awardedPercent: 1,
       }).lean<ScholarshipCouponEntitlement[]>(),
     ]);
 
@@ -200,7 +207,9 @@ export const buildScholarshipViews = async (
           submittedAt: attempt.submittedAt ?? null,
         },
         coupon: null,
-        discountPercent: attempt.testSnapshot?.discountPercent ?? null,
+        // The roll happens at submit, so an attempt on its own has no
+        // percentage. The entitlement loop below fills it in for finishers.
+        discountPercent: null,
       });
     }
 
@@ -216,6 +225,7 @@ export const buildScholarshipViews = async (
         expiresAt: entitlement.expiresAt,
         redeemedAt: entitlement.redeemedAt ?? null,
       };
+      view.discountPercent = entitlement.awardedPercent ?? null;
       views.set(key, view);
     }
   } catch (error) {

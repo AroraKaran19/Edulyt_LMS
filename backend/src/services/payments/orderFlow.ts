@@ -2,6 +2,7 @@ import { UserModel, StudentModel } from "../../models";
 import { isInvoiceableOrder } from "../../lib/invoiceEligibility";
 import { enqueueInvoiceJobSafe } from "../invoiceJob.services";
 import { createEnrollmentAfterPayment } from "./fulfillment";
+import { consumeScholarshipCoupon } from "../scholarshipRedemption.services";
 import { getProvider, resolveGateway } from "./registry";
 import { generatePaymentGatewayToken } from "./token";
 import type {
@@ -56,6 +57,10 @@ export const applyPaymentResult = async (
       console.error(`Failed to create enrollment for order ${order._id}:`, err);
     }
 
+    // Outside the fulfilment try above: a failed enrollment must not leave a
+    // spent scholarship voucher still spendable. Never throws on its own.
+    await consumeScholarshipCoupon(order as never);
+
     // Queue only. Rendering the PDF and pushing it to S3 happens in the invoice
     // worker, so the gateway callback returns without waiting on LibreOffice.
     if (isInvoiceableOrder(order)) {
@@ -108,6 +113,11 @@ export const beginGatewayCheckout = async (
     } catch (err) {
       console.error(`Failed to create enrollment for free order ${orderId}:`, err);
     }
+
+    // A 100% roll discounts the order to zero, which settles here and never
+    // reaches applyPaymentResult. Without this, every 100% scholarship winner's
+    // coupon would survive its own redemption and stay spendable.
+    await consumeScholarshipCoupon(order as never);
     // Discounted to zero at checkout is still a checkout purchase, so it still
     // gets a ₹0 tax invoice. Free grants never reach here (they make no order).
     // Outside the try above so fulfilment trouble cannot swallow the invoice.

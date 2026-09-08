@@ -296,7 +296,9 @@ export default function ScholarshipCampaignsAdminPage() {
                         {formatIst(row.createdAt)}
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 tabular-nums whitespace-nowrap">
-                        {row.discountPercent}%
+                        {row.minDiscountPercent === row.maxDiscountPercent
+                          ? `${row.minDiscountPercent}%`
+                          : `${row.minDiscountPercent}-${row.maxDiscountPercent}%`}
                       </td>
                       <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 tabular-nums whitespace-nowrap">
                         {row.questions?.length ?? 0}

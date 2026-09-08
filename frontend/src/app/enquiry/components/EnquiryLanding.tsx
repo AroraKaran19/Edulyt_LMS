@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import publicClient from "@/configs/scholarshipApiConfig";
+import { REF_STORAGE_KEY } from "@/constants/crm";
+import type { ExtraQuestion } from "./LeadForm";
 import { useSearchParams } from "next/navigation";
 import { ISSUERS, type PlanId } from "../plans";
 import { usePlanData } from "../usePlanData";
 import { useReveal } from "../useReveal";
-import { EnquirySettingsProvider } from "../settings";
+import {
+  EnquiryPricingProvider,
+  EnquirySettingsProvider,
+  type EnquiryPricing,
+} from "../settings";
 import type { EnquiryPageSettings } from "@/types/enquiry-page-settings";
 import SiteHeader from "../sections/SiteHeader";
 import OfferStrip from "../sections/OfferStrip";
@@ -50,6 +57,108 @@ export default function EnquiryLanding({
   const initialCollegeId = params.get("collegeId") ?? "";
   const [docked, setDocked] = useState(false);
 
+  /*
+   * The referral code and everything it resolves to live here rather than in
+   * LeadForm, because the plans section needs the price setting and the form
+   * needs the extra question. One request feeds both.
+   *
+   * Read as lazy initial state and persisted, so a student who reloads or comes
+   * back from the Google round trip keeps the attribution they arrived with.
+   */
+  const [refCode] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const fromUrl = new URLSearchParams(window.location.search).get("ref");
+    const clean = (fromUrl ?? "").trim().slice(0, 32);
+    if (clean) {
+      try {
+        sessionStorage.setItem(REF_STORAGE_KEY, clean);
+      } catch {
+        /* private mode: fall back to this render's value */
+      }
+      return clean;
+    }
+    try {
+      return sessionStorage.getItem(REF_STORAGE_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  });
+
+  const [extraQuestions, setExtraQuestions] = useState<ExtraQuestion[]>([]);
+  /**
+   * Withheld until the endpoint answers, so a hidden visit never flashes a
+   * price before the fetch lands.
+   */
+  const [pricing, setPricing] = useState<EnquiryPricing>({
+    plans: [],
+    mncAddonPrice: null,
+  });
+
+  /*
+   * Take the code out of the address bar. `history.replaceState` rather than
+   * `router.replace` so React state survives: a soft navigation here would
+   * reset a half-finished form, including the OTP step.
+   */
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("ref")) return;
+    url.searchParams.delete("ref");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  /*
+   * Resolved here rather than in the server component: reading `searchParams`
+   * up there would make this whole landing page dynamic, and it is the page ads
+   * point at. An unknown code just leaves the extra field off and shows prices.
+   */
+  useEffect(() => {
+    if (!refCode) return;
+    let cancelled = false;
+    publicClient
+      .get("/crm-public/resolve", { params: { code: refCode } })
+      .then((res) => {
+        if (cancelled) return;
+        setExtraQuestions(res.data?.data?.questions ?? []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setExtraQuestions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refCode]);
+
+  /*
+   * Prices, per visit. Runs with or without a code: the bare page is governed
+   * by the admin switch, a referred one by that link owner's setting, and the
+   * endpoint decides which applies.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    publicClient
+      .get("/enquiry-page-settings/pricing", {
+        params: refCode ? { ref: refCode } : undefined,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        const data = res.data?.data;
+        setPricing({
+          plans: Array.isArray(data?.plans) ? data.plans : [],
+          mncAddonPrice:
+            typeof data?.mncAddonPrice === "number" ? data.mncAddonPrice : null,
+        });
+      })
+      .catch(() => {
+        // Withheld on failure rather than shown: a network blip must not leak
+        // a price the owner or the admin chose to hide.
+        if (!cancelled) setPricing({ plans: [], mncAddonPrice: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refCode]);
+
   useReveal(rootRef);
 
   useEffect(() => {
@@ -78,59 +187,63 @@ export default function EnquiryLanding({
 
   return (
     <EnquirySettingsProvider value={settings}>
-    <div
-      data-enquiry
-      ref={rootRef}
-      className="relative isolate overflow-x-clip bg-[#fff6f1] font-[family-name:var(--font-eq-body)] text-text-secondary antialiased"
-    >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(rgba(247,113,36,0.16)_1.2px,transparent_1.2px)] bg-[size:24px_24px] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.35)_60%,transparent)]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-[-10%] top-[-280px] z-0 h-[900px] bg-[radial-gradient(50%_50%_at_20%_30%,rgba(247,173,36,0.22),transparent_70%),radial-gradient(45%_45%_at_82%_8%,rgba(247,113,36,0.16),transparent_70%)]"
-      />
+      <EnquiryPricingProvider value={pricing}>
+        <div
+          data-enquiry
+          ref={rootRef}
+          className="relative isolate overflow-x-clip bg-[#fff6f1] font-[family-name:var(--font-eq-body)] text-text-secondary antialiased"
+        >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(rgba(247,113,36,0.16)_1.2px,transparent_1.2px)] bg-[size:24px_24px] [mask-image:linear-gradient(180deg,#000,rgba(0,0,0,0.35)_60%,transparent)]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-[-10%] top-[-280px] z-0 h-[900px] bg-[radial-gradient(50%_50%_at_20%_30%,rgba(247,173,36,0.22),transparent_70%),radial-gradient(45%_45%_at_82%_8%,rgba(247,113,36,0.16),transparent_70%)]"
+          />
 
-      <SiteHeader />
+          <SiteHeader />
 
-      <OfferStrip />
+          <OfferStrip />
 
-      <HeroSection
-        plan={plan}
-        onPlan={setPlan}
-        cert={cert}
-        onCert={setCert}
-        onCompare={toPlans}
-        initialCollege={initialCollege}
-        initialCollegeId={initialCollegeId}
-      />
+          <HeroSection
+            plan={plan}
+            onPlan={setPlan}
+            cert={cert}
+            onCert={setCert}
+            onCompare={toPlans}
+            initialCollege={initialCollege}
+            initialCollegeId={initialCollegeId}
+            refCode={refCode}
+            extraQuestions={extraQuestions}
+          />
 
-      <MarqueeStrip />
+          <MarqueeStrip />
 
-      <CertificatesSection />
+          <CertificatesSection />
 
-      <BadgesSection />
+          <BadgesSection />
 
-      <ResumeSection />
+          <ResumeSection />
 
-      <LanguageNote />
+          <LanguageNote />
 
-      <PlansSection
-        plan={plan}
-        onPlan={setPlan}
-        cert={cert}
-        onCert={setCert}
-      />
+          <PlansSection
+            plan={plan}
+            onPlan={setPlan}
+            cert={cert}
+            onCert={setCert}
+          />
 
-      <HowItRunsSection />
+          <HowItRunsSection />
 
-      <TrackRecordSection />
+          <TrackRecordSection />
 
-      <ClosingSection planName={picked.name} onCta={toForm} />
+          <ClosingSection planName={picked.name} onCta={toForm} />
 
-      <MobileDock planName={picked.name} visible={docked} onCta={toForm} />
-    </div>
+          <MobileDock planName={picked.name} visible={docked} onCta={toForm} />
+        </div>
+      </EnquiryPricingProvider>
     </EnquirySettingsProvider>
   );
 }

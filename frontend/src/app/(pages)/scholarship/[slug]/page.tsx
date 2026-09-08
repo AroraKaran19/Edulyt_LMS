@@ -325,9 +325,22 @@ export default function ScholarshipCampaignPage() {
           <div className="flex flex-col gap-8">
             <div>
               <span className={EYEBROW}>Airkrit scholarship</span>
+              {campaign.imageUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={campaign.imageUrl}
+                  alt=""
+                  className="mt-4 w-full max-w-md rounded-2xl border border-sch-ink-line object-cover"
+                />
+              ) : null}
               {/* Names the bargain without naming the prize: the size of the
-                  reward is the thing they are playing for. */}
-              <h1 className={`${DISPLAY} mt-4`}>
+                  reward is the thing they are playing for.
+
+                  Drops to the smaller size when there is an image, so the two
+                  together do not push the email field below the fold. */}
+              <h1
+                className={`${campaign.imageUrl ? DISPLAY_SM : DISPLAY} mt-4`}
+              >
                 {campaign.questionCount} questions stand between you and it.
               </h1>
               {campaign.description ? (
@@ -340,7 +353,7 @@ export default function ScholarshipCampaignPage() {
             <div className="max-w-md">
               <Rule label="Questions" value={String(campaign.questionCount)} />
               <Rule label="Time" value={`${campaign.durationMinutes} minutes`} />
-              <Rule label="Reward" value="Guaranteed when you finish" />
+              <Rule label="Reward" value="Earn when you finish" />
             </div>
           </div>
 

@@ -9,6 +9,8 @@ import {
 import { InternshipQuestionModel } from "../models/internshipQuestion.schema";
 import { AppError } from "../middlewares/error.middleware";
 import { scoreAttempt } from "../lib/scholarshipScoring";
+import { rollDiscountPercent } from "../lib/scholarshipDiscountRoll";
+import { generateScholarshipCouponCode } from "../lib/scholarshipTestValidation";
 import { bumpDailyStat } from "./scholarshipOtp.services";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -190,7 +192,8 @@ export const startAttempt = async (
       testSnapshot: {
         title: campaign.title,
         slug: campaign.slug,
-        discountPercent: campaign.discountPercent,
+        minDiscountPercent: campaign.minDiscountPercent,
+        maxDiscountPercent: campaign.maxDiscountPercent,
         totalQuestions: order.length,
         marketerName:
           [creator?.firstName, creator?.lastName].filter(Boolean).join(" ") ||
@@ -264,62 +267,149 @@ export const saveAnswer = async (
   );
 };
 
+export interface IssuedReward {
+  expiresAt: Date;
+  awardedPercent: number;
+  couponCode: string;
+}
+
 /**
- * Issues the campaign coupon to this email, once.
+ * Rolls this person's discount and mints the single-use coupon carrying it.
  *
- * The unique index on (couponId, email) is the idempotency guarantee: a
- * duplicate key means the entitlement already exists, which is success, not an
- * error.
+ * Idempotent on (testId, email), which is the unique index: a retried submit
+ * re-reads the original roll rather than awarding a second, better one.
+ *
+ * Rolled here rather than at attempt start so that abandoning a test consumes
+ * no percentage, and because the attempt snapshot freezes before a roll could
+ * exist.
  */
 export const issueEntitlement = async (
-  campaign: { _id: unknown; couponId: unknown; couponValidForDays: number },
+  campaign: {
+    _id: unknown;
+    title: string;
+    slug: string;
+    createdByName?: string;
+    minDiscountPercent: number;
+    maxDiscountPercent: number;
+    couponValidForDays: number;
+    createdBy: unknown;
+  },
   attemptId: unknown,
   email: string,
-): Promise<{ expiresAt: Date }> => {
+): Promise<IssuedReward> => {
+  const existing = await ScholarshipCouponEntitlementModel.findOne({
+    testId: campaign._id,
+    email,
+  }).lean();
+  if (existing) {
+    return {
+      expiresAt: existing.expiresAt as Date,
+      awardedPercent: existing.awardedPercent as number,
+      couponCode: existing.couponCode as string,
+    };
+  }
+
   const now = new Date();
   const expiresAt = new Date(
     now.getTime() + campaign.couponValidForDays * DAY_MS,
   );
+  const awardedPercent = rollDiscountPercent(
+    campaign.minDiscountPercent,
+    campaign.maxDiscountPercent,
+  );
+  const couponCode = generateScholarshipCouponCode();
+
+  const session = await mongoose.startSession();
   try {
-    await ScholarshipCouponEntitlementModel.create({
-      couponId: campaign.couponId,
-      testId: campaign._id,
-      email,
-      attemptId,
-      issuedAt: now,
-      // Stamped, never derived: editing the campaign later must not shorten a
-      // deadline this person has already been shown.
-      expiresAt,
+    await session.withTransaction(async () => {
+      await CouponModel.create(
+        [
+          {
+            code: couponCode,
+            description: `Scholarship reward: ${awardedPercent}% off`,
+            discountType: "percentage",
+            discountValue: awardedPercent,
+            // Not course-scoped: a winner spends it on whatever they like.
+            applicableType: "all",
+            usageLimit: 1,
+            userUsageLimit: 1,
+            validFrom: now,
+            // The winner's real deadline, so the generic validator enforces it
+            // and no scholarship-specific expiry check is needed anywhere.
+            validUntil: expiresAt,
+            isActive: true,
+            createdBy: campaign.createdBy,
+            sourceScholarshipTestId: campaign._id,
+          },
+        ],
+        { session, ordered: true },
+      );
+
+      // No couponId: the coupon is deleted once spent or first found expired,
+      // so a pointer guaranteed to dangle is worse than the code snapshot.
+      await ScholarshipCouponEntitlementModel.create(
+        [
+          {
+            testId: campaign._id,
+            email,
+            attemptId,
+            awardedPercent,
+            couponCode,
+            // Frozen here because the campaign is hard-deleted by an admin and
+            // a redeemed entitlement outlives it. Without this, a spent reward
+            // could not say which campaign paid for the discount.
+            campaignSnapshot: {
+              title: campaign.title,
+              slug: campaign.slug,
+              ownerName: campaign.createdByName ?? "",
+            },
+            issuedAt: now,
+            // Stamped, never derived: editing the campaign later must not
+            // shorten a deadline this person has already been shown.
+            expiresAt,
+          },
+        ],
+        { session, ordered: true },
+      );
     });
-    return { expiresAt };
   } catch (error) {
     if (!isDuplicateKeyError(error)) throw error;
-    const existing = await ScholarshipCouponEntitlementModel.findOne({
-      couponId: campaign.couponId,
+    // Two submits raced. The unique index picked a winner, so adopt whatever it
+    // awarded rather than handing this caller a second roll.
+    const winner = await ScholarshipCouponEntitlementModel.findOne({
+      testId: campaign._id,
       email,
     }).lean();
-    return { expiresAt: (existing?.expiresAt as Date) ?? expiresAt };
+    if (!winner) throw error;
+    return {
+      expiresAt: winner.expiresAt as Date,
+      awardedPercent: winner.awardedPercent as number,
+      couponCode: winner.couponCode as string,
+    };
+  } finally {
+    await session.endSession();
   }
+
+  return { expiresAt, awardedPercent, couponCode };
 };
 
-const buildResult = async (
-  campaign: { couponId: unknown; discountPercent: number },
+/**
+ * Built entirely from the entitlement, never from the coupon: the coupon is
+ * deleted when spent or first found expired, and this screen still has to
+ * name the code and explain the deadline afterwards.
+ */
+const buildResult = (
+  reward: { awardedPercent: number; couponCode: string; expiresAt: Date },
   correctCount: number,
   totalQuestions: number,
-  entitlementExpiresAt: Date,
-): Promise<ResultView> => {
-  const coupon = await CouponModel.findById(campaign.couponId)
-    .select("code")
-    .lean();
-  return {
-    correctCount,
-    totalQuestions,
-    couponCode: coupon?.code ?? "",
-    couponExpiresAt: entitlementExpiresAt,
-    discountPercent: campaign.discountPercent,
-    expired: new Date(entitlementExpiresAt).getTime() < Date.now(),
-  };
-};
+): ResultView => ({
+  correctCount,
+  totalQuestions,
+  couponCode: reward.couponCode,
+  couponExpiresAt: reward.expiresAt,
+  discountPercent: reward.awardedPercent,
+  expired: new Date(reward.expiresAt).getTime() < Date.now(),
+});
 
 export const submitAttempt = async (
   testId: string,
@@ -375,20 +465,15 @@ export const submitAttempt = async (
     throw new AppError("This attempt was already submitted", 409);
   }
 
-  // Scoring never gates the reward: an all-wrong paper earns the same coupon.
-  const { expiresAt } = await issueEntitlement(
-    campaign as never,
-    attempt._id,
-    email,
-  );
+  // Scoring never gates the reward: an all-wrong paper earns the same roll.
+  const reward = await issueEntitlement(campaign as never, attempt._id, email);
 
   await bumpDailyStat(campaign._id, "submitted");
 
   return buildResult(
-    campaign as never,
+    reward,
     correctCount,
     attempt.totalQuestions ?? attempt.questionOrder.length,
-    expiresAt,
   );
 };
 
@@ -407,7 +492,6 @@ export const getResultForEmail = async (
   }).lean();
   if (!entitlement) return null;
 
-  const campaign = await loadCampaign(testId);
   const attempt = await ScholarshipAttemptModel.findOne({
     testId,
     email,
@@ -417,9 +501,12 @@ export const getResultForEmail = async (
     .lean();
 
   return buildResult(
-    campaign as never,
+    {
+      awardedPercent: entitlement.awardedPercent as number,
+      couponCode: entitlement.couponCode as string,
+      expiresAt: entitlement.expiresAt as Date,
+    },
     attempt?.correctCount ?? 0,
     attempt?.totalQuestions ?? 0,
-    entitlement.expiresAt as Date,
   );
 };

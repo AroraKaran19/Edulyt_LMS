@@ -26,7 +26,20 @@ export const getAllCoupons = asyncHandler(
         ? false
         : undefined;
 
-    const result = await getAllCouponsService(page, limit, search, isActive);
+    const source =
+      req.query.source === "scholarship"
+        ? ("scholarship" as const)
+        : req.query.source === "regular"
+          ? ("regular" as const)
+          : undefined;
+
+    const result = await getAllCouponsService(
+      page,
+      limit,
+      search,
+      isActive,
+      source
+    );
 
     sendSuccessResponse(res, result, "Coupons fetched successfully", 200);
     return;

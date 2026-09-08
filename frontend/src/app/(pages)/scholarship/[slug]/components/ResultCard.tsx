@@ -150,14 +150,6 @@ export default function ResultCard({ result }: { result: ScholarshipResult }) {
             again and enter the same email address.
           </p>
         </div>
-
-        {/* The score is a small win to end on. Telling them here that it
-            changed nothing would deflate the exact moment the whole page is
-            built around. */}
-        <p className="font-sch-mono text-xs text-sch-on-paper-dim">
-          You answered {result.correctCount} of {result.totalQuestions}{" "}
-          correctly.
-        </p>
       </div>
     </div>
   );

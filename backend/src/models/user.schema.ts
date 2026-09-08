@@ -115,29 +115,6 @@ const successPointTransactionSchema = new mongoose.Schema(
   { _id: false } // transactionId is the explicit identifier; no auto _id needed
 );
 
-/**
- * The one extra question a marketer or sales person may add to their form.
- * `options` applies only when `type` is "select". Ambassadors never get one;
- * that is enforced in the service, not here, because the schema cannot see
- * which userType is being written.
- */
-const crmExtraQuestionSchema = new mongoose.Schema(
-  {
-    enabled: { type: Boolean, required: true, default: false },
-    key: { type: String, required: true, trim: true, maxlength: 60 },
-    label: { type: String, required: true, trim: true, maxlength: 200 },
-    type: {
-      type: String,
-      required: true,
-      enum: ["text", "select"],
-      default: "text",
-    },
-    options: { type: [String], default: [] },
-    required: { type: Boolean, required: true, default: false },
-  },
-  { _id: false }
-);
-
 const userSchema = new mongoose.Schema<User>(
   {
     status: {
@@ -236,34 +213,6 @@ const userSchema = new mongoose.Schema<User>(
       required: true,
       default: [],
     },
-    /**
-     * Personal CRM tag, appended to whatever page this person shares. Absent on
-     * everyone outside the program, which is why its unique index is partial.
-     */
-    crmCode: {
-      type: String,
-      uppercase: true,
-      trim: true,
-      required: false,
-    },
-    crmCodeActive: { type: Boolean, required: false, default: true },
-    /** Which kind of intern a campus ambassador is. Unset for staff. */
-    crmAmbassadorKind: {
-      type: String,
-      enum: ["marketing", "sales"],
-      required: false,
-    },
-    /**
-     * The marketer or sales person who recruited this campus ambassador. The
-     * *current* owner only: each lead separately snapshots the owner at capture
-     * time, so re-homing an ambassador never rewrites past team totals.
-     */
-    crmParentUserId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: false,
-    },
-    crmExtraQuestion: { type: crmExtraQuestionSchema, required: false },
     refreshTokens: [
       {
         // SHA-256 hash of the opaque refresh token (never store the plaintext).
@@ -336,17 +285,6 @@ userSchema.index({ phone: 1 }, { sparse: true });
 // Staff pickers filter by role and status then sort by name. Without this the
 // lookup scans every user, and the collection is mostly students.
 userSchema.index({ userType: 1, status: 1, firstName: 1 });
-// Partial, because the overwhelming majority of users hold no code and would
-// otherwise all collide on null under a plain unique index.
-userSchema.index(
-  { crmCode: 1 },
-  { unique: true, partialFilterExpression: { crmCode: { $type: "string" } } }
-);
-userSchema.index(
-  { crmParentUserId: 1 },
-  { partialFilterExpression: { crmParentUserId: { $type: "objectId" } } }
-);
-
 // Create the base User model
 const UserModel = mongoose.model<User>("User", userSchema);
 

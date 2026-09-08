@@ -16,6 +16,7 @@ import {
   LeadModel,
 } from "../models";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { retireCrmForDeletedUser } from "./crmProfile.services";
 import { deleteFilesFromS3, extractS3KeyFromUrl } from "./upload.services";
 import { User } from "../types/user";
 import { AppError } from "../middlewares/error.middleware";
@@ -491,13 +492,9 @@ export const deleteUserService = async (
       { users: userObjectId },
       { $pull: { users: userObjectId } },
     ),
-    // Deleting an owner demotes their ambassadors, never blocks and never
-    // deletes: the code is kept so an admin can re-home them and restore the
-    // same link. Their leads are untouched.
-    UserModel.updateMany(
-      { crmParentUserId: userObjectId },
-      { $set: { crmCodeActive: false }, $unset: { crmParentUserId: "" } },
-    ),
+    // Demotes the ambassadors this owner had and removes their own profile.
+    // Never blocks and never deletes an ambassador: see the helper.
+    retireCrmForDeletedUser(userObjectId),
     // Leads are never deleted with their creator: they belong to the company.
     // Only the pointer is cleared, so the name, code and role stay readable.
     LeadModel.updateMany(

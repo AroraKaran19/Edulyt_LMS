@@ -47,8 +47,10 @@ export const createCampaign = asyncHandler(
         questionIds: Array.isArray(body.questionIds) ? body.questionIds : [],
         durationMinutes: Number(body.durationMinutes),
         attemptsAllowed: Number(body.attemptsAllowed ?? 1),
-        discountPercent: Number(body.discountPercent),
+        minDiscountPercent: Number(body.minDiscountPercent),
+        maxDiscountPercent: Number(body.maxDiscountPercent),
         couponValidForDays: Number(body.couponValidForDays),
+        image: body.image ?? null,
         isActive: body.isActive,
       },
       actor.id,
@@ -97,6 +99,9 @@ export const updateCampaign = asyncHandler(
     }
     if (body.isActive !== undefined) patch.isActive = Boolean(body.isActive);
     if (body.questions !== undefined) patch.questions = body.questions;
+    // Editable, unlike the reward range: an image is cosmetic and cannot
+    // contradict a percentage someone has already won. `null` clears it.
+    if (body.image !== undefined) patch.image = body.image;
 
     const updated = await updateScholarshipTest(
       String(req.params.id),

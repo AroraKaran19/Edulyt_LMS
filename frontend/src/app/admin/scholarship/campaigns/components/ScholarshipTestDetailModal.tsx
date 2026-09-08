@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { toast } from "react-toastify";
 import Modal from "@/components/ui/Modal";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
@@ -58,41 +58,6 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-/** Campaign coupon code, held by the campaign rather than per winner. */
-function CouponBlock({ code }: { code: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      toast.error("Could not copy the code");
-    }
-  };
-
-  return (
-    <div className="flex items-center gap-2">
-      <code className="flex-1 px-3 py-2 rounded-xl bg-gray-900 text-white font-mono text-sm tracking-wider select-all">
-        {code}
-      </code>
-      <button
-        type="button"
-        onClick={() => void copy()}
-        className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
-        aria-label="Copy coupon code"
-        title="Copy"
-      >
-        {copied ? (
-          <Check className="w-4 h-4 text-green-600" />
-        ) : (
-          <Copy className="w-4 h-4" />
-        )}
-      </button>
-    </div>
-  );
-}
 
 export default function ScholarshipTestDetailModal({
   isOpen,
@@ -101,7 +66,6 @@ export default function ScholarshipTestDetailModal({
   onEdit,
 }: Props) {
   const [detail, setDetail] = useState<ScholarshipTestDetail | null>(null);
-  const [couponCode, setCouponCode] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -113,12 +77,9 @@ export default function ScholarshipTestDetailModal({
         const res = await apiClient.get(
           ENDPOINTS.scholarshipTests.adminById(testId),
         );
-        const d = res.data?.data as
-          | (ScholarshipTestDetail & { couponCode?: string })
-          | undefined;
+        const d = res.data?.data as ScholarshipTestDetail | undefined;
         if (cancelled || !d) return;
         setDetail(d);
-        setCouponCode(d.couponCode ?? "");
       } catch (error) {
         if (!cancelled) {
           toast.error(errorMessage(error, "Could not load the campaign"));
@@ -169,21 +130,15 @@ export default function ScholarshipTestDetailModal({
             <p className="text-sm text-gray-600">{detail.description}</p>
           ) : null}
 
-          {couponCode ? (
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Coupon code
-              </span>
-              <CouponBlock code={couponCode} />
-              <p className="text-xs text-gray-500">
-                One code for the whole campaign, valid on any course. Everyone
-                who finishes the test can redeem it, once each.
-              </p>
-            </div>
-          ) : null}
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Row label="Discount" value={`${detail.discountPercent}%`} />
+            <Row
+              label="Discount"
+              value={
+                detail.minDiscountPercent === detail.maxDiscountPercent
+                  ? `${detail.minDiscountPercent}%`
+                  : `${detail.minDiscountPercent}-${detail.maxDiscountPercent}% (random per winner)`
+              }
+            />
             <Row
               label="Questions"
               value={`${detail.questions?.length ?? 0} (no pass mark)`}
@@ -194,6 +149,8 @@ export default function ScholarshipTestDetailModal({
             />
             <Row label="Attempts allowed" value={detail.attemptsAllowed} />
             <Row label="Attempts so far" value={detail.attemptCount ?? 0} />
+            <Row label="Codes won" value={detail.winnerCount ?? 0} />
+            <Row label="Codes redeemed" value={detail.redeemedCount ?? 0} />
             <Row
               label="Coupon valid for"
               value={`${detail.couponValidForDays} day${

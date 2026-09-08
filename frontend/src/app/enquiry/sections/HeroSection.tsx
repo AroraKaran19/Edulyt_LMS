@@ -1,6 +1,6 @@
 import Image from "next/image";
 import EnquiryButton, { enquiryButtonClass } from "../components/EnquiryButton";
-import LeadForm from "../components/LeadForm";
+import LeadForm, { type ExtraQuestion } from "../components/LeadForm";
 import { ISSUERS, RATING, type PlanId } from "../plans";
 import { listOr, useSection, withSrc } from "../settings";
 import { CARD, CONTAINER, EYEBROW } from "./shared";
@@ -14,6 +14,9 @@ type Props = {
   onCompare: () => void;
   initialCollege: string;
   initialCollegeId: string;
+  /** Resolved once by EnquiryLanding and passed down; see LeadForm's props. */
+  refCode: string;
+  extraQuestions: ExtraQuestion[];
 };
 
 /**
@@ -57,6 +60,8 @@ export default function HeroSection({
   onCompare,
   initialCollege,
   initialCollegeId,
+  refCode,
+  extraQuestions,
 }: Props) {
   const cms = useSection("hero");
   const partners = withSrc(listOr(cms.partners, ISSUERS));
@@ -199,6 +204,8 @@ export default function HeroSection({
             onCompare={onCompare}
             initialCollege={initialCollege}
             initialCollegeId={initialCollegeId}
+            refCode={refCode}
+            extraQuestions={extraQuestions}
           />
         </div>
       </div>

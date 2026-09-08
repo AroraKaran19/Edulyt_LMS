@@ -90,3 +90,107 @@ export const updateEnquiryPageSection = async (body: {
   invalidateEnquiryPageSettingsCache();
   return (updated ?? {}) as Record<string, unknown>;
 };
+
+/**
+ * The plans section with every price removed.
+ *
+ * The public settings response is cache-headered, so it cannot vary per
+ * referral link. Leaving prices in it is exactly what made a marketer's
+ * per-link hiding cosmetic: the numbers arrived anyway and the client merely
+ * declined to draw them. Prices now come only from `getEnquiryPricing`, which
+ * is per-request and uncached.
+ */
+export const stripPricesFromSettings = (
+  data: Record<string, unknown>,
+): Record<string, unknown> => {
+  const plans = data.plans as Record<string, unknown> | undefined;
+  if (!plans) return data;
+
+  const list = Array.isArray(plans.plans) ? plans.plans : [];
+  return {
+    ...data,
+    plans: {
+      ...plans,
+      mncAddonPrice: undefined,
+      plans: list.map((p) => {
+        const { price, ...rest } = (p ?? {}) as Record<string, unknown>;
+        void price;
+        return rest;
+      }),
+      perkGroups: (Array.isArray(plans.perkGroups) ? plans.perkGroups : []).map(
+        (g) => {
+          const group = (g ?? {}) as Record<string, unknown>;
+          const perks = Array.isArray(group.perks) ? group.perks : [];
+          return {
+            ...group,
+            // A perk's add-on price is the MNC price restated, so it leaks the
+            // same number by another route.
+            perks: perks.map((perk) => {
+              const row = (perk ?? {}) as Record<string, unknown>;
+              const by = (row.by ?? {}) as Record<string, unknown>;
+              const scrubbed: Record<string, unknown> = {};
+              for (const [planId, state] of Object.entries(by)) {
+                const st = (state ?? {}) as Record<string, unknown>;
+                const { price, ...restState } = st;
+                void price;
+                scrubbed[planId] = restState;
+              }
+              return { ...row, by: scrubbed };
+            }),
+          };
+        },
+      ),
+    },
+  };
+};
+
+export interface EnquiryPricing {
+  /** Empty when prices are withheld, so there is nothing to render or read. */
+  plans: { id: number; price: number }[];
+  mncAddonPrice: number | null;
+}
+
+/**
+ * Prices for one visit, or nothing.
+ *
+ * Exactly one authority decides, never both:
+ *  - a visit carrying a referral link that resolves is governed by that link's
+ *    owner, so a marketer's choice is not overridden by a site setting;
+ *  - every other visit, including one whose code is unknown or retired, is
+ *    governed by the admin switch on the bare `/enquiry` page.
+ *
+ * Uncached and per-request, because the answer depends on the link.
+ */
+export const getEnquiryPricing = async (
+  ref?: string,
+): Promise<EnquiryPricing> => {
+  const settings = await getEnquiryPageSettings();
+  const section = (settings.plans ?? {}) as Record<string, unknown>;
+  const empty: EnquiryPricing = { plans: [], mncAddonPrice: null };
+
+  if (ref?.trim()) {
+    // Imported lazily: crmProfile.services pulls in the user models, and this
+    // module is loaded by the public settings route on every cold start.
+    const { resolveCrmCode } = await import("./crmProfile.services");
+    const resolved = await resolveCrmCode(ref);
+    if (resolved) {
+      return resolved.hidePlanPrices ? empty : pricesFrom(section);
+    }
+    // Fell through: an unknown code is not a referral, so the bare-page rule
+    // applies rather than silently showing prices a link might have hidden.
+  }
+
+  if (section.showPrices === false) return empty;
+  return pricesFrom(section);
+};
+
+const pricesFrom = (section: Record<string, unknown>): EnquiryPricing => {
+  const list = Array.isArray(section.plans) ? section.plans : [];
+  return {
+    plans: list
+      .map((p) => (p ?? {}) as Record<string, unknown>)
+      .filter((p) => typeof p.id === "number")
+      .map((p) => ({ id: Number(p.id), price: Number(p.price ?? 0) })),
+    mncAddonPrice: Number(section.mncAddonPrice ?? 0),
+  };
+};

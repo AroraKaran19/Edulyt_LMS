@@ -2,6 +2,23 @@ import mongoose from "mongoose";
 import { ScholarshipCouponEntitlement } from "../types/scholarship";
 
 /**
+ * Enough to name the campaign after it is gone.
+ *
+ * A campaign is hard-deleted by an admin, and a redeemed entitlement outlives
+ * it, so `testId` alone would leave a spent reward unable to say what paid for
+ * it. `ownerName` defaults to empty rather than being required because authors
+ * are hard-deleted too.
+ */
+const campaignSnapshotSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true, trim: true },
+    slug: { type: String, required: true, trim: true },
+    ownerName: { type: String, required: false, default: "" },
+  },
+  { _id: false },
+);
+
+/**
  * One document per person who may redeem a campaign's coupon.
  *
  * A list on the coupon would be unbounded and would put a `$push` per winner on
@@ -14,8 +31,27 @@ const scholarshipCouponEntitlementSchema =
       couponId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Coupon",
-        required: true,
+        required: false,
+        default: null,
       },
+      /**
+       * The percentage this person rolled. Authoritative: the coupon carrying
+       * it is deleted once spent, and the campaign only stores the range.
+       */
+      awardedPercent: { type: Number, required: true, min: 1, max: 100 },
+      /**
+       * Snapshot of the coupon's code. Load-bearing twice: it names the code on
+       * the result page after the coupon document is gone, and it is the only
+       * handle settlement has, since Order stores a code string and no ref.
+       */
+      couponCode: {
+        type: String,
+        required: true,
+        uppercase: true,
+        trim: true,
+      },
+      /** Frozen at issue, so a deleted campaign is still nameable. */
+      campaignSnapshot: { type: campaignSnapshotSchema, required: false },
       testId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ScholarshipTest",
@@ -61,14 +97,19 @@ const scholarshipCouponEntitlementSchema =
     { timestamps: true },
   );
 
+// Not (couponId, email): a per-winner coupon makes that pair unique by
+// construction, so it would enforce nothing. One entitlement per campaign per
+// email is the actual rule, and it also serves the CRM's (campaign, email) read
+// and getResultForEmail.
 scholarshipCouponEntitlementSchema.index(
-  { couponId: 1, email: 1 },
+  { testId: 1, email: 1 },
   { unique: true },
 );
 scholarshipCouponEntitlementSchema.index({ testId: 1, redeemedAt: 1 });
-// The CRM reads a page of leads back by (campaign, email). Neither of the other
-// two indexes serves that: `email` is not a prefix of {couponId, email}.
-scholarshipCouponEntitlementSchema.index({ testId: 1, email: 1 });
+// Settlement resolves an order to its entitlement through the code alone.
+// Deliberately NOT unique: the migration backfills legacy rows from the one
+// shared coupon their campaign used, so old codes repeat across winners.
+scholarshipCouponEntitlementSchema.index({ couponCode: 1 });
 scholarshipCouponEntitlementSchema.index({ expiresAt: 1 });
 
 export const ScholarshipCouponEntitlementModel =

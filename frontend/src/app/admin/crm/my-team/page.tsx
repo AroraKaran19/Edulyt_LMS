@@ -13,6 +13,11 @@ import useCrm, {
   type AmbassadorKind,
   type CrmProfile,
 } from "@/hooks/useCrm";
+import ExtraQuestionsEditor, {
+  MAX_EXTRA_QUESTIONS,
+  toDrafts,
+  type QuestionDraft,
+} from "@/components/admin/crm/ExtraQuestionsEditor";
 
 const shareUrl = (code: string) =>
   typeof window === "undefined"
@@ -26,6 +31,7 @@ export default function MyTeamPage() {
     addAmbassador,
     removeAmbassador,
     saveQuestion,
+    saveLinkSettings,
     isLoading,
   } = useCrm();
 
@@ -38,12 +44,11 @@ export default function MyTeamPage() {
   const [kind, setKind] = useState<AmbassadorKind>("marketing");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hidePrices, setHidePrices] = useState(false);
+  const [hideCaPrices, setHideCaPrices] = useState(false);
 
-  const [qEnabled, setQEnabled] = useState(false);
-  const [qLabel, setQLabel] = useState("");
-  const [qType, setQType] = useState<"text" | "select">("text");
-  const [qOptions, setQOptions] = useState("");
-  const [qRequired, setQRequired] = useState(false);
+  const [drafts, setDrafts] = useState<QuestionDraft[]>([]);
+  const [allowCaQuestions, setAllowCaQuestions] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +59,10 @@ export default function MyTeamPage() {
       ]);
       if (cancelled) return;
       setProfile(p);
+      setHidePrices(Boolean(p?.hidePlanPrices));
+      setHideCaPrices(Boolean(p?.hideAmbassadorPlanPrices));
+      setAllowCaQuestions(Boolean(p?.allowAmbassadorQuestions));
+      setDrafts(toDrafts(p?.questions ?? []));
       setAmbassadors(list.ambassadors);
       setTotalPages(list.totalPages);
       setTotal(list.total);
@@ -69,6 +78,42 @@ export default function MyTeamPage() {
     setAmbassadors(list.ambassadors);
     setTotalPages(list.totalPages);
     setTotal(list.total);
+  };
+
+  /**
+   * Optimistic, then reconciled with what the server actually stored: the
+   * checkbox is the only feedback, so leaving it on a failed save would tell
+   * the marketer their links are unpriced when they are not.
+   */
+  const saveSettings = async (patch: {
+    hidePlanPrices?: boolean;
+    hideAmbassadorPlanPrices?: boolean;
+    allowAmbassadorQuestions?: boolean;
+  }) => {
+    const previous = {
+      hidePlanPrices: hidePrices,
+      hideAmbassadorPlanPrices: hideCaPrices,
+      allowAmbassadorQuestions: allowCaQuestions,
+    };
+    // The endpoint replaces all three, so an unchanged one has to be sent as it
+    // stands or toggling any switch would silently reset the other two.
+    const next = { ...previous, ...patch };
+
+    setHidePrices(next.hidePlanPrices);
+    setHideCaPrices(next.hideAmbassadorPlanPrices);
+    setAllowCaQuestions(next.allowAmbassadorQuestions);
+
+    const res = await saveLinkSettings(next);
+    if (!res.ok) {
+      setHidePrices(previous.hidePlanPrices);
+      setHideCaPrices(previous.hideAmbassadorPlanPrices);
+      setAllowCaQuestions(previous.allowAmbassadorQuestions);
+      toast.error(res.message);
+      return;
+    }
+    setHidePrices(res.hidePlanPrices);
+    setHideCaPrices(res.hideAmbassadorPlanPrices);
+    setAllowCaQuestions(res.allowAmbassadorQuestions);
   };
 
   const copyLink = async () => {
@@ -101,22 +146,25 @@ export default function MyTeamPage() {
     }
   };
 
-  const onSaveQuestion = async () => {
-    const result = await saveQuestion({
-      enabled: qEnabled,
-      label: qLabel,
-      type: qType,
-      options: qOptions
-        .split("\n")
-        .map((o) => o.trim())
-        .filter(Boolean),
-      required: qRequired,
-    });
+  const onSaveQuestions = async () => {
+    const result = await saveQuestion(
+      drafts.map((d) => ({
+        label: d.label,
+        type: d.type,
+        options: d.options
+          .split("\n")
+          .map((o) => o.trim())
+          .filter(Boolean),
+        required: d.required,
+      })),
+    );
     if (!result.ok) {
       toast.error(result.message);
       return;
     }
-    toast.success(qEnabled ? "Question saved" : "Question removed");
+    toast.success(
+      result.questions.length === 0 ? "Questions removed" : "Questions saved",
+    );
   };
 
   if (loading) {
@@ -162,72 +210,93 @@ export default function MyTeamPage() {
           Every lead from this link is credited to you. Your code is{" "}
           <span className="font-semibold">{profile?.code}</span>.
         </p>
-      </section>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 className="mb-3 text-sm font-bold tracking-wide text-gray-500 uppercase">
-          Extra question on my form
-        </h2>
-        <label className="mb-3 flex cursor-pointer items-center gap-2">
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5 border-t border-gray-100 pt-4">
           <input
             type="checkbox"
-            checked={qEnabled}
-            onChange={(e) => setQEnabled(e.target.checked)}
-            className="size-4 rounded border-gray-300 text-orange-600"
+            checked={hidePrices}
+            onChange={(e) =>
+              void saveSettings({ hidePlanPrices: e.target.checked })
+            }
+            className="mt-0.5 size-4 cursor-pointer accent-orange-500"
           />
-          <span className="text-sm text-gray-800">
-            Ask one extra question on my form
+          <span className="text-sm text-gray-700">
+            Hide plan prices on my link
+            <span className="mt-0.5 block text-xs text-gray-500">
+              For the link above only. It hides the prices on the page; anyone
+              reading the page source can still find them.
+            </span>
           </span>
         </label>
 
-        {qEnabled ? (
-          <div className="space-y-3">
-            <Input
-              label="Question"
-              value={qLabel}
-              onChange={(e) => setQLabel(e.target.value)}
-              placeholder="e.g. Which city are you in?"
-            />
-            <Select
-              label="Answer type"
-              options={[
-                { value: "text", label: "Free text" },
-                { value: "select", label: "Dropdown" },
-              ]}
-              value={qType}
-              onChange={(v) => setQType(v as "text" | "select")}
-            />
-            {qType === "select" ? (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Options, one per line
-                </label>
-                <textarea
-                  value={qOptions}
-                  onChange={(e) => setQOptions(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-sm"
-                  placeholder={"Delhi\nMumbai\nBengaluru"}
-                />
-              </div>
-            ) : null}
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={qRequired}
-                onChange={(e) => setQRequired(e.target.checked)}
-                className="size-4 rounded border-gray-300 text-orange-600"
-              />
-              <span className="text-sm text-gray-800">Make it required</span>
-            </label>
-          </div>
-        ) : null}
+        <label className="mt-3 flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            checked={hideCaPrices}
+            onChange={(e) =>
+              void saveSettings({
+                hideAmbassadorPlanPrices: e.target.checked,
+              })
+            }
+            className="mt-0.5 size-4 cursor-pointer accent-orange-500"
+          />
+          <span className="text-sm text-gray-700">
+            Hide plan prices on my ambassadors&apos; links
+            <span className="mt-0.5 block text-xs text-gray-500">
+              Separate from your own, so you can work priced leads while your
+              campus ambassadors send an unpriced page. Applies to whoever is on
+              your roster at the time, including anyone you add later.
+            </span>
+          </span>
+        </label>
+      </section>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-bold tracking-wide text-gray-500 uppercase">
+          Extra questions on my form
+        </h2>
+        <p className="mb-4 text-xs text-gray-500">
+          Asked on your enquiry form, and on your ambassadors&apos; forms unless
+          you let them set their own below.
+        </p>
+
+        <ExtraQuestionsEditor
+          questions={drafts}
+          onChange={setDrafts}
+          max={MAX_EXTRA_QUESTIONS}
+          disabled={isLoading}
+        />
 
         <div className="mt-4">
-          <OrangeButton glow={false} onClick={onSaveQuestion} disabled={isLoading}>
+          <OrangeButton
+            glow={false}
+            onClick={onSaveQuestions}
+            disabled={isLoading}
+          >
             Save
           </OrangeButton>
         </div>
+
+        <label className="mt-5 flex cursor-pointer items-start gap-2.5 border-t border-gray-100 pt-4">
+          <input
+            type="checkbox"
+            checked={allowCaQuestions}
+            onChange={(e) =>
+              void saveSettings({
+                allowAmbassadorQuestions: e.target.checked,
+              })
+            }
+            className="mt-0.5 size-4 cursor-pointer accent-orange-500"
+          />
+          <span className="text-sm text-gray-700">
+            Let my ambassadors set their own questions
+            <span className="mt-0.5 block text-xs text-gray-500">
+              While this is off, their forms ask yours instead. Turning it off
+              again does not delete what they wrote; their links simply go back
+              to asking your questions.
+            </span>
+          </span>
+        </label>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white">

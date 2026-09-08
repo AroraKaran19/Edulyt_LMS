@@ -7,6 +7,23 @@ export type PaymentOrderKind =
   | "internship_success_points";
 
 /**
+ * Why a scholarship-discounted order was discounted.
+ *
+ * `candidateEmail` is the identity the reward was earned under, which can
+ * differ from the buying account. Only the code and the percentage are
+ * guaranteed present: a partial record beats none on a payment.
+ */
+export interface OrderScholarshipSnapshot {
+  testId?: string | null;
+  title?: string;
+  slug?: string;
+  ownerName?: string;
+  awardedPercent: number;
+  couponCode: string;
+  candidateEmail?: string;
+}
+
+/**
  * One document per payment attempt. Course purchases use `orderKind: "course"`;
  * “book seat / without entrance” uses `orderKind: "internship_seat"`.
  * Purchased internship certification success points use `internship_success_points`.
@@ -60,6 +77,14 @@ export interface PaymentOrder {
   paymentErrorReason?: string;
   couponCode?: string;
   couponDiscount?: number;
+  /** Set when the applied coupon was minted by a scholarship campaign. */
+  scholarshipTestId?: string | null;
+  /**
+   * Why this order was discounted, frozen at checkout. The campaign, the
+   * coupon and the buying account are all deletable, so the pointer above
+   * cannot be relied on to explain a payment after the fact.
+   */
+  scholarshipSnapshot?: OrderScholarshipSnapshot | null;
   /** Partnership checkout discount (after plan/course discounts), when applicable */
   collaborationDiscount?: number;
   collaborationDomainId?: string;

@@ -217,6 +217,16 @@ const plansSchema = new Schema(
     headingHighlight: { type: String, default: "" },
     lead: { type: String, default: "" },
     summaryHeader: { type: String, default: "" },
+    /**
+     * Prices on the bare `/enquiry` page, set by an admin.
+     *
+     * Governs only visits with no working referral link. A visit that carries
+     * one follows that link owner's own setting instead, so this never
+     * overrides a marketer, and a marketer never overrides this.
+     *
+     * Defaults true, leaving the page as it is today.
+     */
+    showPrices: { type: Boolean, default: true },
     mncAddonPrice: { type: Number, default: 0 },
     plans: { type: [planSchema], default: [] },
     perkGroups: { type: [perkGroupSchema], default: [] },

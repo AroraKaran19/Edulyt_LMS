@@ -352,7 +352,12 @@ const AdminSidebar = ({
     .map((item) => {
       if (item.submenu && item.submenu.length > 0) {
         const submenu = item.submenu.filter((s) => canSeeHref(s.href));
-        return submenu.length > 0 ? { ...item, submenu } : null;
+        if (submenu.length === 0) return null;
+        // A group links to its first VISIBLE child, never a hardcoded one.
+        // Otherwise a marketer clicking "CRM" is sent to Analytics, which they
+        // have no permission for, and lands on a 404 instead of the section
+        // they can actually use.
+        return { ...item, submenu, href: submenu[0].href };
       }
       return canSeeHref(item.href) ? item : null;
     })

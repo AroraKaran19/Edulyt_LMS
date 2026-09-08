@@ -200,16 +200,6 @@ export interface SocialProfiles {
   instagram?: string;
 }
 
-/** The one extra question a marketer or sales person may add to their form. */
-export interface CrmExtraQuestion {
-  enabled: boolean;
-  key: string;
-  label: string;
-  type: "text" | "select";
-  options: string[];
-  required: boolean;
-}
-
 export interface User {
   _id?: string;
   status: "active" | "inactive" | "blocked";
@@ -256,15 +246,6 @@ export interface User {
   gender?: "male" | "female" | "other";
 
   permissions: string[];
-
-  /** Personal CRM tag. Absent for everyone outside the program. */
-  crmCode?: string;
-  crmCodeActive?: boolean;
-  /** Which kind of intern a campus ambassador is. Unset for staff. */
-  crmAmbassadorKind?: "marketing" | "sales";
-  /** A campus ambassador's current marketer or sales owner. */
-  crmParentUserId?: string;
-  crmExtraQuestion?: CrmExtraQuestion;
 
   refreshTokens: {
     tokenHash: string;

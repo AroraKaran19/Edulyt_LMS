@@ -1,6 +1,32 @@
 import { PaymentOrder } from "../types/order";
 import { model, Schema } from "mongoose";
 
+/**
+ * Why a scholarship-discounted order was discounted, frozen at checkout.
+ *
+ * Everything upstream of this is deletable: the campaign is hard-deleted by an
+ * admin, the winner's coupon is deleted the moment it is spent, and the buying
+ * account can be hard-deleted too. A payment record has to answer "why 37% off"
+ * on its own, without a join to any of them.
+ *
+ * `candidateEmail` is the identity the reward was actually earned under, which
+ * can differ from the buying account, so it is the crux of the record rather
+ * than duplicated noise. Only `couponCode` and `awardedPercent` are required:
+ * a partial reconstruction beats no record at all on a payment.
+ */
+const scholarshipSnapshotSchema = new Schema(
+  {
+    testId: { type: Schema.Types.ObjectId, ref: "ScholarshipTest" },
+    title: { type: String, default: "" },
+    slug: { type: String, default: "" },
+    ownerName: { type: String, default: "" },
+    awardedPercent: { type: Number, required: true },
+    couponCode: { type: String, required: true, uppercase: true, trim: true },
+    candidateEmail: { type: String, default: "", lowercase: true, trim: true },
+  },
+  { _id: false },
+);
+
 const orderSchema = new Schema<PaymentOrder>(
   {
     txnId: { type: String, required: true, unique: true },
@@ -69,6 +95,17 @@ const orderSchema = new Schema<PaymentOrder>(
     paymentErrorReason: { type: String, required: false },
     couponCode: { type: String, required: false },
     couponDiscount: { type: Number, required: false, default: 0 },
+    scholarshipTestId: {
+      type: Schema.Types.ObjectId,
+      ref: "ScholarshipTest",
+      required: false,
+      default: null,
+    },
+    scholarshipSnapshot: {
+      type: scholarshipSnapshotSchema,
+      required: false,
+      default: null,
+    },
     collaborationDiscount: { type: Number, required: false, default: 0 },
     collaborationDomainId: {
       type: Schema.Types.ObjectId,
@@ -126,6 +163,7 @@ const orderSchema = new Schema<PaymentOrder>(
 );
 
 // indexes
+orderSchema.index({ createdAt: -1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ courseId: 1, createdAt: -1 });
 orderSchema.index({ orderKind: 1, createdAt: -1 });
@@ -133,6 +171,7 @@ orderSchema.index({ planType: 1, createdAt: -1 });
 orderSchema.index({ paymentMode: 1, createdAt: -1 });
 orderSchema.index({ paymentMethod: 1, createdAt: -1 });
 orderSchema.index({ paymentStatus: 1, createdAt: -1 });
+orderSchema.index({ scholarshipTestId: 1, paymentStatus: 1 });
 orderSchema.index({ internshipEnrollmentId: 1 }, { sparse: true });
 orderSchema.index({ gatewayOrderId: 1 }, { sparse: true });
 // A tax-invoice number must never repeat. Sparse so the many orders without

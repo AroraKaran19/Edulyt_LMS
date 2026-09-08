@@ -20,6 +20,7 @@ import mongoose from "mongoose";
 import { connectDB, disconnectDB } from "../config/database";
 import { UserModel } from "../models";
 import { ensureCrmCode } from "../services/crmProfile.services";
+import { CrmProfileModel } from "../models";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -28,17 +29,25 @@ async function main() {
   await connectDB();
 
   try {
-    const missing = await UserModel.find(
-      {
-        userType: { $in: ["marketer", "sales"] },
-        $or: [{ crmCode: { $exists: false } }, { crmCode: "" }],
-      },
+    // The code lives on CrmProfile now, so "missing" means no profile with a
+    // code rather than a missing field on the user document.
+    const staff = await UserModel.find(
+      { userType: { $in: ["marketer", "sales"] } },
       { firstName: 1, lastName: 1, email: 1, userType: 1 },
     ).lean();
 
-    const total = await UserModel.countDocuments({
-      userType: { $in: ["marketer", "sales"] },
-    });
+    const coded = await CrmProfileModel.find(
+      {
+        userId: { $in: staff.map((u) => u._id) },
+        code: { $type: "string" },
+      },
+      { userId: 1 },
+    ).lean();
+    const hasCode = new Set(coded.map((p) => String(p.userId)));
+
+    const missing = staff.filter((u) => !hasCode.has(String(u._id)));
+
+    const total = staff.length;
 
     console.log(`Staff accounts:      ${total}`);
     console.log(`Missing a code:      ${missing.length}`);

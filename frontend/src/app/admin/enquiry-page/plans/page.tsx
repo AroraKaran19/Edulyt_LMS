@@ -68,6 +68,7 @@ export default function PlansSectionPage() {
     headingHighlight: s?.plans?.headingHighlight ?? "",
     lead: s?.plans?.lead ?? "",
     summaryHeader: s?.plans?.summaryHeader ?? "",
+    showPrices: s?.plans?.showPrices ?? true,
     mncAddonPrice: s?.plans?.mncAddonPrice ?? 0,
     plans: s?.plans?.plans ?? [],
     perkGroups: s?.plans?.perkGroups ?? [],
@@ -120,6 +121,28 @@ export default function PlansSectionPage() {
           }
           helperText="Used by the matrix, the form total and the certificates summary."
         />
+      </FieldGroup>
+
+      <FieldGroup>
+        <label className="flex items-start gap-2 text-sm font-semibold text-gray-800">
+          <input
+            type="checkbox"
+            checked={state.showPrices}
+            onChange={(e) =>
+              setState((p) => ({ ...p, showPrices: e.target.checked }))
+            }
+            className="mt-0.5 size-4 accent-orange-500"
+          />
+          <span>
+            Show prices on the plain enquiry page
+            <span className="mt-1 block text-xs font-normal text-gray-500">
+              Applies only to /enquiry visited without a referral link. A
+              marketer or sales link keeps its own setting either way, so this
+              never overrides theirs. Turned off, the prices are not sent to the
+              browser at all.
+            </span>
+          </span>
+        </label>
       </FieldGroup>
 
       <FieldGroup>

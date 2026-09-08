@@ -11,7 +11,7 @@ import {
   type Plan,
   type PlanId,
 } from "./plans";
-import { useSection } from "./settings";
+import { useSection, usePricing, type EnquiryPricing } from "./settings";
 import type {
   EnquiryPerk,
   EnquiryPerkGroup,
@@ -29,15 +29,22 @@ import type {
  * array, so the result is always the three ids the lead proxy validates against
  * even if the CMS document is half filled in.
  */
-const mergePlans = (cms?: EnquiryPlan[]): Plan[] =>
+const mergePlans = (
+  cms: EnquiryPlan[] | undefined,
+  pricing: EnquiryPricing,
+): Plan[] =>
   PLANS.map((shipped) => {
     const edit = cms?.find((p) => p.id === shipped.id);
-    if (!edit) return shipped;
+    // The copy may come from the CMS, but the price only ever comes from the
+    // pricing endpoint. Zero means withheld, and every render site treats it
+    // as "do not draw a price" rather than as free.
+    const price = pricing.plans.find((p) => p.id === shipped.id)?.price ?? 0;
+    if (!edit) return { ...shipped, price };
     return {
       ...shipped,
+      price,
       no: edit.no || shipped.no,
       name: edit.name || shipped.name,
-      price: typeof edit.price === "number" ? edit.price : shipped.price,
       tagline: edit.tagline || shipped.tagline,
       bestFor: edit.bestFor || shipped.bestFor,
       badge: edit.badge ?? shipped.badge,
@@ -89,6 +96,12 @@ export interface PlanData {
   plans: Plan[];
   perkGroups: PerkGroup[];
   mncAddonPrice: number;
+  /**
+   * False when prices are withheld for this visit. Every render site checks
+   * this rather than testing a number against zero, so "withheld" can never be
+   * mistaken for "free".
+   */
+  hasPrices: boolean;
   allPerks: Perk[];
   planById: (id: PlanId) => Plan;
   countIncluded: (id: PlanId) => number;
@@ -96,20 +109,24 @@ export interface PlanData {
 
 export function usePlanData(): PlanData {
   const cms = useSection("plans");
+  const pricing = usePricing();
 
   return useMemo(() => {
-    const plans = mergePlans(cms.plans);
+    const plans = mergePlans(cms.plans, pricing);
     const perkGroups = mergePerkGroups(cms.perkGroups);
     const allPerks = perkGroups.flatMap((g) => g.perks);
 
     return {
       plans,
       perkGroups,
-      mncAddonPrice: cms.mncAddonPrice || MNC_ADDON_PRICE,
+      // Not `cms.mncAddonPrice`: the public settings payload no longer carries
+      // it, precisely so it cannot leak past a withheld visit.
+      mncAddonPrice: pricing.mncAddonPrice ?? MNC_ADDON_PRICE,
+      hasPrices: pricing.plans.length > 0,
       allPerks,
       planById: (id) => plans.find((p) => p.id === id) ?? plans[0],
       countIncluded: (id) =>
         allPerks.filter((perk) => perk.by[id].kind === "included").length,
     };
-  }, [cms]);
+  }, [cms, pricing]);
 }

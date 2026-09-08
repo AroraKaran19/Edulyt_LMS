@@ -12,11 +12,11 @@ import { todayIst } from "../utils/ist";
 import { AppError } from "../middlewares/error.middleware";
 import { isRolePageGated } from "../config/adminPermissions";
 import {
-  generateScholarshipCouponCode,
   slugifyCampaignTitle,
   validateCampaignConfig,
 } from "../lib/scholarshipTestValidation";
-import { ScholarshipTest } from "../types/scholarship";
+import { ScholarshipTest, ScholarshipTestImage } from "../types/scholarship";
+import { deleteFileFromS3 } from "./upload.services";
 
 export interface CreateCampaignInput {
   title: string;
@@ -24,24 +24,12 @@ export interface CreateCampaignInput {
   questionIds: string[];
   durationMinutes: number;
   attemptsAllowed: number;
-  discountPercent: number;
+  minDiscountPercent: number;
+  maxDiscountPercent: number;
   couponValidForDays: number;
+  image?: ScholarshipTestImage | null;
   isActive?: boolean;
 }
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Outer bound for the shared coupon document.
- *
- * A campaign has no end date: it runs from creation until someone pauses or
- * deletes it, so there is no last-possible-winner to compute from. The real
- * per-person deadline is `expiresAt` on the entitlement, and this exists only
- * because `Coupon.validUntil` is required and the coupons admin page has to
- * render something. Far enough out that it never becomes the binding limit.
- */
-const couponEnvelopeUntil = (): Date =>
-  new Date(Date.now() + 3650 * DAY_MS);
 
 const toObjectIds = (ids: string[], label: string) => {
   const unique = new Set(ids);
@@ -54,6 +42,20 @@ const toObjectIds = (ids: string[], label: string) => {
     }
     return new mongoose.Types.ObjectId(id);
   });
+};
+
+/**
+ * A usable image object, or null.
+ *
+ * A url is the whole point, so anything without one becomes null rather than a
+ * half-populated row that renders an empty gap in the hero.
+ */
+const normalizeImage = (
+  image: ScholarshipTestImage | null | undefined,
+): ScholarshipTestImage | null => {
+  const url = String(image?.url ?? "").trim();
+  if (!url) return null;
+  return { url, s3Key: String(image?.s3Key ?? "").trim() };
 };
 
 /** Appends a short random suffix until the slug is free. */
@@ -79,7 +81,8 @@ export const createScholarshipTest = async (
 
   const configError = validateCampaignConfig({
     questionCount: questionIds.length,
-    discountPercent: input.discountPercent,
+    minDiscountPercent: input.minDiscountPercent,
+    maxDiscountPercent: input.maxDiscountPercent,
     durationMinutes: input.durationMinutes,
     attemptsAllowed: input.attemptsAllowed,
     couponValidForDays: input.couponValidForDays,
@@ -89,65 +92,29 @@ export const createScholarshipTest = async (
   const slug = await resolveFreeSlug(slugifyCampaignTitle(title));
   const actor = new mongoose.Types.ObjectId(actorId);
 
-  let created: ScholarshipTest | undefined;
-  const session = await mongoose.startSession();
-  try {
-    await session.withTransaction(async () => {
-      // The coupon has no dependency on the campaign, so it is written first
-      // and back-linked once the campaign has an id.
-      const [coupon] = await CouponModel.create(
-        [
-          {
-            code: generateScholarshipCouponCode(),
-            description: `Scholarship campaign: ${title}`,
-            discountType: "percentage",
-            discountValue: input.discountPercent,
-            // Not scoped to a course: a winner can spend it on anything.
-            applicableType: "all",
-            userUsageLimit: 1,
-            validFrom: new Date(),
-            validUntil: couponEnvelopeUntil(),
-            isActive: true,
-            createdBy: actor,
-          },
-        ],
-        { session, ordered: true },
-      );
+  // A single insert. This used to mint a coupon and back-link it in one
+  // transaction; rewards are now minted per winner when they finish, so there
+  // is nothing left here to keep atomic.
+  const [test] = await ScholarshipTestModel.create([
+    {
+      title,
+      slug,
+      description: (input.description ?? "").trim(),
+      questions: questionIds,
+      durationMinutes: input.durationMinutes,
+      attemptsAllowed: input.attemptsAllowed,
+      minDiscountPercent: input.minDiscountPercent,
+      maxDiscountPercent: input.maxDiscountPercent,
+      couponValidForDays: input.couponValidForDays,
+      image: normalizeImage(input.image),
+      isActive: input.isActive !== false,
+      createdBy: actor,
+      createdByName: actorName,
+    },
+  ]);
 
-      const [test] = await ScholarshipTestModel.create(
-        [
-          {
-            title,
-            slug,
-            description: (input.description ?? "").trim(),
-            questions: questionIds,
-            durationMinutes: input.durationMinutes,
-            attemptsAllowed: input.attemptsAllowed,
-            discountPercent: input.discountPercent,
-            couponValidForDays: input.couponValidForDays,
-            couponId: coupon._id,
-            isActive: input.isActive !== false,
-            createdBy: actor,
-            createdByName: actorName,
-          },
-        ],
-        { session, ordered: true },
-      );
-
-      await CouponModel.updateOne(
-        { _id: coupon._id },
-        { $set: { sourceScholarshipTestId: test._id } },
-        { session },
-      );
-
-      created = test as unknown as ScholarshipTest;
-    });
-  } finally {
-    await session.endSession();
-  }
-
-  if (!created) throw new AppError("Could not create the campaign", 500);
-  return created;
+  if (!test) throw new AppError("Could not create the campaign", 500);
+  return test as unknown as ScholarshipTest;
 };
 
 export interface Actor {
@@ -170,6 +137,8 @@ export interface UpdateCampaignInput {
   couponValidForDays?: number;
   isActive?: boolean;
   questions?: string[];
+  /** `null` clears it. Editable, unlike the reward range: an image is cosmetic. */
+  image?: ScholarshipTestImage | null;
 }
 
 /**
@@ -244,9 +213,9 @@ const loadOwned = async (id: string, actor: Actor) => {
  * Loads a campaign the actor is allowed to **delete**.
  *
  * Deletion is owner-only for everybody except a super-admin: an admin may read
- * and edit across the team, but destroying someone else's campaign, its coupon,
- * and its unclaimed entitlements is not something one admin should be able to
- * do to another's work.
+ * and edit across the team, but destroying someone else's campaign, every
+ * unspent voucher it minted, and its unclaimed entitlements is not something
+ * one admin should be able to do to another's work.
  */
 const loadDeletable = async (id: string, actor: Actor) => {
   const test = await loadOwned(id, actor);
@@ -262,13 +231,17 @@ const loadDeletable = async (id: string, actor: Actor) => {
 
 export const getScholarshipTestById = async (id: string, actor: Actor) => {
   const test = await loadOwned(id, actor);
-  // The code, not the id, is what the detail view shows and what support quotes
-  // to a candidate, so it is resolved here rather than by a second round trip.
-  const [attemptCount, coupon] = await Promise.all([
+  // No campaign-wide code to resolve: every winner holds their own. What the
+  // detail view can usefully show instead is how many were won and spent.
+  const [attemptCount, winnerCount, redeemedCount] = await Promise.all([
     ScholarshipAttemptModel.countDocuments({ testId: test._id }),
-    CouponModel.findById(test.couponId).select("code").lean(),
+    ScholarshipCouponEntitlementModel.countDocuments({ testId: test._id }),
+    ScholarshipCouponEntitlementModel.countDocuments({
+      testId: test._id,
+      redeemedAt: { $ne: null },
+    }),
   ]);
-  return { ...test, attemptCount, couponCode: coupon?.code ?? "" };
+  return { ...test, attemptCount, winnerCount, redeemedCount };
 };
 
 export const updateScholarshipTest = async (
@@ -298,7 +271,8 @@ export const updateScholarshipTest = async (
       : (test.questions as mongoose.Types.ObjectId[]);
   const configError = validateCampaignConfig({
     questionCount: questionIds.length,
-    discountPercent: test.discountPercent,
+    minDiscountPercent: test.minDiscountPercent,
+    maxDiscountPercent: test.maxDiscountPercent,
     durationMinutes: test.durationMinutes,
     attemptsAllowed: test.attemptsAllowed,
     couponValidForDays,
@@ -314,6 +288,7 @@ export const updateScholarshipTest = async (
   }
   if (patch.isActive !== undefined) $set.isActive = patch.isActive;
   if (patch.questions !== undefined) $set.questions = questionIds;
+  if (patch.image !== undefined) $set.image = normalizeImage(patch.image);
 
   const updated = await ScholarshipTestModel.findByIdAndUpdate(
     test._id,
@@ -322,15 +297,27 @@ export const updateScholarshipTest = async (
   ).lean();
   if (!updated) throw new AppError("Campaign not found", 404);
 
-  // Entitlements already issued keep the deadline they were given; a longer
-  // grace period only applies to future winners.
-  if (patch.isActive !== undefined) {
-    await CouponModel.updateOne(
-      { _id: test.couponId },
-      { $set: { isActive: patch.isActive } },
-    );
+  // Best effort, after the write: an orphaned S3 object is not worth failing an
+  // edit over, and the campaign is already correct either way.
+  if (patch.image !== undefined) {
+    const previous = String(test.image?.s3Key ?? "").trim();
+    const next = String(normalizeImage(patch.image)?.s3Key ?? "").trim();
+    if (previous && previous !== next) {
+      try {
+        await deleteFileFromS3(previous);
+      } catch (error) {
+        console.error(
+          `[scholarship] could not delete replaced image ${previous}:`,
+          error,
+        );
+      }
+    }
   }
 
+  // Nothing to mirror onto a coupon: there is no shared one, and a winner's own
+  // voucher must keep working. Pausing stops new attempts only, and entitlements
+  // already issued keep the deadline they were given, so a longer grace period
+  // applies to future winners only.
   return updated;
 };
 
@@ -353,22 +340,20 @@ type CampaignRef = {
   // string, so both forms reach here. Mongoose casts either one on the way into
   // a query, and nothing below compares them by identity.
   _id: mongoose.Types.ObjectId | string;
-  couponId: mongoose.Types.ObjectId | string;
 };
 
 const gatherDeletionState = async (
   test: CampaignRef,
 ): Promise<DeletionPreview> => {
-  const coupon = await CouponModel.findById(test.couponId).lean();
-
   const [pendingCheckouts, unclaimedEntitlements, redemptions, attempts] =
     await Promise.all([
-      coupon?.code
-        ? OrderModel.countDocuments({
-            couponCode: coupon.code,
-            paymentStatus: "pending",
-          })
-        : Promise.resolve(0),
+      // Indexed by {scholarshipTestId, paymentStatus}. Every winner has their
+      // own code now, so counting by code would need an unbounded $in over
+      // every entitlement in the campaign.
+      OrderModel.countDocuments({
+        scholarshipTestId: test._id,
+        paymentStatus: "pending",
+      }),
       ScholarshipCouponEntitlementModel.countDocuments({
         testId: test._id,
         redeemedAt: null,
@@ -400,7 +385,7 @@ export const previewScholarshipTestDeletion = async (
   actor: Actor,
 ): Promise<DeletionPreview> => {
   const test = await loadDeletable(id, actor);
-  return gatherDeletionState({ _id: test._id, couponId: test.couponId });
+  return gatherDeletionState({ _id: test._id });
 };
 
 export const deleteScholarshipTest = async (
@@ -408,10 +393,7 @@ export const deleteScholarshipTest = async (
   actor: Actor,
 ): Promise<void> => {
   const test = await loadDeletable(id, actor);
-  const state = await gatherDeletionState({
-    _id: test._id,
-    couponId: test.couponId,
-  });
+  const state = await gatherDeletionState({ _id: test._id });
 
   if (state.blocked) {
     throw new AppError(
@@ -423,17 +405,14 @@ export const deleteScholarshipTest = async (
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
-      if (state.redemptions > 0) {
-        // Historical orders resolve their couponCode through this document, so
-        // a redeemed coupon is retired rather than removed.
-        await CouponModel.updateOne(
-          { _id: test.couponId },
-          { $set: { isActive: false } },
-          { session },
-        );
-      } else {
-        await CouponModel.deleteOne({ _id: test.couponId }, { session });
-      }
+      // Every coupon still present is unspent: settlement deletes the ones
+      // that were redeemed. So there is nothing to retire for the sake of
+      // order history either, since Order stores couponCode as a plain string
+      // and nothing joins an order or an invoice back to a coupon document.
+      await CouponModel.deleteMany(
+        { sourceScholarshipTestId: test._id },
+        { session },
+      );
 
       await ScholarshipCouponEntitlementModel.deleteMany(
         { testId: test._id, redeemedAt: null },
@@ -470,6 +449,8 @@ export interface PublicCampaign {
   attemptsAllowed: number;
   questionCount: number;
   couponValidForDays: number;
+  /** Empty when the campaign has no image. Never the s3Key. */
+  imageUrl: string;
   state: PublicCampaignState;
 }
 
@@ -501,6 +482,9 @@ export const getPublicCampaignBySlug = async (
     attemptsAllowed: campaign.attemptsAllowed,
     questionCount: (campaign.questions as unknown[]).length,
     couponValidForDays: campaign.couponValidForDays,
+    // The url only. The s3Key is internal plumbing, and publishing it would
+    // tell anyone the bucket layout for nothing in return.
+    imageUrl: campaign.image?.url ?? "",
     state: campaign.isActive ? "live" : "paused",
   };
 };

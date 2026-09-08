@@ -36,6 +36,9 @@ const CouponsPage = () => {
   const [totalCoupons, setTotalCoupons] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sourceTab, setSourceTab] = useState<"regular" | "scholarship">(
+    "regular",
+  );
   const [filterActive, setFilterActive] = useState<boolean | undefined>(
     undefined,
   );
@@ -70,6 +73,7 @@ const CouponsPage = () => {
       limit: 10,
       search: debouncedSearch,
       isActive: filterActive,
+      source: sourceTab,
     });
 
     if (result) {
@@ -81,7 +85,7 @@ const CouponsPage = () => {
 
   useEffect(() => {
     loadCoupons();
-  }, [page, debouncedSearch, filterActive]);
+  }, [page, debouncedSearch, filterActive, sourceTab]);
 
   const handleCreate = () => {
     setModalMode("create");
@@ -140,6 +144,15 @@ const CouponsPage = () => {
    * so the API refuses edits and deletes here; the row is locked to match rather
    * than offering buttons that only return a 409.
    */
+  const isScholarshipTab = sourceTab === "scholarship";
+
+  const selectTab = (tab: "regular" | "scholarship") => {
+    setSourceTab(tab);
+    // Without this the viewer can land on an out-of-range page, since the two
+    // tabs have unrelated row counts.
+    setPage(1);
+  };
+
   const isCampaignOwned = (coupon: Coupon) =>
     Boolean(coupon.sourceScholarshipTestId);
 
@@ -178,14 +191,16 @@ const CouponsPage = () => {
                 </div>
               </div>
             </div>
-            <OrangeButton
-              onClick={handleCreate}
-              className="flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all"
-              glow={true}
-            >
-              <Plus className="w-5 h-5" />
-              Create Coupon
-            </OrangeButton>
+            {isScholarshipTab ? null : (
+              <OrangeButton
+                onClick={handleCreate}
+                className="flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                glow={true}
+              >
+                <Plus className="w-5 h-5" />
+                Create Coupon
+              </OrangeButton>
+            )}
           </div>
 
           {/* Stats Cards */}
@@ -250,6 +265,37 @@ const CouponsPage = () => {
               </div>
             </div>
           </div>
+
+          {/* Source tabs */}
+          <div className="flex items-center gap-2 mb-4">
+            {(
+              [
+                ["regular", "Coupons"],
+                ["scholarship", "Scholarship rewards"],
+              ] as const
+            ).map(([tab, label]) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => selectTab(tab)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer border ${
+                  sourceTab === tab
+                    ? "bg-orange-50 text-orange-700 border-orange-200"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {isScholarshipTab && (
+            <p className="text-sm text-gray-500 mb-4">
+              One code per winner, minted when someone finishes a campaign test
+              and deleted once they spend it. Managed from the campaign, so they
+              cannot be edited here.
+            </p>
+          )}
 
           {/* Filters */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -329,7 +375,7 @@ const CouponsPage = () => {
                   ? "Try adjusting your search criteria or filters"
                   : "Get started by creating your first discount coupon"}
               </p>
-              {!searchInput && (
+              {!searchInput && !isScholarshipTab && (
                 <OrangeButton
                   onClick={handleCreate}
                   className="flex items-center gap-2 mx-auto shadow-lg"

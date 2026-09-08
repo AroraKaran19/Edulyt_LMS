@@ -35,8 +35,14 @@ export default function PlanMatrix({
   cert,
   onCert,
 }: Props) {
-  const { plans, perkGroups, mncAddonPrice, allPerks, countIncluded } =
-    usePlanData();
+  const {
+    plans,
+    perkGroups,
+    mncAddonPrice,
+    allPerks,
+    countIncluded,
+    hasPrices,
+  } = usePlanData();
   const { instructors: cmsInstructors, instructorsHeading } =
     useSection("plans");
   const instructors = withSrc(cmsInstructors ?? []);
@@ -49,7 +55,7 @@ export default function PlanMatrix({
   const TOTAL_PERKS = allPerks.length;
   /** Flat index of each group's first perk, so rows stagger without a counter. */
   const GROUP_OFFSETS = perkGroups.map((_, i) =>
-    perkGroups.slice(0, i).reduce((sum, g) => sum + g.perks.length, 0)
+    perkGroups.slice(0, i).reduce((sum, g) => sum + g.perks.length, 0),
   );
 
   return (
@@ -92,7 +98,7 @@ export default function PlanMatrix({
                     style={{ transitionDelay: `${rowIndex * 26}ms` }}
                     className={cn(
                       "flex items-center gap-2.5 rounded-lg px-1 py-1.5 transition-[opacity,filter] duration-500 ease-[cubic-bezier(0.16,0.9,0.28,1)]",
-                      on ? "opacity-100" : "opacity-40 grayscale"
+                      on ? "opacity-100" : "opacity-40 grayscale",
                     )}
                   >
                     <PerkIcon state={state} />
@@ -102,7 +108,7 @@ export default function PlanMatrix({
                         "min-w-0 flex-1 text-[13px] leading-[1.35] transition-colors duration-500",
                         on
                           ? "font-semibold text-text-primary"
-                          : "text-[#8c7a70] line-through decoration-[#c7b5a8]"
+                          : "text-[#8c7a70] line-through decoration-[#c7b5a8]",
                       )}
                     >
                       {perk.label}
@@ -198,7 +204,7 @@ export default function PlanMatrix({
                 "has-focus-visible:outline-2 has-focus-visible:outline-offset-[3px] has-focus-visible:outline-primary",
                 picked
                   ? "-translate-y-0.5 border-primary shadow-[0_0_0_3px_rgba(247,173,36,0.35),0_18px_36px_-18px_rgba(43,21,8,0.3)]"
-                  : "border-[#fbe3d2] shadow-[0_10px_30px_-16px_rgba(43,21,8,0.18)] hover:-translate-y-0.5 hover:border-[#f2d6c2]"
+                  : "border-[#fbe3d2] shadow-[0_10px_30px_-16px_rgba(43,21,8,0.18)] hover:-translate-y-0.5 hover:border-[#f2d6c2]",
               )}
             >
               <input
@@ -224,7 +230,7 @@ export default function PlanMatrix({
                 <span
                   className={cn(
                     "ml-auto inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.06em] transition-colors duration-300",
-                    picked ? "text-primary" : "text-[#8c7a70]"
+                    picked ? "text-primary" : "text-[#8c7a70]",
                   )}
                 >
                   {picked && <Check size={11} strokeWidth={3.4} />}
@@ -240,16 +246,21 @@ export default function PlanMatrix({
                 {plan.tagline}
               </p>
 
-              <div className="mt-2.5 flex items-baseline gap-2 border-t border-[#fbe3d2] pt-2.5">
-                <span className="text-[1.4rem] font-extrabold leading-none tracking-[-0.03em] text-primary">
-                  {inr(plan.price + (addon ? mncAddonPrice : 0))}
-                </span>
-                <span className="text-[10.5px] font-semibold text-[#8c7a70]">
-                  {addon
-                    ? `incl. ${cert} certification`
-                    : `${countIncluded(plan.id)} of ${TOTAL_PERKS} included`}
-                </span>
-              </div>
+              {/* The whole row goes, not just the number: a lone perk count
+                  under a bare divider reads as a missing price rather than a
+                  deliberate one. What is included still shows in the matrix. */}
+              {!hasPrices ? null : (
+                <div className="mt-2.5 flex items-baseline gap-2 border-t border-[#fbe3d2] pt-2.5">
+                  <span className="text-[1.4rem] font-extrabold leading-none tracking-[-0.03em] text-primary">
+                    {inr(plan.price + (addon ? mncAddonPrice : 0))}
+                  </span>
+                  <span className="text-[10.5px] font-semibold text-[#8c7a70]">
+                    {addon
+                      ? `incl. ${cert} certification`
+                      : `${countIncluded(plan.id)} of ${TOTAL_PERKS} included`}
+                  </span>
+                </div>
+              )}
 
               <span className="mt-2 block rounded-lg bg-[#fff6f1] px-2 py-1.5 text-center text-[10.5px] font-bold text-[#c4551a]">
                 {plan.bestFor}

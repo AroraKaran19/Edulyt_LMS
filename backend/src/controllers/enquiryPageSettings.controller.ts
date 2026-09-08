@@ -5,6 +5,8 @@ import {
 } from "../middlewares/error.middleware";
 import {
   getEnquiryPageSettings,
+  getEnquiryPricing,
+  stripPricesFromSettings,
   updateEnquiryPageSection,
 } from "../services/enquiryPageSettings.services";
 import {
@@ -19,7 +21,33 @@ import {
 export const getEnquiryPageSettingsController = asyncHandler(
   async (_req: Request, res: Response) => {
     const data = await getEnquiryPageSettings();
-    sendSuccessResponse(res, data, "Enquiry page settings fetched", 200);
+    // Prices are stripped because this response is cache-headered and so cannot
+    // vary per referral link. They come from the pricing route instead.
+    sendSuccessResponse(
+      res,
+      stripPricesFromSettings(data),
+      "Enquiry page settings fetched",
+      200,
+    );
+  },
+);
+
+/**
+ * @route GET /api/enquiry-page-settings/pricing?ref=CODE
+ * @desc  Plan prices for one visit, or an empty set when they are withheld.
+ *
+ * Deliberately not part of the settings response above: that one is cached and
+ * shared, and this answer depends on the link. Uncached for the same reason.
+ */
+export const getEnquiryPricingController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const ref = typeof req.query.ref === "string" ? req.query.ref : undefined;
+    sendSuccessResponse(
+      res,
+      await getEnquiryPricing(ref),
+      "Pricing fetched",
+      200,
+    );
   },
 );
 

@@ -258,6 +258,19 @@ export const getFileValidationRules = (
   allowedTypes: string[];
   maxSize: number;
 } => {
+  // Scholarship hero images. Images only and a modest ceiling: the default
+  // rule below also allows video, and an admin dropping an MP4 into a hero
+  // slot would tank the landing page the ads point at.
+  if (
+    folderName === "scholarship" ||
+    folderName.startsWith("scholarship/")
+  ) {
+    return {
+      allowedTypes: ["image/jpeg", "image/jpg", "image/png", "image/webp"],
+      maxSize: 5 * 1024 * 1024,
+    };
+  }
+
   if (
     folderName === "internship-submission-documents" ||
     folderName.startsWith("internship-submission-documents/")

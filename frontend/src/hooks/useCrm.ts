@@ -25,6 +25,16 @@ export interface CrmProfile {
   code: string;
   role: CrmRole;
   canOwnAmbassadors: boolean;
+  /** Whether this owner lets their ambassadors add questions. Staff only. */
+  allowAmbassadorQuestions?: boolean;
+  /** The caller's own questions, so an editor can seed itself. */
+  questions?: CrmExtraQuestion[];
+  /** False for an ambassador whose owner has not allowed it. */
+  canSetQuestions?: boolean;
+  /** Hides plan prices on this member's own link. Staff only. */
+  hidePlanPrices?: boolean;
+  /** Hides plan prices on this owner's ambassadors' links. Staff only. */
+  hideAmbassadorPlanPrices?: boolean;
 }
 
 export interface CrmExtraQuestion {
@@ -145,17 +155,57 @@ const useCrm = () => {
     }
   }, []);
 
-  const saveQuestion = useCallback(
-    async (question: Partial<CrmExtraQuestion> & { enabled: boolean }) => {
+  /**
+   * Ambassadors have no say here: their link follows whoever owns them, which
+   * the public resolve endpoint reads from the parent at request time.
+   */
+  const saveLinkSettings = useCallback(
+    async (settings: {
+      hidePlanPrices: boolean;
+      hideAmbassadorPlanPrices: boolean;
+      allowAmbassadorQuestions: boolean;
+    }) => {
       setIsLoading(true);
       try {
-        const res = await apiClient.patch("/crm/me/question", question);
-        return { ok: true as const, question: res.data?.data?.question ?? null };
+        const res = await apiClient.patch("/crm/me/link-settings", settings);
+        return {
+          ok: true as const,
+          hidePlanPrices: Boolean(res.data?.data?.hidePlanPrices),
+          hideAmbassadorPlanPrices: Boolean(
+            res.data?.data?.hideAmbassadorPlanPrices,
+          ),
+          allowAmbassadorQuestions: Boolean(
+            res.data?.data?.allowAmbassadorQuestions,
+          ),
+        };
       } catch (e) {
         const err = e as { response?: { data?: { message?: string } } };
         return {
           ok: false as const,
-          message: err?.response?.data?.message ?? "Could not save the question",
+          message:
+            err?.response?.data?.message ?? "Could not save the link settings",
+        };
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
+
+  const saveQuestion = useCallback(
+    async (questions: Omit<CrmExtraQuestion, "key" | "enabled">[]) => {
+      setIsLoading(true);
+      try {
+        const res = await apiClient.patch("/crm/me/questions", { questions });
+        return {
+          ok: true as const,
+          questions: (res.data?.data?.questions ?? []) as CrmExtraQuestion[],
+        };
+      } catch (e) {
+        const err = e as { response?: { data?: { message?: string } } };
+        return {
+          ok: false as const,
+          message: err?.response?.data?.message ?? "Could not save the questions",
         };
       } finally {
         setIsLoading(false);
@@ -212,6 +262,7 @@ const useCrm = () => {
     addAmbassador,
     removeAmbassador,
     saveQuestion,
+    saveLinkSettings,
     fetchAssignees,
     listMyAssignedLeads,
   };

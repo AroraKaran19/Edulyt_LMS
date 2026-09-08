@@ -162,6 +162,13 @@ export interface EnquiryPlansSettings {
   lead?: string;
   /** Header on the availability summary card, which renders in this section. */
   summaryHeader?: string;
+  /**
+   * Prices on the bare `/enquiry` page. A visit carrying a working referral
+   * link follows that link owner's own setting instead, so this never
+   * overrides a marketer and a marketer never overrides this.
+   */
+  showPrices?: boolean;
+  /** Admin editor only: the public payload carries no prices. */
   mncAddonPrice?: number;
   plans?: EnquiryPlan[];
   perkGroups?: EnquiryPerkGroup[];

@@ -3,7 +3,7 @@ import {
   asyncHandler,
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
-import { UserModel } from "../models";
+import { CrmProfileModel, UserModel } from "../models";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
@@ -77,7 +77,21 @@ const buildDeviceInfo = (req: Request): DeviceInfo => {
   };
 };
 
-const protectedUser = (user: User) => {
+/**
+ * Async because the campus-ambassador hint now lives on `CrmProfile` rather
+ * than on the user document. One indexed read, and only for students, rather
+ * than a denormalised copy on User that would drift with no way to tell which
+ * copy was wrong.
+ */
+const protectedUser = async (user: User) => {
+  const crmProfile =
+    user.userType === "student"
+      ? await CrmProfileModel.findOne(
+          { userId: user._id },
+          { code: 1, codeActive: 1, ambassadorKind: 1 },
+        ).lean()
+      : null;
+
   return {
     _id: user._id,
     email: user.email,
@@ -98,8 +112,8 @@ const protectedUser = (user: User) => {
        * "are they one" and "which kind", and a demoted ambassador loses the tab.
        */
       crmAmbassadorKind:
-        user.crmCode && user.crmCodeActive !== false
-          ? user.crmAmbassadorKind
+        crmProfile?.code && crmProfile.codeActive !== false
+          ? crmProfile.ambassadorKind
           : undefined,
     }),
   };
@@ -114,7 +128,7 @@ async function finalizeCredentialLogin(
   if (!userId) {
     throw new AppError("User record is missing an id", 500);
   }
-  const protectedLoggedInUser = protectedUser(user);
+  const protectedLoggedInUser = await protectedUser(user);
   const { plaintext: refreshToken, entry } = createRefreshToken(
     buildDeviceInfo(req),
   );
@@ -218,7 +232,7 @@ export const verifyRegistrationOtp = asyncHandler(
 
     sendSuccessResponse(
       res,
-      { user: protectedUser(newUser), accessToken },
+      { user: await protectedUser(newUser), accessToken },
       SIGNUP_MESSAGES.REGISTERED,
       201,
     );
@@ -385,7 +399,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Failed to create user", 500);
   }
 
-  const protectedOAuthUser = protectedUser(user);
+  const protectedOAuthUser = await protectedUser(user);
 
   const { plaintext: refreshToken, entry } = createRefreshToken(
     buildDeviceInfo(req),
@@ -489,7 +503,7 @@ export const refreshToken = asyncHandler(
          * would otherwise keep a stale session until they signed out. `user` is
          * already loaded on the request, so this costs no extra query.
          */
-        user: protectedUser(user),
+        user: await protectedUser(user),
       },
       "Token refreshed successfully",
     );

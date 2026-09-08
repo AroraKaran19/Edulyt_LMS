@@ -23,9 +23,11 @@ import {
 } from "./payments/orderFlow";
 import { getProvider } from "./payments/registry";
 import { validateCouponService } from "./coupon.services";
+import { applyCouponToCheckout } from "./checkoutCoupon.services";
 import { resolveOfferSelection } from "../lib/courseInternshipOffer";
 import { getPointsSettings } from "./pointsSettings.services";
 import type { CourseDiscount, Discount } from "../types";
+import type { OrderScholarshipSnapshot } from "../types/order";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 
 // Re-exported for back-compat: these moved to ./payments/token, but existing
@@ -69,7 +71,6 @@ export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
   const { page, limit, search, paymentStatus, from, to, exportAll } = params;
   const maxRows = params.maxRows ?? 50_000;
   const skip = (page - 1) * limit;
-  const pipeline: any[] = [];
 
   const VALID_STATUSES = ["pending", "success", "failed"];
   const statuses = (
@@ -95,11 +96,12 @@ export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
     if (to) clause.$lte = to;
     initialMatch.createdAt = clause;
   }
-  if (Object.keys(initialMatch).length > 0) {
-    pipeline.push({ $match: initialMatch });
-  }
+  const matchStages: any[] =
+    Object.keys(initialMatch).length > 0 ? [{ $match: initialMatch }] : [];
 
-  pipeline.push(
+  // Both joins are 1:1 on `_id`, so they never change the row count. Where
+  // they sit in the pipeline decides how many rows pay for them.
+  const lookupStages: any[] = [
     {
       $lookup: {
         from: "users",
@@ -119,11 +121,12 @@ export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
         pipeline: [{ $project: { title: 1, slug: 1, thumbnail: 1 } }],
       },
     },
-    { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } }
-  );
+    { $unwind: { path: "$course", preserveNullAndEmptyArrays: true } },
+  ];
 
-  if (search && search.trim()) {
-    const searchTrimmed = String(search).trim();
+  const searchTrimmed = String(search ?? "").trim();
+  let searchStage: { $match: { $or: unknown[] } } | null = null;
+  if (searchTrimmed) {
     const searchRegex = new RegExp(
       searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
       "i"
@@ -142,53 +145,96 @@ export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
     if (/^[a-fA-F0-9]{24}$/.test(searchTrimmed)) {
       orConditions.push({ _id: new mongoose.Types.ObjectId(searchTrimmed) });
     }
-    pipeline.push({ $match: { $or: orConditions } });
+    searchStage = { $match: { $or: orConditions } };
   }
 
+  const sortStage = { $sort: { createdAt: -1 } };
   const pagingStages = exportAll
     ? [{ $limit: maxRows }]
     : [{ $skip: skip }, { $limit: limit }];
+  const projectStage = {
+    $project: {
+      _id: 1,
+      userId: { $ifNull: ["$user", { firstName: "$userName", lastName: "", email: "" }] },
+      courseId: { $ifNull: ["$course", { title: "$courseName", slug: "", thumbnail: "" }] },
+      courseName: 1,
+      userName: 1,
+      orderKind: 1,
+      internshipTitle: 1,
+      internshipSuccessPointsQuantity: 1,
+      batchId: 1,
+      txnId: 1,
+      amount: 1,
+      currency: 1,
+      planType: 1,
+      paymentMode: 1,
+      paymentMethod: 1,
+      paymentStatus: 1,
+      paymentErrorReason: 1,
+      couponCode: 1,
+      couponDiscount: 1,
+      collaborationDiscount: 1,
+      referralCode: 1,
+      referralDiscount: 1,
+      successPointsApplied: 1,
+      successPointsDiscount: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    },
+  };
 
-  const [orders, countResult] = await Promise.all([
-    OrderModel.aggregate([
-      ...pipeline,
-      { $sort: { createdAt: -1 } },
-      ...pagingStages,
-      {
-        $project: {
-          _id: 1,
-          userId: { $ifNull: ["$user", { firstName: "$userName", lastName: "", email: "" }] },
-          courseId: { $ifNull: ["$course", { title: "$courseName", slug: "", thumbnail: "" }] },
-          courseName: 1,
-          userName: 1,
-          orderKind: 1,
-          internshipTitle: 1,
-          internshipSuccessPointsQuantity: 1,
-          batchId: 1,
-          txnId: 1,
-          amount: 1,
-          currency: 1,
-          planType: 1,
-          paymentMode: 1,
-          paymentMethod: 1,
-          paymentStatus: 1,
-          paymentErrorReason: 1,
-          couponCode: 1,
-          couponDiscount: 1,
-          collaborationDiscount: 1,
-          referralCode: 1,
-          referralDiscount: 1,
-          successPointsApplied: 1,
-          successPointsDiscount: 1,
-          createdAt: 1,
-          updatedAt: 1,
-        },
-      },
-    ]),
-    OrderModel.aggregate([...pipeline, { $count: "total" }]),
+  /**
+   * A search term matches joined `user.*` / `course.*` fields, so the joins
+   * have to run before the filter and the whole match gets joined.
+   *
+   * Without one the order inverts: `$match` + `$sort` + paging ride
+   * { createdAt: -1 } (or { paymentStatus, createdAt }) off the front of the
+   * pipeline, so only the rows actually being returned are joined and a page
+   * load costs the same at a million orders as at a thousand.
+   */
+  const listPipeline: any[] = searchStage
+    ? [
+        ...matchStages,
+        ...lookupStages,
+        searchStage,
+        sortStage,
+        ...pagingStages,
+        projectStage,
+      ]
+    : [
+        ...matchStages,
+        sortStage,
+        ...pagingStages,
+        ...lookupStages,
+        projectStage,
+      ];
+
+  /**
+   * The count only needs the joins when a search term can match a joined
+   * field. Otherwise:
+   *  - with a status / date filter it is a COUNT_SCAN over the same index the
+   *    listing rides, no documents fetched;
+   *  - with no filter at all (the default view) it reads the collection's
+   *    metadata count. That figure only drifts from the truth after an
+   *    unclean shutdown, and it drives a page count in an admin header, so
+   *    the trade is worth not scan-counting the collection on every load.
+   */
+  const countPromise = searchStage
+    ? OrderModel.aggregate<{ total: number }>([
+        ...matchStages,
+        ...lookupStages,
+        searchStage,
+        { $count: "total" },
+      ]).then((rows) => rows[0]?.total ?? 0)
+    : matchStages.length > 0
+      ? OrderModel.countDocuments(initialMatch)
+      : OrderModel.estimatedDocumentCount();
+
+  const [orders, total] = await Promise.all([
+    OrderModel.aggregate(listPipeline),
+    countPromise,
   ]);
 
-  const total = countResult[0]?.total ?? 0;
   const totalPages = exportAll ? 1 : Math.ceil(total / limit);
 
   return { orders, total, totalPages, page: exportAll ? 1 : page };
@@ -336,6 +382,8 @@ async function resolveOrderAmount(params: {
   collaborationDiscount: number;
   collaborationDomainId?: string;
   partnershipImportConfigId?: string;
+  scholarshipTestId?: string;
+  scholarshipSnapshot?: OrderScholarshipSnapshot;
 }> {
   const {
     planPrice,
@@ -358,28 +406,22 @@ async function resolveOrderAmount(params: {
   let amount = checkout.priceAfterCollaboration;
   let appliedCouponCode: string | undefined = undefined;
   let couponDiscount = 0;
+  let appliedScholarshipTestId: string | undefined = undefined;
+  let appliedScholarshipSnapshot: OrderScholarshipSnapshot | undefined =
+    undefined;
 
   if (couponCode) {
-    const validation = await validateCouponService({
-      code: couponCode,
+    const applied = await applyCouponToCheckout({
+      couponCode,
       courseId,
-      purchaseAmount: amount,
       userId,
+      amount,
     });
-
-    if (!validation.valid) {
-      throw new AppError(validation.message || "Invalid coupon", 400);
-    }
-
-    if (validation.finalAmount != null) {
-      couponDiscount = validation.discountAmount ?? 0;
-      amount = validation.finalAmount;
-      appliedCouponCode = couponCode;
-      await CouponModel.findOneAndUpdate(
-        { code: couponCode.toUpperCase() },
-        { $inc: { usageCount: 1 } }
-      );
-    }
+    amount = applied.amount;
+    couponDiscount = applied.couponDiscount;
+    appliedCouponCode = applied.couponCode;
+    appliedScholarshipTestId = applied.scholarshipTestId;
+    appliedScholarshipSnapshot = applied.scholarshipSnapshot;
   }
 
   return {
@@ -389,6 +431,8 @@ async function resolveOrderAmount(params: {
     collaborationDiscount: checkout.collaborationDiscount,
     collaborationDomainId: checkout.collaborationDomainId,
     partnershipImportConfigId: checkout.partnershipImportConfigId,
+    scholarshipTestId: appliedScholarshipTestId,
+    scholarshipSnapshot: appliedScholarshipSnapshot,
   };
 }
 
@@ -444,6 +488,8 @@ export const createOrderService = async (
     collaborationDiscount,
     collaborationDomainId,
     partnershipImportConfigId,
+    scholarshipTestId: appliedScholarshipTestId,
+    scholarshipSnapshot: appliedScholarshipSnapshot,
   } = await resolveOrderAmount({
     planPrice,
     courseId,
@@ -572,6 +618,15 @@ export const createOrderService = async (
     paymentStatus: "pending",
     couponCode: appliedCouponCode,
     couponDiscount,
+    // Only set for a scholarship winner's coupon. Settlement reads it to know
+    // there is a voucher to retire, and the campaign deletion preview counts
+    // in-flight checkouts through it.
+    scholarshipTestId: appliedScholarshipTestId
+      ? new mongoose.Types.ObjectId(appliedScholarshipTestId)
+      : null,
+    // Frozen at checkout: the campaign, the coupon and the buying account are
+    // all deletable, so the pointer above cannot explain this payment later.
+    scholarshipSnapshot: appliedScholarshipSnapshot ?? null,
     collaborationDiscount: collaborationDiscount ?? 0,
     collaborationDomainId: collaborationDomainId
       ? new mongoose.Types.ObjectId(collaborationDomainId)

@@ -6,7 +6,8 @@ const CODE_BODY_LENGTH = 9;
 
 export interface CampaignConfigInput {
   questionCount: number;
-  discountPercent: number;
+  minDiscountPercent: number;
+  maxDiscountPercent: number;
   durationMinutes: number;
   attemptsAllowed: number;
   couponValidForDays: number;
@@ -37,7 +38,8 @@ export const validateCampaignConfig = (
 ): string | null => {
   const {
     questionCount,
-    discountPercent,
+    minDiscountPercent,
+    maxDiscountPercent,
     durationMinutes,
     attemptsAllowed,
     couponValidForDays,
@@ -46,12 +48,19 @@ export const validateCampaignConfig = (
   if (questionCount < 1) {
     return "Pick at least one question for the campaign";
   }
-  if (
-    !Number.isFinite(discountPercent) ||
-    discountPercent < 1 ||
-    discountPercent > 100
-  ) {
-    return "The discount must be between 1 and 100 percent";
+  for (const bound of [minDiscountPercent, maxDiscountPercent]) {
+    if (!Number.isFinite(bound)) {
+      return "The discount must be between 1 and 100 percent";
+    }
+    if (!Number.isInteger(bound)) {
+      return "The discount must be a whole percentage";
+    }
+    if (bound < 1 || bound > 100) {
+      return "The discount must be between 1 and 100 percent";
+    }
+  }
+  if (minDiscountPercent > maxDiscountPercent) {
+    return "The lowest discount cannot be above the highest";
   }
   if (!Number.isInteger(durationMinutes) || durationMinutes < 1) {
     return "The attempt clock must be at least 1 minute";

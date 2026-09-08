@@ -5,7 +5,10 @@ const testSnapshotSchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     slug: { type: String, required: true, trim: true },
-    discountPercent: { type: Number, required: true },
+    // The range, not one percentage: the snapshot freezes at attempt start,
+    // before the winner's roll exists.
+    minDiscountPercent: { type: Number, required: true },
+    maxDiscountPercent: { type: Number, required: true },
     totalQuestions: { type: Number, required: true },
     marketerName: { type: String, required: false, default: "" },
   },

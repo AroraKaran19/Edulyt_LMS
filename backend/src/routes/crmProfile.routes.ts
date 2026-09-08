@@ -15,6 +15,7 @@ import {
   removeMyAmbassador,
   requireCrmOwner,
   updateMyExtraQuestion,
+  updateMyLinkSettings,
 } from "../controllers/crmProfile.controller";
 
 const router = Router();
@@ -36,11 +37,20 @@ router.get("/me", getMyCrmProfile);
 router.get("/me/stats", getMyCrmStats);
 
 /**
- * @route   PATCH /api/crm/me/question
- * @desc    Set or clear the one extra question on the caller's form
+ * @route   PATCH /api/crm/me/questions
+ * @desc    Replace the caller's extra questions (max 2)
+ * @access  Marketer, sales, and an ambassador whose owner allows it
+ */
+// Not requireCrmOwner: an ambassador may set their own while their owner
+// allows it, which the controller checks against the parent's profile.
+router.patch("/me/questions", updateMyExtraQuestion);
+
+/**
+ * @route   PATCH /api/crm/me/link-settings
+ * @desc    Toggle plan prices on this member's enquiry link
  * @access  Marketer, sales
  */
-router.patch("/me/question", requireCrmOwner, updateMyExtraQuestion);
+router.patch("/me/link-settings", requireCrmOwner, updateMyLinkSettings);
 
 /**
  * @route   GET /api/crm/leaderboard?from=&to=

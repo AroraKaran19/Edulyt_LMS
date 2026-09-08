@@ -2,11 +2,20 @@ type Props = {
   questionCount: number;
   durationMinutes: string;
   attemptsAllowed: string;
-  discountPercent: string;
+  minDiscountPercent: string;
+  maxDiscountPercent: string;
   couponValidForDays: string;
 };
 
 const orDash = (value: string): string => (value.trim() === "" ? "—" : value);
+
+/** "25% off" when the bounds match, "10-50% off" when they differ. */
+const describeReward = (min: string, max: string): string => {
+  if (min.trim() === "" || max.trim() === "") {
+    return `${orDash(min)}% off`;
+  }
+  return min === max ? `${min}% off` : `${min}-${max}% off`;
+};
 
 /**
  * Visible on every step, so a misconfigured window or reward is obvious next to
@@ -16,7 +25,8 @@ export default function CampaignSummaryCard({
   questionCount,
   durationMinutes,
   attemptsAllowed,
-  discountPercent,
+  minDiscountPercent,
+  maxDiscountPercent,
   couponValidForDays,
 }: Props) {
   return (
@@ -29,7 +39,7 @@ export default function CampaignSummaryCard({
         {orDash(durationMinutes)} min · {orDash(attemptsAllowed)} attempt
         {attemptsAllowed === "1" ? "" : "s"} ·{" "}
         <span className="font-semibold text-gray-900">
-          {orDash(discountPercent)}% off
+          {describeReward(minDiscountPercent, maxDiscountPercent)}
         </span>
       </p>
       <p className="text-xs text-gray-500 mt-1 tabular-nums">

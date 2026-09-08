@@ -1,6 +1,22 @@
 import mongoose from "mongoose";
 import { ScholarshipTest } from "../types/scholarship";
 
+/**
+ * Optional hero image for the landing page.
+ *
+ * `url` is required once the object exists at all: an image row with no url
+ * would render an empty gap in the hero. `s3Key` is kept so replacing or
+ * clearing the image can delete the object it left behind, and is never
+ * exposed publicly.
+ */
+const scholarshipImageSchema = new mongoose.Schema(
+  {
+    url: { type: String, required: true, trim: true },
+    s3Key: { type: String, required: false, trim: true, default: "" },
+  },
+  { _id: false },
+);
+
 const scholarshipTestSchema = new mongoose.Schema<ScholarshipTest>(
   {
     title: { type: String, required: true, trim: true, maxlength: 160 },
@@ -17,13 +33,10 @@ const scholarshipTestSchema = new mongoose.Schema<ScholarshipTest>(
     ],
     durationMinutes: { type: Number, required: true, min: 1 },
     attemptsAllowed: { type: Number, required: true, default: 1, min: 1 },
-    discountPercent: { type: Number, required: true, min: 1, max: 100 },
+    minDiscountPercent: { type: Number, required: true, min: 1, max: 100 },
+    maxDiscountPercent: { type: Number, required: true, min: 1, max: 100 },
     couponValidForDays: { type: Number, required: true, min: 1 },
-    couponId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Coupon",
-      required: true,
-    },
+    image: { type: scholarshipImageSchema, required: false, default: null },
     isActive: { type: Boolean, required: true, default: true },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

@@ -30,7 +30,11 @@ type Props = {
  * Derived from each certificate's `availability`, not authored separately, so
  * this can never disagree with the certificate list it summarises.
  */
-const buildGroups = (items: Certificate[], addonPrice: number) => {
+const buildGroups = (
+  items: Certificate[],
+  addonPrice: number,
+  hasPrices: boolean,
+) => {
   const titlesFor = (availability: Availability) =>
     items.filter((c) => c.availability === availability).map((c) => c.title);
 
@@ -56,22 +60,29 @@ const buildGroups = (items: Certificate[], addonPrice: number) => {
       tint: "bg-[#8c7a70]/10",
       items: [
         `Any 1 of ${titlesFor(AVAILABILITY.mnc).length}, free on Plan 03`,
-        `+₹${addonPrice.toLocaleString("en-IN")} on the other plans`,
+        ...(hasPrices
+          ? [`+₹${addonPrice.toLocaleString("en-IN")} on the other plans`]
+          : ["Charged extra on the other plans"]),
       ],
     },
   ];
 };
 
-export default function PlansSection({ plan, onPlan, cert, onCert }: Props) {
+export default function PlansSection({
+  plan,
+  onPlan,
+  cert,
+  onCert,
+}: Props) {
   const cms = useSection("plans");
-  const { mncAddonPrice } = usePlanData();
+  const { mncAddonPrice, hasPrices } = usePlanData();
   // The certificate list still lives with the certificates section; only the
   // summary of it moved here.
   const certificates = listOr(
     useSection("certificates").items as Certificate[] | undefined,
     CERTIFICATES,
   );
-  const groups = buildGroups(certificates, mncAddonPrice);
+  const groups = buildGroups(certificates, mncAddonPrice, hasPrices);
 
   return (
     <section className={SECTION} id="plans">

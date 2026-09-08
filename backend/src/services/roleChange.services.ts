@@ -8,6 +8,7 @@ import {
   ReviewModel,
   UserModel,
   VideoNoteModel,
+  CrmProfileModel,
 } from "../models";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipSubmissionModel } from "../models/internshipSubmission.schema";
@@ -173,19 +174,21 @@ const purgeLearnerData = async (userId: mongoose.Types.ObjectId) => {
  * capture, so past attribution and conversion counts stay exactly as they were
  * and a mistaken demotion can be traced and undone.
  */
-const retireCrmFootprint = async (userId: mongoose.Types.ObjectId) => {
-  const demoted = await UserModel.updateMany(
-    { crmParentUserId: userId },
-    { $set: { crmCodeActive: false }, $unset: { crmParentUserId: "" } },
+export const retireCrmFootprint = async (
+  userId: mongoose.Types.ObjectId,
+): Promise<number> => {
+  const demoted = await CrmProfileModel.updateMany(
+    { parentUserId: userId },
+    { $set: { codeActive: false, parentUserId: null } },
   );
 
-  await UserModel.updateOne(
-    { _id: userId },
+  await CrmProfileModel.updateOne(
+    { userId },
     {
-      $set: { crmCodeActive: false },
+      $set: { codeActive: false },
       // The code itself is kept, so re-promoting restores the same link rather
       // than invalidating whatever they already shared.
-      $unset: { crmExtraQuestion: "", crmAmbassadorKind: "" },
+      $unset: { extraQuestions: "", ambassadorKind: "" },
     },
   );
 

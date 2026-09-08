@@ -47,8 +47,8 @@ export interface OpenCampaign {
   attemptsAllowed: number;
   questions: unknown[];
   couponValidForDays: number;
-  discountPercent: number;
-  couponId: unknown;
+  minDiscountPercent: number;
+  maxDiscountPercent: number;
   createdBy: unknown;
 }
 

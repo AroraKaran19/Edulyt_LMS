@@ -42,6 +42,13 @@ type Props = {
   /** College carried back through the Google round trip, if any. */
   initialCollege?: string;
   initialCollegeId?: string;
+  /**
+   * Referral code and the extra questions it resolves to, owned by
+   * EnquiryLanding so one lookup feeds every consumer. Prices are not passed
+   * down: they come from the pricing context, which already knows this visit.
+   */
+  refCode: string;
+  extraQuestions: ExtraQuestion[];
 };
 
 export type ExtraQuestion = {
@@ -87,6 +94,8 @@ export default function LeadForm({
   onCompare,
   initialCollege = "",
   initialCollegeId = "",
+  refCode,
+  extraQuestions,
 }: Props) {
   const { user, isAuthenticated, accessToken, handleSignOut } = useAuth();
   const { ready, loadError, sendOtp, retryOtp, verifyOtp } = useMSG91OTP();
@@ -161,70 +170,8 @@ export default function LeadForm({
   const college = collegeInput ?? profileCollege;
   const collegeId = collegeIdInput ?? profileCollegeId;
 
-  const [extraAnswer, setExtraAnswer] = useState("");
-  const [extraQuestion, setExtraQuestion] = useState<ExtraQuestion | null>(null);
-
-  /*
-   * The referral code, captured once when this form mounts.
-   *
-   * sessionStorage rather than localStorage because it is scoped per tab: two
-   * tabs opened from two different people's links each keep their own code,
-   * where localStorage would let whichever loaded second overwrite the first.
-   *
-   * Held in state as well, so a submission in flight uses the code this page
-   * loaded with even if something clears storage underneath it.
-   */
-  const [refCode] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const fromUrl = new URLSearchParams(window.location.search).get("ref");
-    const clean = (fromUrl ?? "").trim().slice(0, 32);
-    if (clean) {
-      try {
-        sessionStorage.setItem(REF_STORAGE_KEY, clean);
-      } catch {
-        /* private mode: fall back to this render's value */
-      }
-      return clean;
-    }
-    try {
-      return sessionStorage.getItem(REF_STORAGE_KEY) ?? "";
-    } catch {
-      return "";
-    }
-  });
-
-  /*
-   * Take the code out of the address bar. `history.replaceState` rather than
-   * `router.replace` so React state survives: a soft navigation here would
-   * reset a half-finished form, including the OTP step.
-   */
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has("ref")) return;
-    url.searchParams.delete("ref");
-    window.history.replaceState({}, "", url.toString());
-  }, []);
-
-  /*
-   * Resolved here rather than in the server component: reading `searchParams`
-   * up there would make this whole landing page dynamic, and it is the page ads
-   * point at. An unknown code just leaves the extra field off.
-   */
-  useEffect(() => {
-    if (!refCode) return;
-    let cancelled = false;
-    publicClient
-      .get("/crm-public/resolve", { params: { code: refCode } })
-      .then((res) => {
-        if (!cancelled) setExtraQuestion(res.data?.data?.question ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setExtraQuestion(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [refCode]);
+  /** One answer per question key, so two questions cannot share a box. */
+  const [extraAnswers, setExtraAnswers] = useState<Record<string, string>>({});
 
   const setName = setNameInput;
   const setEmail = setEmailInput;
@@ -264,7 +211,7 @@ export default function LeadForm({
   const hideEmail =
     isAuthenticated && emailInput === null && EMAIL.test(email.trim());
 
-  const { plans, mncAddonPrice, planById } = usePlanData();
+  const { plans, mncAddonPrice, planById, hasPrices } = usePlanData();
   const chosenPlan = planById(selected);
   const freeCert = selected === 3;
   const addonCost = cert && !freeCert ? mncAddonPrice : 0;
@@ -389,18 +336,19 @@ export default function LeadForm({
           college: college.trim(),
           collegeId: collegeId || undefined,
           ref: refCode || undefined,
-          extraQuestion:
-            extraQuestion && extraAnswer.trim()
-              ? {
-                  key: extraQuestion.key,
-                  label: extraQuestion.label,
-                  value: extraAnswer.trim(),
-                }
-              : undefined,
+          extraAnswers: extraQuestions
+            .filter((q) => (extraAnswers[q.key] ?? "").trim())
+            .map((q) => ({
+              key: q.key,
+              label: q.label,
+              value: (extraAnswers[q.key] ?? "").trim(),
+            })),
           authToken,
           plan: selected,
           certification: cert,
-          total,
+          // Omitted rather than sent as zero when prices are withheld: the
+          // lead is labelled with the quoted total, and no total was quoted.
+          total: hasPrices ? total : undefined,
           source: typeof window !== "undefined" ? window.location.search : "",
         }),
       });
@@ -927,26 +875,31 @@ export default function LeadForm({
           />
         </div>
 
-        {extraQuestion ? (
-          <div className="mb-2.5">
+        {extraQuestions.map((question) => (
+          <div className="mb-2.5" key={question.key}>
             <label
-              htmlFor="enquiry-extra"
+              htmlFor={`enquiry-${question.key}`}
               className="mb-1 block text-[11.5px] font-bold text-text-primary"
             >
-              {extraQuestion.label}
-              {extraQuestion.required ? (
+              {question.label}
+              {question.required ? (
                 <span className="text-[#c03c19]"> *</span>
               ) : null}
             </label>
-            {extraQuestion.type === "select" ? (
+            {question.type === "select" ? (
               <select
-                id="enquiry-extra"
-                value={extraAnswer}
-                onChange={(e) => setExtraAnswer(e.target.value)}
+                id={`enquiry-${question.key}`}
+                value={extraAnswers[question.key] ?? ""}
+                onChange={(e) =>
+                  setExtraAnswers((prev) => ({
+                    ...prev,
+                    [question.key]: e.target.value,
+                  }))
+                }
                 className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
               >
                 <option value="">Select an option</option>
-                {extraQuestion.options.map((option) => (
+                {question.options.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
@@ -954,15 +907,20 @@ export default function LeadForm({
               </select>
             ) : (
               <input
-                id="enquiry-extra"
+                id={`enquiry-${question.key}`}
                 type="text"
-                value={extraAnswer}
-                onChange={(e) => setExtraAnswer(e.target.value)}
+                value={extraAnswers[question.key] ?? ""}
+                onChange={(e) =>
+                  setExtraAnswers((prev) => ({
+                    ...prev,
+                    [question.key]: e.target.value,
+                  }))
+                }
                 className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
               />
             )}
           </div>
-        ) : null}
+        ))}
 
         <div className="mb-2.5">
           <div className="mb-[9px] flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
@@ -1002,7 +960,7 @@ export default function LeadForm({
                   {plan.name}
                 </span>
                 <span className="mt-0.5 block text-[12.5px] font-extrabold text-primary">
-                  ₹{plan.price.toLocaleString("en-IN")}
+                  {hasPrices ? `₹${plan.price.toLocaleString("en-IN")}` : ""}
                 </span>
               </label>
             ))}
@@ -1019,7 +977,9 @@ export default function LeadForm({
               <span className="flex-none text-[10.5px] font-bold whitespace-nowrap text-[#c4551a]">
                 {freeCert
                   ? "1 included free"
-                  : `+₹${mncAddonPrice.toLocaleString("en-IN")} each`}
+                  : hasPrices
+                    ? `+₹${mncAddonPrice.toLocaleString("en-IN")} each`
+                    : "Charged extra"}
               </span>
             </div>
             <div className="relative">
@@ -1041,7 +1001,9 @@ export default function LeadForm({
                     {issuer.name}
                     {freeCert
                       ? " (free)"
-                      : ` (+₹${mncAddonPrice.toLocaleString("en-IN")})`}
+                      : hasPrices
+                        ? ` (+₹${mncAddonPrice.toLocaleString("en-IN")})`
+                        : " (charged extra)"}
                   </option>
                 ))}
               </select>
@@ -1055,21 +1017,33 @@ export default function LeadForm({
             <p className="mt-1 text-[10.5px] leading-[1.45] text-[#8c7a70]">
               {freeCert
                 ? "Mentor-to-Placement includes one certification of your choice at no extra cost."
-                : "Optional. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."}
+                : hasPrices
+                  ? "Optional. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."
+                  : "Optional and charged extra. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."}
             </p>
           </div>
 
           <div className="mt-2 flex items-baseline justify-between gap-2 rounded-lg bg-[#fff6f1] px-3 py-2">
             <span className="text-[11px] leading-[1.35] font-semibold text-text-secondary">
+              {/* The no-cert-chosen case still depends on the plan: on
+                  Mentor-to-Placement one MNC certification is already paid
+                  for, so saying "Airkrit certificates only" would undersell
+                  what they are buying. */}
               {cert
-                ? addonCost > 0
-                  ? `${chosenPlan.name} + ${cert} certification`
-                  : `${chosenPlan.name}, ${cert} certification included`
-                : `${chosenPlan.name}, Airkrit certificates only`}
+                ? freeCert
+                  ? `${chosenPlan.name}, Airkrit certificates + ${cert} certification included`
+                  : `${chosenPlan.name}, Airkrit certificates + ${cert} certification${
+                      hasPrices ? "" : " (charged extra)"
+                    }`
+                : freeCert
+                  ? `${chosenPlan.name}, Airkrit certificates + 1 MNC certification included (choose yours above)`
+                  : `${chosenPlan.name}, Airkrit certificates only`}
             </span>
-            <span className="flex-none text-[14px] font-extrabold text-primary">
-              ₹{total.toLocaleString("en-IN")}
-            </span>
+            {!hasPrices ? null : (
+              <span className="flex-none text-[14px] font-extrabold text-primary">
+                ₹{total.toLocaleString("en-IN")}
+              </span>
+            )}
           </div>
         </div>
 
