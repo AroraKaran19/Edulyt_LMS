@@ -63,11 +63,21 @@ export const validateEmail = (email: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
+/**
+ * Guards `User.phone` and `User.whatsappNumber` at the schema, so it has to
+ * accept everything `isValidPhone` in `services/phoneVerification.services`
+ * accepts. If the two drift, a number passes the service and then throws on
+ * save. The first two forms are what the collection already holds; the third
+ * is for numbers outside India, which have nowhere to live in ten digits.
+ */
 export const validatePhoneNumber = (phone: string) => {
   if (!phone || phone.trim() === "") return true; // Allow empty strings for optional fields
   const cleaned = phone.trim();
-  // Accept +91 followed by 10-12 digits, or plain 10-digit Indian number
-  return /^\+91[0-9]{10,12}$/.test(cleaned) || /^[0-9]{10}$/.test(cleaned);
+  return (
+    /^\+91[0-9]{10,12}$/.test(cleaned) ||
+    /^[0-9]{10}$/.test(cleaned) ||
+    /^\+[0-9]{8,15}$/.test(cleaned)
+  );
 };
 
 export const validateGithubUrl = (url: string) => {

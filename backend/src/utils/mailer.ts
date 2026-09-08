@@ -1,5 +1,11 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import {
+  Brand,
+  BRAND_MAIL,
+  brandEnvSuffix,
+  DEFAULT_BRAND,
+} from "../constants/brands";
 
 dotenv.config();
 
@@ -37,14 +43,15 @@ dotenv.config();
  * before the process exits or queued mail is dropped.
  *
  * Required env: MSG91_AUTHKEY.
- * Optional env: MSG91_EMAIL_FROM (default noreply@mail.airkrit.com),
- * MSG91_EMAIL_FROM_NAME, MSG91_EMAIL_DOMAIN (defaults to the from address's
- * domain), MAIL_ENABLED=false to turn sending into a logged no-op.
+ *
+ * Optional env, per brand and unsuffixed: MSG91_EMAIL_FROM[_BRAND],
+ * MSG91_EMAIL_FROM_NAME[_BRAND], MSG91_EMAIL_DOMAIN[_BRAND] (defaults to the
+ * from address's domain). A brand's own var wins, then the unsuffixed one,
+ * then the default in `constants/brands`. MAIL_ENABLED=false turns sending
+ * into a logged no-op.
  */
 
 const MSG91_SEND_URL = "https://control.msg91.com/api/v5/email/send";
-
-const DEFAULT_FROM_EMAIL = "noreply@mail.airkrit.com";
 
 /** Conservative cap: one request carries at most this many recipient entries. */
 const MAX_RECIPIENTS_PER_REQUEST = 100;
@@ -102,8 +109,11 @@ export interface SendTemplateMailOptions {
   bcc?: MailAddress[];
   replyTo?: string | MailAddress;
   attachments?: MailAttachment[];
-  /** Overrides the configured sender. Must still be on the verified domain. */
-  from?: MailAddress;
+  /**
+   * Which brand to send as. Ignored by a brand-locked template, whose artwork
+   * decides. Defaults to Airkrit.
+   */
+  brand?: Brand;
   /**
    * Skips the ops alert a failed send would otherwise raise. Set by the ops
    * alerter on its own mail: an alert that failed and then alerted about that
@@ -146,15 +156,36 @@ export interface Msg91EmailPayload {
   attachments?: Msg91Attachment[];
 }
 
-/** Read per call so tests and hot reloads see env changes. */
-const mailerConfig = (): MailerConfig | null => {
+/**
+ * Read per call so tests and hot reloads see env changes.
+ *
+ * The sender is resolved per brand, most specific first: the brand's own env
+ * vars, then the unsuffixed ones every environment already sets, then the
+ * brand's built-in default. An environment configured before brands existed
+ * therefore behaves exactly as it did, for every brand.
+ */
+const mailerConfig = (brand: Brand = DEFAULT_BRAND): MailerConfig | null => {
   const authKey = process.env.MSG91_AUTHKEY?.trim();
   if (!authKey) return null;
 
-  const email = process.env.MSG91_EMAIL_FROM?.trim() || DEFAULT_FROM_EMAIL;
-  const name = process.env.MSG91_EMAIL_FROM_NAME?.trim();
+  const suffix = brandEnvSuffix(brand);
+  const fallback = BRAND_MAIL[brand] ?? BRAND_MAIL[DEFAULT_BRAND];
+
+  const email =
+    process.env[`MSG91_EMAIL_FROM_${suffix}`]?.trim() ||
+    process.env.MSG91_EMAIL_FROM?.trim() ||
+    fallback.fromEmail;
+
+  const name =
+    process.env[`MSG91_EMAIL_FROM_NAME_${suffix}`]?.trim() ||
+    process.env.MSG91_EMAIL_FROM_NAME?.trim() ||
+    fallback.fromName;
+
   const domain =
-    process.env.MSG91_EMAIL_DOMAIN?.trim() || email.split("@")[1] || "";
+    process.env[`MSG91_EMAIL_DOMAIN_${suffix}`]?.trim() ||
+    process.env.MSG91_EMAIL_DOMAIN?.trim() ||
+    email.split("@")[1] ||
+    "";
 
   if (!domain) return null;
 
@@ -476,7 +507,7 @@ export const sendTemplateMail = async (
     return { ok: true, outcome: "skipped", reason: "mailing disabled" };
   }
 
-  const config = mailerConfig();
+  const config = mailerConfig(options.brand);
   if (!config) {
     console.warn("⚠️  MSG91 is not configured - skipping email");
     return { ok: true, outcome: "skipped", reason: "mailer not configured" };
@@ -627,6 +658,8 @@ export interface MailTemplate<V extends MailVariables> {
   templateId: string;
   /** Short name used in logs, e.g. "signup-verification". */
   label: string;
+  /** Set only on brand-locked templates. Undefined follows the caller. */
+  brand?: Brand;
   /** Queues the mail and returns immediately. Use this everywhere. */
   send: (
     to: SendTemplateMailOptions["to"],
@@ -650,22 +683,35 @@ export interface MailTemplate<V extends MailVariables> {
  * `templateId` is the id MSG91 shows for the approved template. `label` is only
  * used to make logs readable. Variable names must match the placeholders used
  * in the MSG91 template, or the recipient gets raw placeholder text.
+ *
+ * Declare `brand` only when the artwork belongs to one product, e.g. a template
+ * carrying the Edulyt logo. It then wins over any brand the caller passes, so
+ * the sender can never contradict the artwork. Leave it off for neutral
+ * templates (resets, receipts) and the caller decides, defaulting to Airkrit.
  */
 export const defineMailTemplate = <V extends MailVariables>(
   templateId: string,
   label = templateId,
+  brand?: Brand,
 ): MailTemplate<V> => ({
   templateId,
   label,
+  brand,
 
   send: (to, variables, options) => {
     const { context, ...sendOptions } = options ?? {};
     queueTemplateMail(
-      { ...sendOptions, templateId, to, variables },
+      { ...sendOptions, ...(brand ? { brand } : {}), templateId, to, variables },
       context ?? `${label} email`,
     );
   },
 
   sendNow: (to, variables, options) =>
-    sendTemplateMail({ ...options, templateId, to, variables }),
+    sendTemplateMail({
+      ...options,
+      ...(brand ? { brand } : {}),
+      templateId,
+      to,
+      variables,
+    }),
 });

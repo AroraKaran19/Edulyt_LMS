@@ -5,7 +5,19 @@ import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import Input from "@/components/ui/inputs/Input";
-import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
+import useMSG91OTP, {
+  OTP_CHANNEL,
+  OTP_LENGTH,
+  type OtpChannel,
+} from "@/hooks/useMSG91OTP";
+import { COUNTRY_CODES, dialFor } from "@/constants/countryCodes";
+import {
+  fromE164,
+  isValidPhone,
+  sanitizePhoneInput,
+  toE164,
+  toMsg91Identifier,
+} from "@/lib/phone";
 import { PHONE_ERROR_CODES } from "@/constants/authErrorCodes";
 import { cn } from "@/lib/utils";
 
@@ -35,15 +47,11 @@ interface PhoneVerificationFieldProps {
   className?: string;
 }
 
-/** Reduces "+91 98765 43210" and friends to the bare 10 digits. */
-const normalize = (raw: string): string => {
-  const digits = (raw || "").replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
-  return digits;
-};
+/** The national part of a stored number, legacy 10-digit or E.164 alike. */
+const normalize = (raw: string): string => fromE164(raw || "").national;
 
-const isComplete = (phone: string): boolean => /^[6-9]\d{9}$/.test(phone);
+const isComplete = (countryIso: string, phone: string): boolean =>
+  isValidPhone(countryIso, phone);
 
 const apiMessage = (error: any, fallback: string): string =>
   error?.response?.data?.error?.message || error?.message || fallback;
@@ -89,6 +97,9 @@ const PhoneVerificationField = ({
   const { ready, loadError, sendOtp, retryOtp, verifyOtp } = useMSG91OTP();
 
   const [phone, setPhone] = useState(() => normalize(savedPhone));
+  const [countryIso, setCountryIso] = useState(
+    () => fromE164(savedPhone || "").countryIso,
+  );
   const [showCode, setShowCode] = useState(false);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [reqId, setReqId] = useState<string | null>(null);
@@ -258,10 +269,10 @@ const PhoneVerificationField = ({
    * order matters: the budget is only enforceable if it is spent before the
    * client is trusted to do anything.
    */
-  const requestCode = async (isResend: boolean) => {
+  const requestCode = async (isResend: boolean, channel?: OtpChannel) => {
     if (sending || cooldown > 0 || sendLimitMinutes !== null) return;
-    if (!isComplete(phone)) {
-      setFieldError("Enter a valid 10-digit mobile number");
+    if (!isComplete(countryIso, phone)) {
+      setFieldError("Enter a valid mobile number for that country");
       return;
     }
     if (!ready) {
@@ -273,18 +284,24 @@ const PhoneVerificationField = ({
     setFieldError("");
     setCodeError("");
     try {
-      await apiClient.post("/users/me/phone/otp-request", { phone });
+      await apiClient.post("/users/me/phone/otp-request", {
+        phone: toE164(countryIso, phone),
+      });
 
       const nextReqId = isResend
-        ? await retryOtp(reqId ?? readStoredReqId(phone))
-        : await sendOtp(phone);
+        ? await retryOtp(reqId ?? readStoredReqId(phone), channel)
+        : await sendOtp(toMsg91Identifier(countryIso, phone));
 
       setReqId(nextReqId);
       storeReqId(phone, nextReqId);
       setDigits(Array(OTP_LENGTH).fill(""));
       setShowCode(true);
       setCooldown(RESEND_FALLBACK_SECONDS);
-      toast.success(`Code sent to +91 ${phone}`);
+      toast.success(
+        channel === OTP_CHANNEL.whatsapp
+          ? `Code sent on WhatsApp to ${dialFor(countryIso)} ${phone}`
+          : `Code sent to ${dialFor(countryIso)} ${phone}`,
+      );
     } catch (err: any) {
       await handleSendError(err, "Could not send the code. Please try again.");
     } finally {
@@ -303,7 +320,7 @@ const PhoneVerificationField = ({
       // signed token. Only that token is worth anything to the backend.
       const msg91Token = await verifyOtp(code, reqId);
       const res = await apiClient.post("/users/me/phone/verify", {
-        phone,
+        phone: toE164(countryIso, phone),
         msg91Token,
       });
 
@@ -335,7 +352,7 @@ const PhoneVerificationField = ({
 
   const shownError = fieldError || error;
   const canSend =
-    isComplete(phone) &&
+    isComplete(countryIso, phone) &&
     !verified &&
     !sending &&
     cooldown === 0 &&
@@ -344,26 +361,49 @@ const PhoneVerificationField = ({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <Input
-        label={label}
-        labelClassName={labelClassName}
-        placeholder="Enter your phone number"
-        type="tel"
-        required={required}
-        inputMode="numeric"
-        maxLength={10}
-        value={phone}
-        disabled={showCode}
-        onChange={(e) => {
-          setPhone(normalize(e.target.value).slice(0, 10));
-          setFieldError("");
-        }}
-        onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => {
-          const pasted = e.clipboardData.getData("text");
-          if (!/^[+\d\s-]+$/.test(pasted)) e.preventDefault();
-        }}
-        error={shownError}
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        {/* Valued by ISO, not dial code: +1 is both the US and Canada. */}
+        <select
+          aria-label="Country dialling code"
+          value={countryIso}
+          disabled={showCode}
+          onChange={(e) => {
+            setCountryIso(e.target.value);
+            // A longer dial code leaves fewer digits for the number.
+            setPhone(sanitizePhoneInput(e.target.value, phone));
+            setFieldError("");
+          }}
+          className="h-[46px] w-full shrink-0 rounded-xl border border-gray-300 bg-white px-3 text-sm outline-none focus:border-orange-500 disabled:opacity-60 sm:w-44"
+        >
+          {COUNTRY_CODES.map((country) => (
+            <option key={country.iso} value={country.iso}>
+              {country.name} ({country.dial})
+            </option>
+          ))}
+        </select>
+
+        <div className="min-w-0 flex-1">
+          <Input
+            label={label}
+            labelClassName={labelClassName}
+            placeholder="Enter your phone number"
+            type="tel"
+            required={required}
+            inputMode="tel"
+            value={phone}
+            disabled={showCode}
+            onChange={(e) => {
+              setPhone(sanitizePhoneInput(countryIso, e.target.value));
+              setFieldError("");
+            }}
+            onPaste={(e: React.ClipboardEvent<HTMLInputElement>) => {
+              const pasted = e.clipboardData.getData("text");
+              if (!/^[+\d\s-]+$/.test(pasted)) e.preventDefault();
+            }}
+            error={shownError}
+          />
+        </div>
+      </div>
 
       {verified && (
         <p className="flex items-center gap-1.5 text-xs font-bold text-green-600">
@@ -469,18 +509,31 @@ const PhoneVerificationField = ({
                 {sendLimitMinutes === 1 ? "" : "s"}.
               </span>
             ) : (
-              <button
-                type="button"
-                onClick={() => requestCode(true)}
-                disabled={cooldown > 0 || sending}
-                className="text-sm font-bold text-orange-500 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
-              >
-                {sending
-                  ? "Sending..."
-                  : cooldown > 0
-                    ? `Resend in ${cooldown}s`
-                    : "Resend code"}
-              </button>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                {/* Both named: the client cannot know which channel the widget
+                    picked for this country, so the learner chooses. */}
+                <button
+                  type="button"
+                  onClick={() => requestCode(true, OTP_CHANNEL.sms)}
+                  disabled={cooldown > 0 || sending}
+                  className="text-sm font-bold text-orange-500 hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                >
+                  {sending
+                    ? "Sending..."
+                    : cooldown > 0
+                      ? `Resend in ${cooldown}s`
+                      : "Resend by SMS"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => requestCode(true, OTP_CHANNEL.whatsapp)}
+                  disabled={cooldown > 0 || sending}
+                  className="text-sm font-semibold text-[#25D366] hover:underline disabled:cursor-not-allowed disabled:text-gray-400 disabled:no-underline"
+                >
+                  Send on WhatsApp
+                </button>
+              </div>
             )}
 
             <button

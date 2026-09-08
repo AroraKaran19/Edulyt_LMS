@@ -5,6 +5,7 @@ import favicon from "serve-favicon";
 import path from "path";
 import errorHandler, { notFoundHandler } from "./middlewares/error.middleware";
 import cookieParser from "cookie-parser";
+import { corsOptions } from "./config/cors";
 import {
   authRoutes,
   emailPreferencesRoutes,
@@ -66,12 +67,7 @@ dotenv.config();
 const app = express();
 
 app.use(favicon(path.join(__dirname, "../public/favicon.ico")));
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  }),
-);
+app.use(cors(corsOptions));
 app.use(
   express.json({
     limit: "100mb",

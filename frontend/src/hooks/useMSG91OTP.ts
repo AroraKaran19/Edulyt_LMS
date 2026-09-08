@@ -56,6 +56,16 @@ export const OTP_LENGTH = Number(
   process.env.NEXT_PUBLIC_MSG91_OTP_LENGTH || 4,
 );
 
+/** MSG91's retry channel codes. */
+export const OTP_CHANNEL = {
+  sms: "11",
+  whatsapp: "12",
+  voice: "4",
+  email: "3",
+} as const;
+
+export type OtpChannel = (typeof OTP_CHANNEL)[keyof typeof OTP_CHANNEL];
+
 /** Both are public by design: the widget ships them to the browser anyway. */
 export const isMSG91Configured = Boolean(WIDGET_ID && TOKEN_AUTH);
 
@@ -176,10 +186,18 @@ export interface UseMSG91OTP {
   ready: boolean;
   /** Set when the script could not be loaded at all. */
   loadError: string | null;
-  /** Sends a code to a 10-digit number. Resolves with MSG91's reqId. */
-  sendOtp: (phone: string) => Promise<string | null>;
-  /** Re-sends over the given channel ("11" is SMS). Resolves with a reqId. */
-  retryOtp: (reqId?: string | null) => Promise<string | null>;
+  /**
+   * Sends a code. `identifier` is country code + number with no "+", which is
+   * what `toMsg91Identifier` in `lib/phone` produces. Not prefixed here: the
+   * country cannot be assumed, and a wrong one defeats the widget's
+   * country-wise channel routing.
+   */
+  sendOtp: (identifier: string) => Promise<string | null>;
+  /** Omit `channel` to repeat on whichever the widget picked for this number. */
+  retryOtp: (
+    reqId?: string | null,
+    channel?: OtpChannel,
+  ) => Promise<string | null>;
   /** Checks the code. Resolves with the access token to hand the backend. */
   verifyOtp: (otp: string, reqId?: string | null) => Promise<string>;
 }
@@ -234,11 +252,10 @@ export const useMSG91OTP = (): UseMSG91OTP => {
   }, []);
 
   const sendOtp = useCallback(
-    async (phone: string): Promise<string | null> => {
+    async (identifier: string): Promise<string | null> => {
       requireReady();
       const data = await promisify((ok, fail) =>
-        // MSG91 expects the country code with no plus sign.
-        window.sendOtp!(`91${phone}`, ok, fail),
+        window.sendOtp!(identifier, ok, fail),
       ).catch((error) => {
         throw new Error(messageOf(error, "Could not send the code."));
       });
@@ -248,11 +265,15 @@ export const useMSG91OTP = (): UseMSG91OTP => {
   );
 
   const retryOtp = useCallback(
-    async (reqId?: string | null): Promise<string | null> => {
+    async (
+      reqId?: string | null,
+      channel?: OtpChannel,
+    ): Promise<string | null> => {
       requireReady();
       const data = await promisify((ok, fail) =>
-        // "11" is MSG91's SMS retry channel.
-        window.retryOtp!("11", ok, fail, reqId || undefined),
+        // null lets the widget use its configured channel, which is what
+        // country-wise routing depends on.
+        window.retryOtp!(channel ?? null, ok, fail, reqId || undefined),
       ).catch((error) => {
         throw new Error(messageOf(error, "Could not resend the code."));
       });

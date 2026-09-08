@@ -25,8 +25,9 @@ const PASSWORD_RULES: { label: string; test: (p: string) => boolean }[] = [
 ];
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-/** Matches validatePhoneNumber on the User schema: 10 digits or +91 prefixed. */
-const PHONE_RE = /^(?:\+91)?[6-9]\d{9}$/;
+/** Mirrors validatePhoneNumber on the User schema: bare 10 digits, or any
+ *  country code in E.164. */
+const PHONE_RE = /^(?:[6-9]\d{9}|\+\d{8,15})$/;
 const PINCODE_RE = /^\d{6}$/;
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;

@@ -20,8 +20,12 @@ import publicClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { REF_STORAGE_KEY } from "@/constants/crm";
 import useMSG91OTP, {
+  OTP_CHANNEL,
   OTP_LENGTH as PHONE_OTP_LENGTH,
+  type OtpChannel,
 } from "@/hooks/useMSG91OTP";
+import { DEFAULT_COUNTRY_ISO } from "@/constants/countryCodes";
+import { toMsg91Identifier } from "@/lib/phone";
 import RecaptchaV2 from "@/components/ui/RecaptchaV2";
 import {
   CAPTCHA_ERROR_CODES,
@@ -414,7 +418,9 @@ export default function LeadForm({
         // number to the profile, which is what the lead gate compares against.
         await apiClient.post(ENDPOINTS.users.phoneOtpRequest, { phone });
       }
-      setReqId(await sendOtp(phone));
+      // India-only while `api/enquiry-lead` still validates 10 digits; the
+      // hook no longer assumes a country, so it is named here.
+      setReqId(await sendOtp(toMsg91Identifier(DEFAULT_COUNTRY_ISO, phone)));
       setDigits([]);
       setCooldown(RESEND_COOLDOWN_SECONDS);
       setStep("phoneOtp");
@@ -487,7 +493,7 @@ export default function LeadForm({
     if (open) await startPhoneVerification(open);
   };
 
-  const resendCode = async () => {
+  const resendCode = async (channel?: OtpChannel) => {
     if (sending || cooldown > 0 || sendLimitMinutes !== null) return;
 
     setSending(true);
@@ -502,7 +508,7 @@ export default function LeadForm({
       } else {
         await apiClient.post(ENDPOINTS.users.phoneOtpRequest, { phone });
       }
-      setReqId(await retryOtp(reqId));
+      setReqId(await retryOtp(reqId, channel));
       setDigits([]);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (error) {
@@ -666,6 +672,16 @@ export default function LeadForm({
                     : cooldown > 0
                       ? `Resend code in ${cooldown}s`
                       : "Resend code"}
+                </button>
+                {/* The widget picks the first channel by country; this is the
+                    way out when that one does not arrive. */}
+                <button
+                  type="button"
+                  onClick={() => void resendCode(OTP_CHANNEL.whatsapp)}
+                  disabled={cooldown > 0 || sending}
+                  className="text-[12.5px] font-semibold text-[#25D366] hover:underline disabled:cursor-not-allowed disabled:text-[#a3928a] disabled:no-underline"
+                >
+                  Send on WhatsApp
                 </button>
                 <span className="text-[11.5px] leading-[1.45] text-[#8c7a70]">
                   Then your details go to our counselling team.

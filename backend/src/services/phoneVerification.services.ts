@@ -32,22 +32,38 @@ import {
 const MSG91_VERIFY_URL =
   "https://control.msg91.com/api/v5/widget/verifyAccessToken";
 
-/** Indian mobile numbers, which is the only format the widget is set up for. */
 const INDIAN_MOBILE = /^[6-9]\d{9}$/;
+
+/** E.164 caps the whole number, country code included, at 15 digits. */
+const E164 = /^\+\d{8,15}$/;
 
 /**
  * Reduces every shape the UI or MSG91 might produce (`+91 98765 43210`,
  * `919876543210`, `09876543210`) to the bare 10 digits stored on the user.
+ *
+ * A number carrying any country code other than +91 keeps it, in E.164, since
+ * ten digits have nowhere to put a country. Indian numbers keep the form they
+ * have always been stored in, so nothing already in the database and nothing a
+ * caller already sends changes meaning.
+ *
+ * The leading "+" is the only signal that a number is international: without
+ * it, `447911123456` cannot be told from a mistyped Indian number.
  */
 export const normalizePhone = (raw: unknown): string => {
-  const digits = String(raw ?? "").replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
-  return digits;
+  const text = String(raw ?? "").trim();
+  const digits = text.replace(/\D/g, "");
+
+  if (!text.startsWith("+") || digits.startsWith("91")) {
+    if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+    if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+    return digits;
+  }
+
+  return `+${digits}`;
 };
 
 export const isValidPhone = (phone: string): boolean =>
-  INDIAN_MOBILE.test(phone);
+  INDIAN_MOBILE.test(phone) || E164.test(phone);
 
 /** Normalizes and rejects anything that is not a usable mobile number. */
 export const requireValidPhone = (raw: unknown): string => {

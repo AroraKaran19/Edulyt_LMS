@@ -6,7 +6,13 @@ import { toast } from "react-toastify";
 import scholarshipClient, { schAuth } from "@/configs/scholarshipApiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { PHONE_ERROR_CODES } from "@/constants/authErrorCodes";
-import useMSG91OTP, { OTP_LENGTH } from "@/hooks/useMSG91OTP";
+import useMSG91OTP, {
+  OTP_CHANNEL,
+  OTP_LENGTH,
+  type OtpChannel,
+} from "@/hooks/useMSG91OTP";
+import { COUNTRY_CODES, DEFAULT_COUNTRY_ISO, dialFor } from "@/constants/countryCodes";
+import { isValidPhone, sanitizePhoneInput, toE164, toMsg91Identifier } from "@/lib/phone";
 
 const RESEND_FALLBACK_SECONDS = 60;
 
@@ -27,15 +33,8 @@ const errorMeta = (error: unknown): Record<string, unknown> =>
   (error as { response?: { data?: { error?: { meta?: Record<string, unknown> } } } })
     ?.response?.data?.error?.meta ?? {};
 
-/** Reduces "+91 98765 43210" and friends to the bare 10 digits. */
-const normalize = (raw: string): string => {
-  const digits = (raw || "").replace(/\D/g, "");
-  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
-  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
-  return digits;
-};
-
-const isComplete = (phone: string): boolean => /^[6-9]\d{9}$/.test(phone);
+const isComplete = (countryIso: string, phone: string): boolean =>
+  isValidPhone(countryIso, phone);
 
 type Props = {
   slug: string;
@@ -62,6 +61,7 @@ export default function PhoneGate({ slug, token, onVerified }: Props) {
 
   const [step, setStep] = useState<"number" | "code">("number");
   const [phone, setPhone] = useState("");
+  const [countryIso, setCountryIso] = useState(DEFAULT_COUNTRY_ISO);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [reqId, setReqId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -87,10 +87,10 @@ export default function PhoneGate({ slug, token, onVerified }: Props) {
    * only enforceable if it is spent before the client is trusted to do
    * anything.
    */
-  const sendCode = async (isResend: boolean) => {
+  const sendCode = async (isResend: boolean, channel?: OtpChannel) => {
     if (busy || cooldown > 0 || spent) return;
-    if (!isComplete(phone)) {
-      setError("Enter a valid 10-digit mobile number");
+    if (!isComplete(countryIso, phone)) {
+      setError("Enter a valid mobile number for that country");
       return;
     }
     if (!ready) {
@@ -103,16 +103,22 @@ export default function PhoneGate({ slug, token, onVerified }: Props) {
     try {
       const res = await scholarshipClient.post(
         ENDPOINTS.scholarshipPublic.phoneOtpRequest(slug),
-        { phone },
+        { phone: toE164(countryIso, phone) },
         schAuth(token),
       );
 
-      const nextReqId = isResend ? await retryOtp(reqId) : await sendOtp(phone);
+      const nextReqId = isResend
+        ? await retryOtp(reqId, channel)
+        : await sendOtp(toMsg91Identifier(countryIso, phone));
       setReqId(nextReqId);
       setDigits(Array(OTP_LENGTH).fill(""));
       setStep("code");
       setCooldown(res.data?.data?.cooldownSeconds ?? RESEND_FALLBACK_SECONDS);
-      toast.success(`Code sent to +91 ${phone}`);
+      toast.success(
+        channel === OTP_CHANNEL.whatsapp
+          ? `Code sent on WhatsApp to ${dialFor(countryIso)} ${phone}`
+          : `Code sent to ${dialFor(countryIso)} ${phone}`,
+      );
     } catch (err) {
       setError(errorMessage(err, "Could not send the code"));
 
@@ -197,26 +203,42 @@ export default function PhoneGate({ slug, token, onVerified }: Props) {
         >
           One more, then you are in
         </label>
-        <div className="relative">
-          <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sch-on-ink-dim" />
-          <span className="pointer-events-none absolute left-11 top-1/2 -translate-y-1/2 font-sch-mono text-base text-sch-on-ink-dim">
-            +91
-          </span>
-          <input
-            id="sch-phone"
-            type="tel"
-            inputMode="numeric"
-            autoComplete="tel-national"
-            maxLength={10}
-            placeholder="98765 43210"
-            value={phone}
+        <div className="flex flex-col gap-2 sm:flex-row">
+          {/* Valued by ISO, not dial code: +1 is both the US and Canada. */}
+          <select
+            aria-label="Country dialling code"
+            value={countryIso}
             onChange={(e) => {
-              setPhone(normalize(e.target.value).slice(0, 10));
+              setCountryIso(e.target.value);
+              setPhone(sanitizePhoneInput(e.target.value, phone));
               setError("");
             }}
-            onKeyDown={(e) => e.key === "Enter" && void sendCode(false)}
-            className="w-full rounded-2xl border-[1.5px] border-sch-ink-line bg-sch-ink-raised py-3.5 pl-[5.25rem] pr-4 text-base text-sch-on-ink placeholder:text-[#6d5f56] focus:border-sch-gold focus:outline-none"
-          />
+            className="w-full shrink-0 rounded-2xl border-[1.5px] border-sch-ink-line bg-sch-ink-raised px-4 py-3.5 text-base text-sch-on-ink focus:border-sch-gold focus:outline-none sm:w-44"
+          >
+            {COUNTRY_CODES.map((country) => (
+              <option key={country.iso} value={country.iso}>
+                {country.name} ({country.dial})
+              </option>
+            ))}
+          </select>
+
+          <div className="relative min-w-0 flex-1">
+            <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-sch-on-ink-dim" />
+            <input
+              id="sch-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel-national"
+              placeholder="98765 43210"
+              value={phone}
+              onChange={(e) => {
+                setPhone(sanitizePhoneInput(countryIso, e.target.value));
+                setError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && void sendCode(false)}
+              className="w-full rounded-2xl border-[1.5px] border-sch-ink-line bg-sch-ink-raised py-3.5 pl-11 pr-4 text-base text-sch-on-ink placeholder:text-[#6d5f56] focus:border-sch-gold focus:outline-none"
+            />
+          </div>
         </div>
         <p className="text-xs text-sch-on-ink-dim">
           {error ? (
@@ -282,18 +304,31 @@ export default function PhoneGate({ slug, token, onVerified }: Props) {
         ))}
       </div>
       {error ? <p className="text-xs text-sch-foil">{error}</p> : null}
-      <button
-        type="button"
-        disabled={cooldown > 0 || busy || spent}
-        onClick={() => void sendCode(true)}
-        className="self-start font-sch-mono text-xs tracking-wider text-sch-on-ink-dim transition-colors hover:text-sch-gold disabled:opacity-50 disabled:hover:text-sch-on-ink-dim"
-      >
-        {spent
-          ? "NO CODES LEFT"
-          : cooldown > 0
-            ? `RESEND IN ${cooldown}S`
-            : "SEND A NEW CODE"}
-      </button>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <button
+          type="button"
+          disabled={cooldown > 0 || busy || spent}
+          onClick={() => void sendCode(true, OTP_CHANNEL.sms)}
+          className="font-sch-mono text-xs tracking-wider text-sch-on-ink-dim transition-colors hover:text-sch-gold disabled:opacity-50 disabled:hover:text-sch-on-ink-dim"
+        >
+          {spent
+            ? "NO CODES LEFT"
+            : cooldown > 0
+              ? `RESEND IN ${cooldown}S`
+              : "RESEND BY SMS"}
+        </button>
+
+        {/* The widget picks the first channel by country; this is the way out
+            when that one does not arrive. */}
+        <button
+          type="button"
+          disabled={cooldown > 0 || busy || spent}
+          onClick={() => void sendCode(true, OTP_CHANNEL.whatsapp)}
+          className="font-sch-mono text-xs tracking-wider text-[#25D366] transition-opacity hover:opacity-80 disabled:opacity-50"
+        >
+          SEND ON WHATSAPP
+        </button>
+      </div>
     </div>
   );
 }
