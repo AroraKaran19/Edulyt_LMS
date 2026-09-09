@@ -376,10 +376,12 @@ const cleanQuestion = (raw: unknown) => {
   }
 
   const type = q.type === "select" ? "select" : "text";
+  // Uncapped: a dropdown is as long as the list it stands for, and a course
+  // roster or a city list is not something to trim to fit. The floor stays,
+  // since a one-option dropdown is a label pretending to be a choice.
   const options = (Array.isArray(q.options) ? q.options : [])
     .map((o: unknown) => String(o ?? "").trim())
-    .filter(Boolean)
-    .slice(0, 20);
+    .filter(Boolean);
   if (type === "select" && options.length < 2) {
     throw new AppError("A dropdown needs at least two options", 400);
   }
