@@ -7,9 +7,23 @@ import { Mail } from "lucide-react";
 /** Seconds on screen before the enquiry form is opened for them. */
 const REDIRECT_SECONDS = 5;
 
-export default function ResultCard({ email }: { email: string }) {
+/**
+ * `refCode` travels in the URL rather than being left to sessionStorage, the
+ * mirror of how the enquiry form builds its outbound link. Storage is per tab
+ * and can be unavailable, and dropping the code lands a referred visitor on the
+ * bare page: priced, and credited to nobody.
+ */
+export default function ResultCard({
+  email,
+  refCode,
+}: {
+  email: string;
+  refCode: string;
+}) {
   const router = useRouter();
-  const next = `/enquiry?email=${encodeURIComponent(email)}`;
+  const query = new URLSearchParams({ email });
+  if (refCode) query.set("ref", refCode);
+  const next = `/enquiry?${query.toString()}`;
   const [seconds, setSeconds] = useState(REDIRECT_SECONDS);
 
   useEffect(() => {

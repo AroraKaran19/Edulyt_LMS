@@ -508,7 +508,7 @@ export default function ScholarshipCampaignPage() {
 
       {stage === "result" && result ? (
         <div className="mx-auto w-full max-w-xl">
-          <ResultCard email={sessionEmail} />
+          <ResultCard email={sessionEmail} refCode={refCode} />
         </div>
       ) : null}
 
