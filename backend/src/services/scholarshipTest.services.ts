@@ -2,12 +2,14 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 import {
   CouponModel,
+  CrmProfileModel,
   OrderModel,
   ScholarshipAttemptModel,
   ScholarshipCouponEntitlementModel,
   ScholarshipTestDailyStatModel,
   ScholarshipTestModel,
 } from "../models";
+import { EnquiryPageSettingsModel } from "../models/enquiryPageSettings.schema";
 import { todayIst } from "../utils/ist";
 import { AppError } from "../middlewares/error.middleware";
 import { isRolePageGated } from "../config/adminPermissions";
@@ -426,6 +428,27 @@ export const deleteScholarshipTest = async (
         { $set: { testId: null } },
         { session },
       );
+
+      // Every place that advertises this campaign on an enquiry page has to
+      // let go of it here. A pointer left behind renders nothing, and its
+      // owner has no way to tell a deleted campaign from a broken page.
+      await Promise.all([
+        CrmProfileModel.updateMany(
+          { scholarshipTestId: test._id },
+          { $set: { scholarshipTestId: null } },
+          { session },
+        ),
+        CrmProfileModel.updateMany(
+          { ambassadorScholarshipTestId: test._id },
+          { $set: { ambassadorScholarshipTestId: null } },
+          { session },
+        ),
+        EnquiryPageSettingsModel.updateMany(
+          { "scholarship.testId": test._id },
+          { $set: { "scholarship.testId": null } },
+          { session },
+        ),
+      ]);
 
       await ScholarshipTestModel.findByIdAndDelete(test._id, { session });
     });

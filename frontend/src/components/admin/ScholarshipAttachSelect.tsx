@@ -81,9 +81,13 @@ export default function ScholarshipAttachSelect({
     })),
   ];
 
-  // Only once the list has actually arrived: mid-load every id looks missing.
+  // Only once the list has actually arrived: mid-load, and on a failed load,
+  // every id looks missing and the note would call a live campaign deleted.
   const dangling =
-    !isLoading && Boolean(value) && !options.some((c) => c._id === value);
+    !isLoading &&
+    !failed &&
+    Boolean(value) &&
+    !options.some((c) => c._id === value);
 
   return (
     <div>

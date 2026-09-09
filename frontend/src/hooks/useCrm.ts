@@ -135,10 +135,10 @@ const useCrm = () => {
       await apiClient.post("/crm/me/ambassadors", { email, kind });
       return { ok: true as const };
     } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } };
+      const err = e as { response?: { data?: { error?: { message?: string } } } };
       return {
         ok: false as const,
-        message: err?.response?.data?.message ?? "Could not add that student",
+        message: err?.response?.data?.error?.message ?? "Could not add that student",
       };
     } finally {
       setIsLoading(false);
@@ -189,11 +189,11 @@ const useCrm = () => {
             ?.ambassadorScholarshipTestId ?? null) as string | null,
         };
       } catch (e) {
-        const err = e as { response?: { data?: { message?: string } } };
+        const err = e as { response?: { data?: { error?: { message?: string } } } };
         return {
           ok: false as const,
           message:
-            err?.response?.data?.message ?? "Could not save the link settings",
+            err?.response?.data?.error?.message ?? "Could not save the link settings",
         };
       } finally {
         setIsLoading(false);
@@ -212,10 +212,10 @@ const useCrm = () => {
           questions: (res.data?.data?.questions ?? []) as CrmExtraQuestion[],
         };
       } catch (e) {
-        const err = e as { response?: { data?: { message?: string } } };
+        const err = e as { response?: { data?: { error?: { message?: string } } } };
         return {
           ok: false as const,
-          message: err?.response?.data?.message ?? "Could not save the questions",
+          message: err?.response?.data?.error?.message ?? "Could not save the questions",
         };
       } finally {
         setIsLoading(false);

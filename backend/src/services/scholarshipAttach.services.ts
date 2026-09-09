@@ -24,6 +24,13 @@ const OPTION_LIMIT = 200;
  * id. `isActive` deliberately is not checked, because pausing a campaign must
  * not silently detach it; the public resolver refuses to render a paused one,
  * so resuming brings the line straight back.
+ *
+ * A pointer to a campaign that no longer exists resolves to null instead of
+ * throwing. Deleting a campaign used to leave that pointer behind, and since
+ * the settings form re-sends every field on any save, a rejection there wedged
+ * the whole page: the owner could not clear the dead pointer, attach a new
+ * campaign, or even toggle a price. There is no one to protect a deleted id
+ * from, so clearing it is both safe and what the caller wants.
  */
 export const resolveAttachableCampaignId = async (
   value: unknown,
@@ -36,11 +43,13 @@ export const resolveAttachableCampaignId = async (
     throw new AppError("Invalid campaign id", 400);
   }
 
-  const owned = await ScholarshipTestModel.exists({
-    _id: new mongoose.Types.ObjectId(raw),
-    createdBy: new mongoose.Types.ObjectId(actorId),
-  });
-  if (!owned) {
+  // One _id lookup, then compare in memory: an ownership miss and a deleted
+  // campaign need different answers, so they cannot be one existence query.
+  const campaign = await ScholarshipTestModel.findById(raw, { createdBy: 1 })
+    .lean();
+  if (!campaign) return null;
+
+  if (String(campaign.createdBy) !== String(actorId)) {
     throw new AppError("You can only attach a campaign you created", 400);
   }
 
