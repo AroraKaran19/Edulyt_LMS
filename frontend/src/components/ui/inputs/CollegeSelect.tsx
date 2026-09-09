@@ -1,8 +1,14 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useId,
+} from "react";
 import axios from "axios";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { cn } from "@/lib/utils";
-import { ChevronDown, ChevronUp, Search, MessageCircle } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageCircle } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import Modal from "@/components/ui/Modal";
 import type { IndianState } from "@/constants/indianStates";
@@ -90,6 +96,7 @@ const CollegeSelect = ({
   const [loadingMore, setLoadingMore] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const listboxId = useId();
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -237,11 +244,16 @@ const CollegeSelect = ({
 
   const selectedCollege = items.find((c) => formatCollegeValue(c) === value);
 
-  const displayValue = selectedCollege
+  const selectedLabel = selectedCollege
     ? formatCollegeValue(selectedCollege)
     : value && value.trim().length > 0
       ? value
-      : placeholder;
+      : "";
+
+  const closeDropdown = useCallback(() => {
+    setIsOpen(false);
+    setSearchTerm("");
+  }, []);
 
   const handleCollegeSelect = useCallback(
     (college: CollegeOption) => {
@@ -295,62 +307,82 @@ const CollegeSelect = ({
       )}
 
       <div className="relative" ref={dropdownRef}>
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
+        <div
           className={cn(
-            "w-full px-4 py-3.5 text-left bg-white border border-gray-300 rounded-xl",
-            "focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500",
+            "w-full bg-white border border-gray-300 rounded-xl",
             "hover:border-orange-400 hover:shadow-sm",
-            "transition-all duration-200 ease-in-out outline-none",
-            "flex items-center justify-between",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            "shadow-sm hover:shadow-md",
+            "transition-all duration-200 ease-in-out",
+            "flex items-center",
+            "shadow-sm",
             isOpen && "border-orange-500 ring-2 ring-orange-500/20",
             error && "border-red-500",
+            disabled && "opacity-50 cursor-not-allowed",
           )}
-          disabled={disabled}
         >
-          <span
+          <input
+            ref={searchRef}
+            type="text"
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls={listboxId}
+            aria-autocomplete="list"
+            autoComplete="off"
+            disabled={disabled}
+            // Open, the field IS the query box; closed, it shows what was
+            // picked. The selection moves to the placeholder while typing so
+            // it stays visible without blocking the query.
+            value={isOpen ? searchTerm : selectedLabel}
+            placeholder={isOpen ? selectedLabel || placeholder : placeholder}
+            onFocus={() => setIsOpen(true)}
+            // Reopens after the chevron closed it without the input ever
+            // losing focus, where onFocus alone would not fire again.
+            onClick={() => setIsOpen(true)}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setIsOpen(true);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                closeDropdown();
+                e.currentTarget.blur();
+              }
+            }}
             className={cn(
-              "text-sm truncate",
-              !selectedCollege && !value?.trim()
-                ? "text-gray-500"
-                : "text-black",
+              "w-full min-w-0 bg-transparent rounded-xl",
+              "px-4 py-3.5 text-sm text-black outline-none",
+              "placeholder:text-gray-500 disabled:cursor-not-allowed",
             )}
+          />
+          <button
+            type="button"
+            aria-label={isOpen ? "Close college list" : "Open college list"}
+            disabled={disabled}
+            onClick={() => {
+              if (isOpen) {
+                closeDropdown();
+              } else {
+                setIsOpen(true);
+                searchRef.current?.focus();
+              }
+            }}
+            className="shrink-0 pl-1 pr-4 py-3.5 disabled:cursor-not-allowed"
           >
-            {displayValue}
-          </span>
-          <div className="flex items-center">
             {isOpen ? (
               <ChevronUp className="w-4 h-4 text-gray-400 transition-transform duration-200" />
             ) : (
               <ChevronDown className="w-4 h-4 text-gray-400 transition-transform duration-200" />
             )}
-          </div>
-        </button>
+          </button>
+        </div>
 
         {isOpen && (
           <div
+            id={listboxId}
             className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-[min(85vh,28rem)] overflow-hidden"
             style={{
               animation: "fadeIn 0.2s ease-out",
             }}
           >
-            <div className="p-3 border-b border-gray-200">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  ref={searchRef}
-                  type="text"
-                  placeholder="Search colleges..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none"
-                />
-              </div>
-            </div>
-
             <div ref={scrollRootRef} className="max-h-52 overflow-y-auto">
               {loadingInitial && (
                 <div className="p-4 text-center text-gray-500">
