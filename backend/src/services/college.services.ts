@@ -38,20 +38,19 @@ const toCollege = (doc: Record<string, unknown>): College => {
   };
 };
 
+/** "  Parul   University " -> ["Parul", "University"] */
+const searchWords = (search?: string): string[] => {
+  if (!search?.trim()) return [];
+  return search.trim().replace(/\s+/g, " ").split(" ").filter(Boolean);
+};
+
 /**
  * Each whitespace-separated word must match somewhere (name OR location OR legacy
  * city/state/country). Words are combined with AND so "Business Schoo" requires
  * both substrings — unlike fuzzySearch's global $or, which let "Schoo" match
  * "School" without "Business".
  */
-const buildSearchFilter = (search?: string): mongoose.FilterQuery<College> => {
-  if (!search?.trim()) return {};
-  const words = search
-    .trim()
-    .replace(/\s+/g, " ")
-    .split(" ")
-    .map((w) => w.trim())
-    .filter((w) => w.length > 0);
+const buildSearchFilter = (words: string[]): mongoose.FilterQuery<College> => {
   if (words.length === 0) return {};
 
   const fields = [
@@ -78,6 +77,94 @@ const buildSearchFilter = (search?: string): mongoose.FilterQuery<College> => {
   return { $and: perWord } as mongoose.FilterQuery<College>;
 };
 
+/** A match that begins a word: "parul" hits "Parul University" and "Godavari
+ *  Parulekar" but not "Kasturba". Plain \b is avoided so a query starting with
+ *  punctuation can't invert the assertion. */
+const wordStart = (term: string) => `(^|[^A-Za-z0-9])${escapeRegex(term)}`;
+
+const rxMatch = (field: string, regex: string) => ({
+  $regexMatch: {
+    input: { $ifNull: [`$${field}`, ""] },
+    regex,
+    options: "i",
+  },
+});
+
+const NAME_LOWER = { $toLower: { $ifNull: ["$name", ""] } };
+
+/**
+ * Relevance tiers, best first. The filter above is a bare substring test, so
+ * without a score the tie-break sort decides everything: searching "parul"
+ * put "…Godavari Shamrao Parulekar College" above "Parul University" purely
+ * because A sorts before P. Tiers rank *where* and *how* the query landed.
+ */
+const buildRelevanceStage = (words: string[]): mongoose.PipelineStage => {
+  const phrase = words.join(" ");
+  const phraseRx = escapeRegex(phrase);
+
+  const branches: { case: Record<string, unknown>; then: number }[] = [
+    { case: rxMatch("name", `^${phraseRx}`), then: 0 },
+    { case: rxMatch("name", wordStart(phrase)), then: 1 },
+    { case: rxMatch("name", phraseRx), then: 2 },
+  ];
+
+  // Only meaningful for multi-word queries — for one word these repeat tiers 1
+  // and 2, and $switch takes the first hit anyway.
+  if (words.length > 1) {
+    branches.push({
+      case: { $and: words.map((w) => rxMatch("name", wordStart(w))) },
+      then: 3,
+    });
+    branches.push({
+      case: { $and: words.map((w) => rxMatch("name", escapeRegex(w))) },
+      then: 4,
+    });
+  }
+
+  return {
+    $addFields: {
+      _tier: { $switch: { branches, default: 5 } },
+      // Earlier hit wins inside a tier ("Parul Institute" over "Shri Parul
+      // Institute"). Rows that matched on location only have no position.
+      _pos: {
+        $let: {
+          vars: { at: { $indexOfCP: [NAME_LOWER, phrase.toLowerCase()] } },
+          in: { $cond: [{ $lt: ["$$at", 0] }, 9999, "$$at"] },
+        },
+      },
+    },
+  };
+};
+
+/** Ranked page + total in a single pass over the matched set. */
+const runRankedSearch = async (
+  filters: mongoose.FilterQuery<College>,
+  words: string[],
+  skip: number,
+  limit: number,
+  tieBreak: Record<string, 1 | -1>,
+): Promise<{ rows: Record<string, unknown>[]; total: number }> => {
+  const [result] = await CollegeModel.aggregate<{
+    rows: Record<string, unknown>[];
+    meta: { total: number }[];
+  }>([
+    { $match: filters },
+    buildRelevanceStage(words),
+    { $sort: { _tier: 1, _pos: 1, ...tieBreak } },
+    {
+      $facet: {
+        rows: [{ $skip: skip }, { $limit: limit }],
+        meta: [{ $count: "total" }],
+      },
+    },
+  ]);
+
+  return {
+    rows: result?.rows ?? [],
+    total: result?.meta?.[0]?.total ?? 0,
+  };
+};
+
 const totalPages = (total: number, limit: number) =>
   Math.max(0, Math.ceil(total / limit));
 
@@ -87,12 +174,25 @@ export const listCollegesPublicService = async (
   search?: string,
 ): Promise<ListCollegesResult> => {
   const skip = (page - 1) * limit;
-  const searchFilter = buildSearchFilter(search);
+  const words = searchWords(search);
   const filters: mongoose.FilterQuery<College> = {
     isActive: true,
-    ...searchFilter,
+    ...buildSearchFilter(words),
   };
 
+  if (words.length > 0) {
+    const { rows, total } = await runRankedSearch(filters, words, skip, limit, {
+      name: 1,
+    });
+    return {
+      colleges: rows.map(toCollege),
+      total,
+      page,
+      totalPages: totalPages(total, limit),
+    };
+  }
+
+  // Unsearched browse stays on the plain indexed find — nothing to rank by.
   const total = await CollegeModel.countDocuments(filters);
   const raw = await CollegeModel.find(filters)
     .sort({ name: 1 })
@@ -115,10 +215,22 @@ export const listCollegesAdminService = async (
   isActive?: boolean,
 ): Promise<ListCollegesResult> => {
   const skip = (page - 1) * limit;
-  const searchFilter = buildSearchFilter(search);
-  const filters: mongoose.FilterQuery<College> = { ...searchFilter };
+  const words = searchWords(search);
+  const filters: mongoose.FilterQuery<College> = { ...buildSearchFilter(words) };
   if (typeof isActive === "boolean") {
     filters.isActive = isActive;
+  }
+
+  if (words.length > 0) {
+    const { rows, total } = await runRankedSearch(filters, words, skip, limit, {
+      updatedAt: -1,
+    });
+    return {
+      colleges: rows.map(toCollege),
+      total,
+      page,
+      totalPages: totalPages(total, limit),
+    };
   }
 
   const total = await CollegeModel.countDocuments(filters);
