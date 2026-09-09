@@ -86,4 +86,6 @@ export interface AttemptView {
 
 export interface ScholarshipResult {
   submitted: true;
+  /** The discount won. The code itself is emailed, never sent here. */
+  awardedPercent: number;
 }

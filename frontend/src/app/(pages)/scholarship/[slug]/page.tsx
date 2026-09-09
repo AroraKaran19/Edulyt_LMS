@@ -291,8 +291,9 @@ export default function ScholarshipCampaignPage() {
        */
       const code = errorCode(error);
       if (code === "ALREADY_FINISHED") {
-        setResult({ submitted: true });
-        setStage("result");
+        // Re-read rather than synthesised: the refusal says they finished but
+        // not what they won, and the screen now names the discount.
+        await resolveStage(token);
         return;
       }
       if (code === "NO_ATTEMPTS_LEFT") {
@@ -508,7 +509,11 @@ export default function ScholarshipCampaignPage() {
 
       {stage === "result" && result ? (
         <div className="mx-auto w-full max-w-xl">
-          <ResultCard email={sessionEmail} refCode={refCode} />
+          <ResultCard
+            email={sessionEmail}
+            refCode={refCode}
+            awardedPercent={result.awardedPercent}
+          />
         </div>
       ) : null}
 

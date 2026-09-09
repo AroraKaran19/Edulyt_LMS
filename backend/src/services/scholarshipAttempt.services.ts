@@ -33,15 +33,20 @@ export interface AttemptView {
 }
 
 /**
- * Deliberately carries nothing but the fact of having finished.
+ * What a finisher is shown on screen.
  *
- * The percentage, the code and the score all used to be here, keyed on an email
- * the caller supplied. Once the gate stops proving that address, anything in
- * this shape is readable by anyone who can type it, so the reward moved to the
- * mail and this became a yes/no.
+ * The percentage and no more. The code stays out: it is the bearer credential
+ * that actually spends the discount, and the mail is the one channel that
+ * proves delivery to the winner rather than to whoever is holding the tab.
+ *
+ * Safe to return because both routes that produce it sit behind
+ * `requireScholarshipSession`, so the address is proved by the OTP the session
+ * was issued for. It was a bare yes/no while the caller still supplied their
+ * own email, which anyone could type.
  */
 export interface ResultView {
   submitted: true;
+  awardedPercent: number;
 }
 
 const isDuplicateKeyError = (error: unknown): boolean =>
@@ -523,26 +528,26 @@ export const submitAttempt = async (
 
   await bumpDailyStat(campaign._id, "submitted");
 
-  return { submitted: true };
+  return { submitted: true, awardedPercent: reward.awardedPercent };
 };
 
 /**
- * Whether this address has already finished the test.
+ * What this address won here, if it has finished.
  *
- * Used to be the recovery path for the coupon, which is why it returned the
- * code. The coupon is emailed now, so this answers the only question the page
- * still needs: has this address been here before. One indexed hit on the unique
- * (testId, email) entitlement index, and no second query for a score nobody
- * shows any more.
+ * Still the recovery path for the result screen, so a returning finisher sees
+ * the same number rather than a bare "you are done". The code is not read: it
+ * belongs in the mail. One indexed hit on the unique (testId, email)
+ * entitlement index, projected down to the one field the screen needs.
  */
 export const getResultForEmail = async (
   testId: string,
   email: string,
 ): Promise<ResultView | null> => {
-  const issued = await ScholarshipCouponEntitlementModel.exists({
-    testId,
-    email,
-    revokedAt: null,
-  });
-  return issued ? { submitted: true } : null;
+  const issued = await ScholarshipCouponEntitlementModel.findOne(
+    { testId, email, revokedAt: null },
+    { awardedPercent: 1 },
+  ).lean();
+  return issued
+    ? { submitted: true, awardedPercent: issued.awardedPercent as number }
+    : null;
 };

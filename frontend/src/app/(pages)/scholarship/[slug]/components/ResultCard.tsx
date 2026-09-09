@@ -16,9 +16,12 @@ const REDIRECT_SECONDS = 5;
 export default function ResultCard({
   email,
   refCode,
+  awardedPercent,
 }: {
   email: string;
   refCode: string;
+  /** Named on screen. The code that spends it stays in the mail. */
+  awardedPercent: number;
 }) {
   const router = useRouter();
   const query = new URLSearchParams({ email });
@@ -47,20 +50,32 @@ export default function ResultCard({
       </div>
 
       <div className="animate-sch-rise rounded-2xl border border-sch-on-paper/8 bg-white px-6 py-8 text-center shadow-[0_18px_48px_-24px_rgba(201,123,29,0.55)] [animation-delay:140ms] motion-reduce:animate-none">
-        <Mail className="mx-auto h-9 w-9 text-sch-foil" strokeWidth={1.5} />
-        <p className="mt-5 font-sch-display text-[1.375rem] font-semibold leading-tight">
-          Your discount is on its way
+        <p className="font-sch-mono text-[0.6875rem] uppercase tracking-[0.22em] text-sch-on-paper-dim">
+          You won
         </p>
-        {/* The address is repeated back: it was typed minutes ago and nothing
-            since has confirmed which one the code went to. */}
-        <p className="mt-3 text-[0.9375rem] leading-relaxed text-sch-on-paper-dim">
-          We have emailed your code to{" "}
-          <strong className="break-all text-sch-on-paper">{email}</strong>. It
-          names your discount and how long you have to use it.
+        <p className="mt-2 font-sch-display text-[clamp(3.25rem,11vw,4.5rem)] font-semibold leading-[0.92] tracking-[-0.03em] text-sch-foil">
+          {awardedPercent}%
         </p>
-        <p className="mt-4 text-sm leading-relaxed text-sch-on-paper-dim">
-          Nothing arrived? Check your spam folder before writing to us.
+        <p className="mt-1 font-sch-display text-[1.125rem] font-semibold leading-tight">
+          off your course
         </p>
+
+        <div className="mt-7 border-t border-sch-on-paper/8 pt-6">
+          <Mail
+            className="mx-auto h-7 w-7 text-sch-on-paper-dim"
+            strokeWidth={1.5}
+          />
+          {/* The address is repeated back: it was typed minutes ago and nothing
+              since has confirmed which one the code went to. */}
+          <p className="mt-3 text-[0.9375rem] leading-relaxed text-sch-on-paper-dim">
+            Your code is on its way to{" "}
+            <strong className="break-all text-sch-on-paper">{email}</strong>.
+            The mail carries the code itself and how long you have to use it.
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-sch-on-paper-dim">
+            Nothing arrived? Check your spam folder before writing to us.
+          </p>
+        </div>
       </div>
 
       <div className="flex animate-sch-rise flex-col gap-4 [animation-delay:280ms] motion-reduce:animate-none">
