@@ -19,6 +19,7 @@ import {
 import { UserModel } from "../models";
 import { isFreeOrderResult } from "../services/payments/orderFlow";
 import type { CheckoutSession } from "../services/payments/types";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 /**
  * Phase 1 adapts the normalized gateway result back into the legacy response
@@ -123,6 +124,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     // Validated against the course's own offer in the service; the client
     // chooses a duration, never a price.
     courseInternshipMonths,
+    req.brand ?? DEFAULT_BRAND,
   );
 
   if (!order) {
@@ -157,6 +159,7 @@ export const createInternshipSeatOrder = asyncHandler(
       String(req.user._id),
       internshipEnrollmentId,
       typeof gateway === "string" ? gateway : undefined,
+      req.brand ?? DEFAULT_BRAND,
     );
 
     if (!order) {
@@ -197,6 +200,7 @@ export const createInternshipSuccessPointsOrder = asyncHandler(
       internshipEnrollmentId,
       Number(quantity),
       typeof gateway === "string" ? gateway : undefined,
+      req.brand ?? DEFAULT_BRAND,
     );
 
     if (!order) {

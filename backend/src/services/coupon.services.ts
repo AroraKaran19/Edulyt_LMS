@@ -6,6 +6,7 @@ import {
   ValidateCouponResponse,
 } from "../types";
 import mongoose from "mongoose";
+import { couponUsableOnBrand } from "../lib/brandPurchase";
 
 export const getAllCouponsService = async (
   page: number,
@@ -271,6 +272,11 @@ export const validateCouponService = async (
       valid: false,
       message: "This coupon is no longer active",
     };
+  }
+
+  // Worded like an unknown code so nobody can probe which brand owns a code.
+  if (!couponUsableOnBrand(coupon.brand, request.brand)) {
+    return { valid: false, message: "Invalid coupon code" };
   }
 
   // Check validity dates

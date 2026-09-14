@@ -25,6 +25,7 @@ import type {
   StudentLiveClassesPage,
   UpdateLiveClassBody,
 } from "../types/live-classes";
+import type { Brand } from "../constants/brands";
 
 /**
  * Only these enrollments may see / attend a live class, and only these make up
@@ -970,6 +971,7 @@ export const getStudentLiveClassesService = async (
   studentId: string,
   page: number = 1,
   limit: number = 10,
+  brands?: Brand[],
 ): Promise<StudentLiveClassesPage> => {
   const p = Math.max(1, Math.floor(page));
   const l = Math.min(50, Math.max(1, Math.floor(limit)));
@@ -979,6 +981,7 @@ export const getStudentLiveClassesService = async (
   // "your plan doesn't include them" without a second round trip.
   const enrollments = await EnrollmentModel.find({
     userId: requireObjectId(studentId, "studentId"),
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
     status: { $in: ENROLLED_STATUSES },
   })
     .select("courseId planType")
@@ -1043,6 +1046,7 @@ export const getStudentLiveClassesForCourseService = async (
   studentId: string,
   page: number = 1,
   limit: number = 10,
+  brands?: Brand[],
 ): Promise<StudentCourseLiveClassesPage> => {
   const p = Math.max(1, Math.floor(page));
   const l = Math.min(50, Math.max(1, Math.floor(limit)));
@@ -1051,6 +1055,7 @@ export const getStudentLiveClassesForCourseService = async (
   const enrollment = await EnrollmentModel.findOne({
     userId: requireObjectId(studentId, "studentId"),
     courseId: courseOid,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
     status: { $in: ENROLLED_STATUSES },
   })
     .select("planType")

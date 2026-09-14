@@ -41,6 +41,8 @@ export interface ValidateCouponRequest {
   courseId: string;
   userId?: string;
   purchaseAmount: number;
+  /** The site the checkout runs on. A coupon only applies on its own brand. */
+  brand: Brand;
 }
 
 export interface ValidateCouponResponse {

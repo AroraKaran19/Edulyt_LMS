@@ -29,6 +29,9 @@ import { getPointsSettings } from "./pointsSettings.services";
 import type { CourseDiscount, Discount } from "../types";
 import type { OrderScholarshipSnapshot } from "../types/order";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
+import { DEFAULT_BRAND, type Brand } from "../constants/brands";
+import { assertBrandReadable } from "../lib/brandPurchase";
+import { brandOfCourseDoc } from "./productBrand.services";
 
 // Re-exported for back-compat: these moved to ./payments/token, but existing
 // importers still reach for them here.
@@ -375,6 +378,7 @@ async function resolveOrderAmount(params: {
   userId: string;
   userEmail: string | undefined;
   couponCode?: string;
+  brand: Brand;
 }): Promise<{
   amount: number;
   couponCode: string | undefined;
@@ -393,6 +397,7 @@ async function resolveOrderAmount(params: {
     userId,
     userEmail,
     couponCode,
+    brand,
   } = params;
 
   const checkout = await computeCheckoutAfterCollaboration({
@@ -416,6 +421,7 @@ async function resolveOrderAmount(params: {
       courseId,
       userId,
       amount,
+      brand,
     });
     amount = applied.amount;
     couponDiscount = applied.couponDiscount;
@@ -446,6 +452,7 @@ export const createOrderService = async (
   gateway?: string,
   /** Course-internship add-on: duration the learner picked, if any. */
   courseInternshipMonths?: number,
+  brand: Brand = DEFAULT_BRAND,
 ) => {
   // The provider's isConfigured() owns credential validation now.
   const gatewayName = resolveGateway(gateway);
@@ -455,6 +462,7 @@ export const createOrderService = async (
     UserModel.findById(userId).select("firstName lastName email").lean(),
   ]);
   if (!course) throw new AppError("Course not found", 404);
+  assertBrandReadable(brandOfCourseDoc(course), brand, "course");
 
   const plan = course.plans[planType];
   if (!plan)
@@ -498,6 +506,7 @@ export const createOrderService = async (
     userId,
     userEmail,
     couponCode,
+    brand,
   });
 
   // Referral buyer discount: validate the code and take the configured % off
@@ -606,6 +615,7 @@ export const createOrderService = async (
     txnId: Math.random().toString(36).substring(2, 15),
     token: "", // Will be set by the gateway's client token
     userId,
+    brand,
     orderKind: "course",
     courseId,
     courseName,
@@ -668,7 +678,10 @@ export const createInternshipSeatOrderService = async (
   userId: string,
   internshipEnrollmentId: string,
   gateway?: string,
+  brand: Brand = DEFAULT_BRAND,
 ) => {
+  // Every internship is Edulyt's.
+  assertBrandReadable("edulyt", brand, "internship");
   const gatewayName = resolveGateway(gateway);
 
   if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
@@ -783,6 +796,7 @@ export const createInternshipSeatOrderService = async (
     txnId: Math.random().toString(36).substring(2, 15),
     token: "",
     userId,
+    brand,
     orderKind: "internship_seat",
     amount,
     currency: "INR",
@@ -816,7 +830,10 @@ export const createInternshipSuccessPointsOrderService = async (
   internshipEnrollmentId: string,
   quantity: number,
   gateway?: string,
+  brand: Brand = DEFAULT_BRAND,
 ) => {
+  // Every internship is Edulyt's.
+  assertBrandReadable("edulyt", brand, "internship");
   const gatewayName = resolveGateway(gateway);
 
   if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
@@ -920,6 +937,7 @@ export const createInternshipSuccessPointsOrderService = async (
     txnId: Math.random().toString(36).substring(2, 15),
     token: "",
     userId,
+    brand,
     orderKind: "internship_success_points",
     amount,
     currency: "INR",

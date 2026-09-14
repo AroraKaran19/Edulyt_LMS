@@ -1,12 +1,14 @@
 import { CategoryModel, CourseModel } from "../models";
 import { Category } from "../types/category";
+import type { Brand } from "../constants/brands";
 
 export const getAllCategoriesService = async (
   page: number,
   limit: number | undefined,
   search: string,
   isAdmin?: boolean,
-  audience?: "college-students" | "professionals"
+  audience?: "college-students" | "professionals",
+  brands?: Brand[]
 ): Promise<{
   categories: Category[];
   total: number;
@@ -16,6 +18,10 @@ export const getAllCategoriesService = async (
   const skip = limit !== undefined ? (page - 1) * limit : 0;
 
   let filters: any = {};
+
+  if (brands && brands.length > 0) {
+    filters.brand = { $in: brands };
+  }
 
   // Active filter - only show active items for non-admin users
   if (!isAdmin) {
@@ -71,10 +77,13 @@ export const getCategoryByIdService = async (
   return category as Category;
 };
 
-export const getHomePageCategoriesService = async (): Promise<Category[]> => {
+export const getHomePageCategoriesService = async (
+  brands?: Brand[]
+): Promise<Category[]> => {
   const categories = await CategoryModel.find({
     isActive: true,
     showOnHomePage: true,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
   })
     .sort({ sortOrder: 1, createdAt: -1 })
     .limit(4);

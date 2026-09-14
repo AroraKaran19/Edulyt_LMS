@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { AnnouncementModel } from "../models/announcement.schema";
 import { AnnouncementAudience } from "../types";
+import type { Brand } from "../constants/brands";
 
 export interface AnnouncementInput {
   title: string;
@@ -28,8 +29,11 @@ export const createAnnouncementService = async (
  */
 export const listAnnouncementsService = async (
   audience?: AnnouncementAudience,
+  brands?: Brand[],
 ) => {
-  const filter = audience ? { audience } : {};
+  const filter: Record<string, unknown> = {};
+  if (audience) filter.audience = audience;
+  if (brands && brands.length > 0) filter.brand = { $in: brands };
   return AnnouncementModel.find(filter).sort({ createdAt: -1 }).lean();
 };
 

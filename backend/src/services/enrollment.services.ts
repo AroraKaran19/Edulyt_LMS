@@ -23,6 +23,7 @@ import {
 } from "./certificate.services";
 import { createCertificateJobService } from "./certificateJob.services";
 import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
+import type { Brand } from "../constants/brands";
 
 /**
  * Check if an enrollment is still valid (not expired)
@@ -402,6 +403,7 @@ export const GetUserEnrollmentsService = async (
   /** Exclude enrollments whose course is retired or deleted. Off by default: My
    *  Programs deliberately still lists them as "no longer available". */
   courseActive?: boolean,
+  brands?: Brand[],
 ): Promise<{
   enrollments: Enrollment[];
   total: number;
@@ -411,6 +413,10 @@ export const GetUserEnrollmentsService = async (
   try {
     const skip = (page - 1) * limit;
     let filters: any = { userId };
+    // Rides { userId, brand, status }.
+    if (brands && brands.length > 0) {
+      filters.brand = { $in: brands };
+    }
 
     if (
       status &&
@@ -1723,6 +1729,7 @@ export const GetEnrollmentHistoryService = async (
 // Get user dashboard statistics
 export const GetUserDashboardStatsService = async (
   userId: string,
+  brands?: Brand[],
 ): Promise<{
   totalTimeSpent: number; // in minutes
   averageTimePerSession: number; // in minutes
@@ -1743,6 +1750,7 @@ export const GetUserDashboardStatsService = async (
   try {
     const enrollments = await EnrollmentModel.find({
       userId,
+      ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
       status: { $nin: ["dropped", "revoked"] },
     }).lean();
 

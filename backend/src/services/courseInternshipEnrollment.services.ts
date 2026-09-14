@@ -4,6 +4,7 @@ import { CourseInternshipModel } from "../models/courseInternship.schema";
 import { InternshipTaskModel } from "../models/internshipTask.schema";
 import { computeTaskWindow } from "../lib/internshipTaskWindow";
 import { AppError } from "../middlewares/error.middleware";
+import type { Brand } from "../constants/brands";
 
 export type CourseInternshipTaskRow = {
   _id: string;
@@ -23,9 +24,13 @@ export type CourseInternshipTaskRow = {
 };
 
 /** The learner's own enrollments, most recently touched first. */
-export const listMyCourseInternshipsService = async (userId: string) => {
+export const listMyCourseInternshipsService = async (
+  userId: string,
+  brands?: Brand[],
+) => {
   const enrollments = await CourseInternshipEnrollmentModel.find({
     user: userId,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
   })
     .select(
       "courseInternship course programSnapshot courseSnapshot startDate endDate durationMonths status",

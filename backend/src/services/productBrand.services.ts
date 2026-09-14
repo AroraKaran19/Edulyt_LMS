@@ -6,6 +6,12 @@ import { brandFromAudience } from "../lib/brandRules";
  * A course's brand, falling back to its audience so writes are correct even
  * before the backfill has branded the catalogue.
  */
+export const brandOfCourseDoc = (course: {
+  brand?: unknown;
+  audience?: unknown;
+}): Brand => (isBrand(course.brand) ? course.brand : brandFromAudience(course.audience));
+
+/** `brandOfCourseDoc` for a course that is not loaded yet. */
 export const courseBrand = async (courseId: unknown): Promise<Brand> => {
   if (!courseId) {
     return DEFAULT_BRAND;
@@ -18,7 +24,7 @@ export const courseBrand = async (courseId: unknown): Promise<Brand> => {
   if (!course) {
     return DEFAULT_BRAND;
   }
-  return isBrand(course.brand) ? course.brand : brandFromAudience(course.audience);
+  return brandOfCourseDoc(course);
 };
 
 export const enrollmentBrand = async (enrollmentId: unknown): Promise<Brand> => {

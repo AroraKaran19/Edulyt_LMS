@@ -18,6 +18,7 @@ import {
 import path from "path";
 import fs from "fs";
 import os from "os";
+import type { Brand } from "../constants/brands";
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -811,6 +812,7 @@ export const getUserCertificatesService = async (
     limit?: number;
     search?: string;
     recentOnly?: boolean;
+    brands?: Brand[];
   } = {}
 ): Promise<
   | Certificate[]
@@ -823,9 +825,13 @@ export const getUserCertificatesService = async (
       limit = 12,
       search,
       recentOnly = false,
+      brands,
     } = options;
 
     const query: any = { userId, isActive: true };
+    if (brands && brands.length > 0) {
+      query.brand = { $in: brands };
+    }
     if (!includeOldVersions) {
       query.isLatest = true;
     }
@@ -886,6 +892,8 @@ export const getCertificateByVerificationCodeService = async (
   verificationCode: string
 ): Promise<Certificate | null> => {
   try {
+    // Never brand-scoped: printed certificates carry airkrit.com links that
+    // must keep resolving whichever brand issued them.
     const certificate = await CertificateModel.findOne({
       verificationCode,
       isActive: true,

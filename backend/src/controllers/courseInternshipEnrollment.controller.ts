@@ -8,6 +8,8 @@ import {
   listMyCourseInternshipsService,
   getMyCourseInternshipService,
 } from "../services/courseInternshipEnrollment.services";
+import { DEFAULT_BRAND } from "../constants/brands";
+import { readableBrands } from "../lib/brandScope";
 
 /**
  * @route   GET /api/course-internship-enrollments/me
@@ -19,7 +21,10 @@ export const listMyCourseInternshipsController = asyncHandler(
     const userId = req.user?._id;
     if (!userId) throw new AppError("Unauthorized", 401);
 
-    const enrollments = await listMyCourseInternshipsService(String(userId));
+    const enrollments = await listMyCourseInternshipsService(
+      String(userId),
+      readableBrands(req.brand ?? DEFAULT_BRAND),
+    );
     sendSuccessResponse(
       res,
       { enrollments },

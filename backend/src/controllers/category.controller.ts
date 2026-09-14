@@ -12,6 +12,8 @@ import {
   getHomePageCategoriesService,
   updateCategoryService,
 } from "../services/category.services";
+import { DEFAULT_BRAND } from "../constants/brands";
+import { readableBrands } from "../lib/brandScope";
 
 export const getAllCategories = asyncHandler(
   async (req: Request, res: Response) => {
@@ -38,7 +40,8 @@ export const getAllCategories = asyncHandler(
       limit,
       String(search),
       isAdmin,
-      validAudience
+      validAudience,
+      isAdmin ? undefined : readableBrands(req.brand ?? DEFAULT_BRAND)
     );
 
     if (!result || result.categories.length === 0) {
@@ -55,7 +58,7 @@ export const getCategoryById = asyncHandler(
   async (req: Request, res: Response) => {
     const { id } = req.params;
     const isAdmin = req.user?.userType === "admin";
-    
+
     if (!id) {
       throw new AppError("Category ID is required", 400);
     }
@@ -174,7 +177,9 @@ export const deleteCategory = asyncHandler(
 
 export const getHomePageCategories = asyncHandler(
   async (req: Request, res: Response) => {
-    const result = await getHomePageCategoriesService();
+    const result = await getHomePageCategoriesService(
+      readableBrands(req.brand ?? DEFAULT_BRAND)
+    );
     sendSuccessResponse(res, result, "Home page categories fetched successfully", 200);
     return;
   }

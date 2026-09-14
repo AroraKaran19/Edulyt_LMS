@@ -13,6 +13,7 @@ import {
   deleteCouponService,
   validateCouponService,
 } from "../services/coupon.services";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 export const getAllCoupons = asyncHandler(
   async (req: Request, res: Response) => {
@@ -185,6 +186,7 @@ export const validateCoupon = asyncHandler(
       courseId,
       userId,
       purchaseAmount,
+      brand: req.brand ?? DEFAULT_BRAND,
     });
 
     if (!result.valid) {

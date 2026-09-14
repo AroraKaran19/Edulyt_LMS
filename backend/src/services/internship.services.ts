@@ -16,6 +16,7 @@ import { AppError } from "../middlewares/error.middleware";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
 import { parseIstDateOnly, parseIstDatetimeLocal } from "../utils/ist";
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
+import type { Brand } from "../constants/brands";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -414,11 +415,13 @@ export const listInternshipsPublicService = async (
   search?: string,
   audience?: "college-students" | "professionals",
   includeClosed = false,
+  brands?: Brand[],
 ): Promise<ListPublicInternshipsResult> => {
   const skip = (page - 1) * limit;
   const searchFilter = buildSearchFilter(search);
   const filters: mongoose.FilterQuery<Internship> = {
     ...(includeClosed ? {} : { isActive: true }),
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
     ...searchFilter,
   };
   if (audience) {
@@ -465,12 +468,14 @@ export const listFeaturedInternshipsPublicService = async (
   limit: number,
   search?: string,
   audience?: "college-students" | "professionals",
+  brands?: Brand[],
 ): Promise<ListPublicInternshipsResult> => {
   const skip = (page - 1) * limit;
   const searchFilter = buildSearchFilter(search);
   const filters: mongoose.FilterQuery<Internship> = {
     isActive: true,
     featured: true,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
     ...searchFilter,
   };
   if (audience) {
@@ -701,8 +706,12 @@ export const getInternshipByIdAdminService = async (
  */
 export const getInternshipBySlugService = async (
   slug: string,
+  brands?: Brand[],
 ): Promise<InternshipResponse | null> => {
-  const doc = await InternshipModel.findOne({ slug })
+  const doc = await InternshipModel.findOne({
+    slug,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
+  })
     .populate("testimonials", "name currentRole feedback verified")
     .populate("partnerColleges", "name location website image")
     .populate("faqs", "question answer")
@@ -760,8 +769,12 @@ const toIso = (d: unknown): string => {
  */
 export const getInternshipEnrollPreviewService = async (
   slug: string,
+  brands?: Brand[],
 ): Promise<InternshipEnrollPreview | null> => {
-  const doc = await InternshipModel.findOne({ slug })
+  const doc = await InternshipModel.findOne({
+    slug,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
+  })
     .select("title slug batches discount whatsappGroupLink isActive")
     .lean();
   if (!doc || doc._id == null) return null;

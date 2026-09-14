@@ -23,6 +23,8 @@ import {
   RecalculateEnrollmentProgressService,
   GetUserDashboardStatsService,
 } from "../services/enrollment.services";
+import { DEFAULT_BRAND } from "../constants/brands";
+import { readableBrands } from "../lib/brandScope";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { UserModel } from "../models";
 import {
@@ -240,7 +242,9 @@ export const getUserEnrollments = asyncHandler(
       Number(limit),
       search as string,
       sortBy as string,
-      courseActive === "true"
+      courseActive === "true",
+      // An admin looking at someone else's enrollments sees every brand.
+      userId === "me" ? readableBrands(req.brand ?? DEFAULT_BRAND) : undefined
     );
 
     sendSuccessResponse(
@@ -540,7 +544,10 @@ export const getUserDashboardStats = asyncHandler(
       throw new AppError("User ID is required", 400);
     }
 
-    const result = await GetUserDashboardStatsService(userId.toString());
+    const result = await GetUserDashboardStatsService(
+      userId.toString(),
+      readableBrands(req.brand ?? DEFAULT_BRAND)
+    );
     if (!result) {
       throw new AppError("Failed to get dashboard statistics", 500);
     }

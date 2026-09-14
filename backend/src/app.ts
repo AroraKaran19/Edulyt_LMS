@@ -6,7 +6,7 @@ import path from "path";
 import errorHandler, { notFoundHandler } from "./middlewares/error.middleware";
 import cookieParser from "cookie-parser";
 import { corsOptions } from "./config/cors";
-import { resolveBrand } from "./middlewares/brand.middleware";
+import { requireBrand, resolveBrand } from "./middlewares/brand.middleware";
 import {
   authRoutes,
   emailPreferencesRoutes,
@@ -136,8 +136,8 @@ app.use(
 );
 app.use("/api/internship-submissions", internshipSubmissionRoutes);
 app.use("/api/internship-enrollments", internshipEnrollmentRoutes);
-app.use("/api/partner-colleges", partnerCollegeRoutes);
-app.use("/api/partner", partnerRoutes);
+app.use("/api/partner-colleges", requireBrand("airkrit"), partnerCollegeRoutes);
+app.use("/api/partner", requireBrand("airkrit"), partnerRoutes);
 app.use("/api/question-categories", questionCategoryRoutes);
 app.use("/api/internship-vouchers", internshipVoucherRoutes);
 app.use("/api/internship-live-meetings", internshipLiveMeetingRoutes);
@@ -146,7 +146,7 @@ app.use("/api/enquiry-page-settings", enquiryPageSettingsRoutes);
 app.use("/api/legal-settings", legalSettingsRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/referral", referralRoutes);
-app.use("/api/community-reviews", communityReviewRoutes);
+app.use("/api/community-reviews", requireBrand("airkrit"), communityReviewRoutes);
 app.use("/api/success-points", successPointsRoutes);
 app.use("/api/reports", reportRoutes);
 

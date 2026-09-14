@@ -6,6 +6,7 @@ import {
 import { AppError } from "../middlewares/error.middleware";
 import { validateCouponService } from "./coupon.services";
 import type { OrderScholarshipSnapshot } from "../types/order";
+import type { Brand } from "../constants/brands";
 
 /**
  * Applying a coupon to a checkout amount.
@@ -79,12 +80,14 @@ export const applyCouponToCheckout = async (params: {
   courseId: string;
   userId: string;
   amount: number;
+  brand: Brand;
 }): Promise<AppliedCoupon> => {
   const validation = await validateCouponService({
     code: params.couponCode,
     courseId: params.courseId,
     purchaseAmount: params.amount,
     userId: params.userId,
+    brand: params.brand,
   });
 
   if (!validation.valid) {

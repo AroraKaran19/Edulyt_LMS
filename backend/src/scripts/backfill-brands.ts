@@ -75,6 +75,11 @@ async function main() {
       { $set: { brand: "edulyt" } });
     await run("categories: the rest to airkrit", "categories",
       { brand: { $exists: false } }, { $set: { brand: "airkrit" } });
+    await run("announcements: internship to edulyt", "announcements",
+      { brand: { $exists: false }, audience: "internship" },
+      { $set: { brand: "edulyt" } });
+    await run("announcements: the rest to airkrit", "announcements",
+      { brand: { $exists: false } }, { $set: { brand: "airkrit" } });
 
     const edulytCourseIds = (
       await db.collection("courses").find({ brand: "edulyt" }, { projection: { _id: 1 } }).toArray()

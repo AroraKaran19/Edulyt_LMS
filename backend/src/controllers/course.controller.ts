@@ -32,6 +32,8 @@ import {
   reorderLessonsService,
   reorderContentService,
 } from "../services/course.services";
+import { DEFAULT_BRAND } from "../constants/brands";
+import { readableBrands } from "../lib/brandScope";
 
 export const getAllCourses = asyncHandler(
   async (req: Request, res: Response) => {
@@ -41,13 +43,20 @@ export const getAllCourses = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
+    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
     const result = await getAllCoursesService(
       Number(page),
       Number(limit),
       search as string,
       categories as string,
       audience as string,
-      false
+      false,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      brands
     );
     if (!result || result.courses.length === 0) {
       sendSuccessResponse(res, [], "No courses found", 200);
@@ -66,11 +75,13 @@ export const getFeaturedCourses = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
+    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
     const result = await getFeaturedCoursesService(
       Number(page),
       Number(limit),
       search as string,
-      false
+      false,
+      brands
     );
     if (!result || result.courses.length === 0) {
       sendSuccessResponse(res, [], "No featured courses found", 200);
@@ -105,13 +116,20 @@ export const getCoursesByAudience = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
+    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
     const result = await getAllCoursesService(
       Number(page),
       Number(limit),
       search as string,
       undefined,
       audience as string,
-      false
+      false,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      brands
     );
     if (!result || result.courses.length === 0) {
       sendSuccessResponse(res, [], "No courses found", 200);
@@ -134,13 +152,20 @@ export const getCoursesByCategory = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
+    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
     const result = await getAllCoursesService(
       Number(page),
       Number(limit),
       search as string,
       category as string,
       undefined,
-      false
+      false,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      brands
     );
     if (!result || result.courses.length === 0) {
       sendSuccessResponse(res, [], "No courses found", 200);
@@ -159,7 +184,8 @@ export const getCourseById = asyncHandler(
       throw new AppError("Course ID is required", 400);
     }
 
-    const result = await getCourseByIdService(courseId, false);
+    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const result = await getCourseByIdService(courseId, false, brands);
     if (!result) {
       sendSuccessResponse(res, [], "Course not found", 200);
       return;
@@ -176,7 +202,8 @@ export const getCourseBySlug = asyncHandler(
       throw new AppError("Slug is required", 400);
     }
 
-    const result = await getCourseBySlugService(slug, false);
+    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const result = await getCourseBySlugService(slug, false, brands);
     if (!result) {
       // A missing OR disabled course (the service filters on isActive) is a
       // 404, not a 200. Returning `[]` with 200 made callers treat the empty

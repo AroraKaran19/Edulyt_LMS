@@ -16,6 +16,8 @@ import {
   retryCertificateJobService,
   reclaimStuckCertificateJobsService,
 } from "../services/certificateJob.services";
+import { DEFAULT_BRAND } from "../constants/brands";
+import { readableBrands } from "../lib/brandScope";
 
 /**
  * Get all certificates for the authenticated user (supports pagination)
@@ -43,6 +45,7 @@ export const getUserCertificates = asyncHandler(
       limit,
       search,
       recentOnly,
+      brands: readableBrands(req.brand ?? DEFAULT_BRAND),
     });
 
     sendSuccessResponse(

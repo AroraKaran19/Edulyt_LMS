@@ -26,6 +26,7 @@ import {
   deleteFilesFromS3,
   extractS3KeyFromUrl,
 } from "./upload.services";
+import type { Brand } from "../constants/brands";
 
 export const getAllCoursesService = async (
   page: number,
@@ -38,7 +39,8 @@ export const getAllCoursesService = async (
   sortOrder: string = "desc",
   instructors?: string,
   isActive?: boolean,
-  searchTitleOnly?: boolean
+  searchTitleOnly?: boolean,
+  brands?: Brand[]
 ): Promise<{
   courses: Course[];
   total: number;
@@ -51,6 +53,11 @@ export const getAllCoursesService = async (
   let filters: any = {};
   let hasCategoryFilter = false;
   let categoryObjectIds: mongoose.Types.ObjectId[] = [];
+
+  // Brand scope. Admin callers pass their own brand explicitly instead.
+  if (brands && brands.length > 0) {
+    filters.brand = { $in: brands };
+  }
 
   // Active filter - only show active courses for non-admin users
   if (!isAdmin) {
@@ -414,7 +421,8 @@ export const getFeaturedCoursesService = async (
   page: number,
   limit: number,
   search: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  brands?: Brand[]
 ): Promise<{
   courses: Course[];
   total: number;
@@ -427,6 +435,9 @@ export const getFeaturedCoursesService = async (
   let filters: any = { isFeatured: true };
   if (!isAdmin) {
     filters.isActive = true;
+  }
+  if (brands && brands.length > 0) {
+    filters.brand = { $in: brands };
   }
   if (search) {
     // Use fuzzy search for better matching
@@ -512,7 +523,8 @@ export const getFeaturedCoursesService = async (
 
 export const getCourseByIdService = async (
   courseId: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  brands?: Brand[]
 ): Promise<Course | null> => {
   // Validate ObjectId format
   if (!mongoose.Types.ObjectId.isValid(courseId)) {
@@ -521,7 +533,10 @@ export const getCourseByIdService = async (
 
   // Fetch course WITHOUT populating category to avoid CastError with invalid values
   const course = await CourseModel.findById(courseId)
-    .where(isAdmin ? {} : { isActive: true })
+    .where({
+      ...(isAdmin ? {} : { isActive: true }),
+      ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
+    })
     .select("-__v")
     .populate("instructor", "-__v")
     .populate("testimonials", "-__v")
@@ -625,10 +640,15 @@ export const getCourseByIdService = async (
 
 export const getCourseBySlugService = async (
   slug: string,
-  isAdmin?: boolean
+  isAdmin?: boolean,
+  brands?: Brand[]
 ): Promise<Course | null> => {
   // Fetch course WITHOUT populating category to avoid CastError with invalid values
-  const course = await CourseModel.findOne({ slug, isActive: true })
+  const course = await CourseModel.findOne({
+    slug,
+    isActive: true,
+    ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
+  })
     .where(isAdmin ? {} : { isActive: true })
     .select("-__v")
     .populate("instructor", "-__v")

@@ -29,6 +29,7 @@ import { sendEntranceExamResultEmail } from "./entranceExamMail.services";
 import { sendInternshipBatchChangedEmail } from "./internshipBatchChangedMail.services";
 import { queueInternshipApplicationReceivedEmail } from "./internshipApplicationMail.services";
 import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
+import type { Brand } from "../constants/brands";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1339,6 +1340,7 @@ export async function listMyInternshipEnrollments(
   search?: string,
   /** When set, only rows whose `status` is in this list (entrance exam / selection flow). */
   statuses?: string[],
+  brands?: Brand[],
 ): Promise<{
   enrollments: InternshipEnrollmentListRow[];
   total: number;
@@ -1350,6 +1352,9 @@ export async function listMyInternshipEnrollments(
   const skip = (p - 1) * l;
 
   const baseMatch: Record<string, unknown> = { user: userId };
+  if (brands && brands.length > 0) {
+    baseMatch.brand = { $in: brands };
+  }
   if (statuses && statuses.length > 0) {
     // Mirror the wire-level masking of `in_merit_pool` → `exam_attempted`:
     // a learner filtering by either bucket gets both real `exam_attempted`
@@ -2986,6 +2991,8 @@ export async function getInternshipVerification(
     throw new AppError("Invalid intern ID", 400);
   }
 
+  // Never brand-scoped: printed offer letters carry airkrit.com links that
+  // must keep resolving whichever brand issued them.
   const doc = await InternshipEnrollmentModel.findOne({ internId: id })
     .select(
       "internId status enrolledAt offerLetterGeneratedAt internshipSnapshot batchSnapshot user",

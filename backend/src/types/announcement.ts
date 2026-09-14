@@ -1,3 +1,5 @@
+import type { Brand } from "../constants/brands";
+
 export type AnnouncementAudience = "course" | "internship" | "partner";
 
 /**
@@ -8,6 +10,7 @@ export type AnnouncementAudience = "course" | "internship" | "partner";
  */
 export interface Announcement {
   _id?: string;
+  brand?: Brand;
   title: string;
   message: string;
   audience: AnnouncementAudience;

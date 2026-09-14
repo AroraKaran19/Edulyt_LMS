@@ -10,6 +10,8 @@ import {
   deleteAnnouncementService,
 } from "../services/announcement.services";
 import { AnnouncementAudience } from "../types";
+import { DEFAULT_BRAND } from "../constants/brands";
+import { readableBrands } from "../lib/brandScope";
 
 const AUDIENCES: AnnouncementAudience[] = ["course", "internship", "partner"];
 
@@ -72,7 +74,10 @@ export const getAnnouncementFeed = asyncHandler(
       audience =
         req.query.audience === "internship" ? "internship" : "course";
     }
-    const announcements = await listAnnouncementsService(audience);
+    const announcements = await listAnnouncementsService(
+      audience,
+      readableBrands(req.brand ?? DEFAULT_BRAND),
+    );
     sendSuccessResponse(
       res,
       { announcements },
