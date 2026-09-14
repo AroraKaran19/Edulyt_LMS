@@ -81,8 +81,21 @@ async function main() {
     await run("announcements: the rest to airkrit", "announcements",
       { brand: { $exists: false } }, { $set: { brand: "airkrit" } });
 
+    // By predicate, not by the brand just written, so a dry run reports the
+    // same set an apply would act on. After the write the two agree.
     const edulytCourseIds = (
-      await db.collection("courses").find({ brand: "edulyt" }, { projection: { _id: 1 } }).toArray()
+      await db
+        .collection("courses")
+        .find(
+          {
+            $or: [
+              { brand: "edulyt" },
+              { brand: { $exists: false }, audience: "professionals" },
+            ],
+          },
+          { projection: { _id: 1 } },
+        )
+        .toArray()
     ).map((course) => course._id as mongoose.Types.ObjectId);
     console.log(`\nedulyt courses: ${edulytCourseIds.length}\n`);
 
@@ -127,13 +140,24 @@ async function main() {
     await run("users: empty membership list gets airkrit", "users",
       { brands: { $size: 0 } }, { $set: { brands: ["airkrit"] } });
 
+    // Also by predicate: an access record's brand may not be written yet.
+    const edulytHolderFilters: [string, string, Record<string, unknown>][] = [
+      [
+        "enrollments",
+        "userId",
+        { $or: [{ brand: "edulyt" }, { courseId: bothIdForms(edulytCourseIds) }] },
+      ],
+      [
+        "courseinternshipenrollments",
+        "user",
+        { $or: [{ brand: "edulyt" }, { course: bothIdForms(edulytCourseIds) }] },
+      ],
+      // Every internship is Edulyt's, so every holder of one needs the brand.
+      ["internshipenrollments", "user", {}],
+    ];
     const edulytHolders = new Set<string>();
-    for (const [collection, field] of [
-      ["enrollments", "userId"],
-      ["courseinternshipenrollments", "user"],
-      ["internshipenrollments", "user"],
-    ] as const) {
-      const holders = await db.collection(collection).distinct(field, { brand: "edulyt" });
+    for (const [collection, field, filter] of edulytHolderFilters) {
+      const holders = await db.collection(collection).distinct(field, filter);
       for (const holder of holders) if (holder) edulytHolders.add(String(holder));
     }
     console.log(`\nusers needing edulyt: ${edulytHolders.size}`);
