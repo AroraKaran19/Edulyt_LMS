@@ -19,7 +19,6 @@ import {
 import { UserModel } from "../models";
 import { isFreeOrderResult } from "../services/payments/orderFlow";
 import type { CheckoutSession } from "../services/payments/types";
-import { DEFAULT_BRAND } from "../constants/brands";
 
 /**
  * Phase 1 adapts the normalized gateway result back into the legacy response
@@ -117,7 +116,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     user._id as string,
     courseId,
     planType,
-    req.brand ?? DEFAULT_BRAND,
+    req.brand,
     couponCode,
     typeof referralCode === "string" ? referralCode : undefined,
     useSuccessPoints === true,
@@ -158,7 +157,7 @@ export const createInternshipSeatOrder = asyncHandler(
     const order = await createInternshipSeatOrderService(
       String(req.user._id),
       internshipEnrollmentId,
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
       typeof gateway === "string" ? gateway : undefined,
     );
 
@@ -199,7 +198,7 @@ export const createInternshipSuccessPointsOrder = asyncHandler(
       String(req.user._id),
       internshipEnrollmentId,
       Number(quantity),
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
       typeof gateway === "string" ? gateway : undefined,
     );
 

@@ -27,6 +27,12 @@ import {
   extractS3KeyFromUrl,
 } from "./upload.services";
 import type { Brand } from "../constants/brands";
+import {
+  defaultCourseMeta,
+  resolveDuplicateTarget,
+  validateCourseBrandForCreate,
+  validateCourseBrandForUpdate,
+} from "./brandOwnership.services";
 
 export const getAllCoursesService = async (
   page: number,
@@ -229,6 +235,7 @@ export const getAllCoursesService = async (
             isActive: 1,
             isFeatured: 1,
             audience: 1,
+            brand: 1,
             slug: 1,
             plans: 1,
             analytics: {
@@ -273,6 +280,7 @@ function buildAdminCourseListFilters(options: {
   audience?: string;
   instructors?: string;
   isActive?: boolean;
+  brand?: Brand;
 }): Record<string, unknown> {
   const {
     search,
@@ -281,9 +289,14 @@ function buildAdminCourseListFilters(options: {
     audience,
     instructors,
     isActive,
+    brand,
   } = options;
 
   const filters: Record<string, unknown> = {};
+
+  if (brand) {
+    filters.brand = brand;
+  }
 
   if (isActive !== undefined) {
     filters.isActive = isActive;
@@ -351,6 +364,7 @@ export const getAdminCourseOptionsService = async (options: {
   sortBy?: AdminCourseListSortBy;
   sortOrder?: "asc" | "desc";
   searchTitleOnly?: boolean;
+  brand?: Brand;
 }): Promise<{
   courses: Array<{
     _id: string;
@@ -372,6 +386,7 @@ export const getAdminCourseOptionsService = async (options: {
     sortBy = "updatedAt",
     sortOrder = "desc",
     searchTitleOnly,
+    brand,
   } = options;
 
   const skip = (page - 1) * limit;
@@ -382,6 +397,7 @@ export const getAdminCourseOptionsService = async (options: {
     instructors,
     isActive,
     searchTitleOnly,
+    brand,
   });
 
   const total = await CourseModel.countDocuments(filters);
@@ -804,7 +820,13 @@ export const CreateCourseMetadataService = async (
   courseData: any
 ): Promise<Course | null> => {
   try {
-    const cleanedCourseData = { ...courseData, modules: [] };
+    const brand = await validateCourseBrandForCreate(courseData);
+    const cleanedCourseData = {
+      ...defaultCourseMeta(brand),
+      ...courseData,
+      brand,
+      modules: [],
+    };
     // Validated and mirrored after save — the mirror needs the course's _id.
     delete cleanedCourseData.internshipOffer;
 
@@ -1310,7 +1332,8 @@ export const DuplicateCourseService = async (
 };
 
 export const DuplicateCourseMetadataService = async (
-  courseId: string
+  courseId: string,
+  options?: { brand?: unknown; category?: unknown }
 ): Promise<Course | null> => {
   const course = await CourseModel.findById(courseId);
   if (!course) {
@@ -1318,6 +1341,7 @@ export const DuplicateCourseMetadataService = async (
   }
 
   const courseData = course.toObject();
+  const target = await resolveDuplicateTarget(courseData, options);
 
   // Fields to exclude (bound relationships and system fields)
   const excludedFields = [
@@ -1354,6 +1378,9 @@ export const DuplicateCourseMetadataService = async (
   metadataOnly.isFeatured = false;
   metadataOnly.isCertified = false;
   metadataOnly.scholarship = false;
+  if (target) {
+    Object.assign(metadataOnly, target);
+  }
 
   // Reset analytics to default values
   metadataOnly.analytics = {
@@ -1421,7 +1448,8 @@ export const DuplicateCourseMetadataService = async (
 };
 
 export const DuplicateCourseWithModulesService = async (
-  courseId: string
+  courseId: string,
+  options?: { brand?: unknown; category?: unknown }
 ): Promise<Course | null> => {
   // Find the original course (no need to populate - we'll share the module references)
   const course = await CourseModel.findById(courseId).lean();
@@ -1431,6 +1459,7 @@ export const DuplicateCourseWithModulesService = async (
   }
 
   const courseData = course as any;
+  const target = await resolveDuplicateTarget(courseData, options);
 
   // Prepare course data (excluding system fields)
   const cleanedCourseData: any = { ...courseData };
@@ -1455,6 +1484,9 @@ export const DuplicateCourseWithModulesService = async (
   cleanedCourseData.isFeatured = false;
   cleanedCourseData.isCertified = false;
   cleanedCourseData.scholarship = false;
+  if (target) {
+    Object.assign(cleanedCourseData, target);
+  }
 
   // Reset analytics
   cleanedCourseData.analytics = {
@@ -1607,6 +1639,8 @@ export const UpdateCourseMetadataService = async (
   courseId: string,
   courseData: any
 ): Promise<Course | null> => {
+  await validateCourseBrandForUpdate(courseId, courseData);
+
   // Filter out undefined and null values to prevent overwriting existing data
   // Also explicitly exclude modules from metadata updates to preserve existing modules
   const cleanedData: any = { updatedAt: new Date() };

@@ -14,6 +14,7 @@ import {
   getFirstEnrollmentDateService,
 } from "../services/course-analytics.services";
 import { getAdminOrdersService } from "../services/order.services";
+import { isBrand } from "../constants/brands";
 import {
   getAdminEnrollmentsService,
   EnrollmentTypeFilter,
@@ -249,6 +250,7 @@ export const getAdminOrdersController = asyncHandler(
       search: typeof search === "string" ? search : undefined,
       paymentStatus:
         typeof paymentStatus === "string" ? paymentStatus : undefined,
+      brand: isBrand(req.query.brand) ? req.query.brand : undefined,
       from: range.from,
       to: range.to,
       exportAll,
@@ -308,7 +310,8 @@ export const getAdminEnrollmentsController = asyncHandler(
       type,
       typeof search === "string" ? search : undefined,
       typeof paymentStatus === "string" ? paymentStatus : undefined,
-      statusFilter
+      statusFilter,
+      isBrand(req.query.brand) ? req.query.brand : undefined
     );
 
     sendSuccessResponse(res, result, "Enrollments fetched successfully", 200);

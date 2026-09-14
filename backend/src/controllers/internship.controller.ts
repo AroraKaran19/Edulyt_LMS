@@ -18,7 +18,6 @@ import {
   deleteInternshipService,
   duplicateInternshipService,
 } from "../services/internship.services";
-import { DEFAULT_BRAND } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 
 /**
@@ -46,7 +45,7 @@ export const listInternshipsPublic = asyncHandler(
       typeof search === "string" ? search : undefined,
       aud,
       includeClosed === "true",
-      readableBrands(req.brand ?? DEFAULT_BRAND)
+      readableBrands(req.brand)
     );
     sendSuccessResponse(
       res,
@@ -79,7 +78,7 @@ export const listFeaturedInternshipsPublic = asyncHandler(
       l,
       typeof search === "string" ? search : undefined,
       aud,
-      readableBrands(req.brand ?? DEFAULT_BRAND)
+      readableBrands(req.brand)
     );
     sendSuccessResponse(
       res,
@@ -192,7 +191,7 @@ export const getInternshipEnrollPreview = asyncHandler(
     }
     const preview = await getInternshipEnrollPreviewService(
       slug.trim(),
-      readableBrands(req.brand ?? DEFAULT_BRAND)
+      readableBrands(req.brand)
     );
     if (!preview) throw new AppError("Internship not found", 404);
     sendSuccessResponse(
@@ -217,7 +216,7 @@ export const getInternshipBySlug = asyncHandler(
     }
     const internship = await getInternshipBySlugService(
       slug.trim(),
-      readableBrands(req.brand ?? DEFAULT_BRAND)
+      readableBrands(req.brand)
     );
     if (!internship) throw new AppError("Internship not found", 404);
     sendSuccessResponse(

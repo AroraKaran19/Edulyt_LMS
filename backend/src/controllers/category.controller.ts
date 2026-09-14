@@ -12,8 +12,9 @@ import {
   getHomePageCategoriesService,
   updateCategoryService,
 } from "../services/category.services";
-import { DEFAULT_BRAND } from "../constants/brands";
+import { isBrand } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
+import { parseBrandInput } from "../services/brandOwnership.services";
 
 export const getAllCategories = asyncHandler(
   async (req: Request, res: Response) => {
@@ -41,7 +42,7 @@ export const getAllCategories = asyncHandler(
       String(search),
       isAdmin,
       validAudience,
-      isAdmin ? undefined : readableBrands(req.brand ?? DEFAULT_BRAND)
+      isAdmin ? undefined : readableBrands(req.brand)
     );
 
     if (!result || result.categories.length === 0) {
@@ -51,6 +52,47 @@ export const getAllCategories = asyncHandler(
 
     sendSuccessResponse(res, result, "Categories fetched successfully", 200);
     return;
+  }
+);
+
+/**
+ * The admin list. Separate from the public one because the admin panel always
+ * sits on Airkrit: it names the brand it wants, and every admin role sees the
+ * full view rather than only `userType === "admin"`.
+ */
+export const getAdminCategories = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { page = 1, search = "", audience } = req.query;
+    const limit =
+      req.query.limit !== undefined ? Number(req.query.limit) : undefined;
+    const validAudience =
+      typeof audience === "string" &&
+      ["college-students", "professionals"].includes(audience)
+        ? (audience as "college-students" | "professionals")
+        : undefined;
+
+    if (Number(page) < 1) {
+      throw new AppError("Page must be a positive number", 400);
+    }
+    if (limit !== undefined && limit < 1) {
+      throw new AppError("Limit must be a positive number when provided", 400);
+    }
+
+    const result = await getAllCategoriesService(
+      Number(page),
+      limit,
+      String(search),
+      true,
+      validAudience,
+      isBrand(req.query.brand) ? [req.query.brand] : undefined
+    );
+
+    if (!result || result.categories.length === 0) {
+      sendSuccessResponse(res, [], "No categories found", 200);
+      return;
+    }
+
+    sendSuccessResponse(res, result, "Categories fetched successfully", 200);
   }
 );
 
@@ -83,6 +125,7 @@ export const createCategory = asyncHandler(
     if (!audience || !["college-students", "professionals"].includes(audience)) {
       throw new AppError("Audience is required and must be 'college-students' or 'professionals'", 400);
     }
+    const brand = parseBrandInput(req.body.brand, "category");
 
     try {
       const result = await createCategoryService(
@@ -91,7 +134,8 @@ export const createCategory = asyncHandler(
         showOnHomePage,
         showOnCourseList,
         categoryImage,
-        audience
+        audience,
+        brand
       );
       if (!result) {
         throw new AppError("Failed to create category", 500);
@@ -178,7 +222,7 @@ export const deleteCategory = asyncHandler(
 export const getHomePageCategories = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await getHomePageCategoriesService(
-      readableBrands(req.brand ?? DEFAULT_BRAND)
+      readableBrands(req.brand)
     );
     sendSuccessResponse(res, result, "Home page categories fetched successfully", 200);
     return;

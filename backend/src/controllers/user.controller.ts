@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
+import { isBrand } from "../constants/brands";
 import {
   asyncHandler,
   sendSuccessResponse,
@@ -78,6 +79,7 @@ export const getUsers = asyncHandler(async (req: Request, res: Response) => {
     search: search as string,
     userType: userType as string,
     status: status as string,
+    brand: isBrand(req.query.brand) ? req.query.brand : undefined,
     excludeEnrolledInCourseIds: toStringArray(excludeEnrolledInCourseIds),
     enrollmentStatusForCourseIds: toStringArray(enrollmentStatusForCourseIds),
     // Spend figures are super-admin only.

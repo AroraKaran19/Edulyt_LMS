@@ -8,7 +8,6 @@ import {
   listMyCourseInternshipsService,
   getMyCourseInternshipService,
 } from "../services/courseInternshipEnrollment.services";
-import { DEFAULT_BRAND } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 
 /**
@@ -23,7 +22,7 @@ export const listMyCourseInternshipsController = asyncHandler(
 
     const enrollments = await listMyCourseInternshipsService(
       String(userId),
-      readableBrands(req.brand ?? DEFAULT_BRAND),
+      readableBrands(req.brand),
     );
     sendSuccessResponse(
       res,

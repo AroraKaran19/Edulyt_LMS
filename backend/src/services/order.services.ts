@@ -59,6 +59,7 @@ export interface GetAdminOrdersParams {
    * (every status), which is what the UI sends when all boxes are ticked.
    */
   paymentStatus?: string | string[];
+  brand?: Brand;
   /** Inclusive `createdAt` window. Both optional. */
   from?: Date;
   to?: Date;
@@ -71,7 +72,7 @@ export interface GetAdminOrdersParams {
 }
 
 export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
-  const { page, limit, search, paymentStatus, from, to, exportAll } = params;
+  const { page, limit, search, paymentStatus, brand, from, to, exportAll } = params;
   const maxRows = params.maxRows ?? 50_000;
   const skip = (page - 1) * limit;
 
@@ -98,6 +99,10 @@ export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
     if (from) clause.$gte = from;
     if (to) clause.$lte = to;
     initialMatch.createdAt = clause;
+  }
+  // Rides { brand, createdAt }.
+  if (brand) {
+    initialMatch.brand = brand;
   }
   const matchStages: any[] =
     Object.keys(initialMatch).length > 0 ? [{ $match: initialMatch }] : [];
@@ -158,6 +163,7 @@ export const getAdminOrdersService = async (params: GetAdminOrdersParams) => {
   const projectStage = {
     $project: {
       _id: 1,
+      brand: 1,
       userId: { $ifNull: ["$user", { firstName: "$userName", lastName: "", email: "" }] },
       courseId: { $ifNull: ["$course", { title: "$courseName", slug: "", thumbnail: "" }] },
       courseName: 1,

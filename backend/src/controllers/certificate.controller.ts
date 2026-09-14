@@ -16,7 +16,6 @@ import {
   retryCertificateJobService,
   reclaimStuckCertificateJobsService,
 } from "../services/certificateJob.services";
-import { DEFAULT_BRAND } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 
 /**
@@ -45,7 +44,7 @@ export const getUserCertificates = asyncHandler(
       limit,
       search,
       recentOnly,
-      brands: readableBrands(req.brand ?? DEFAULT_BRAND),
+      brands: readableBrands(req.brand),
     });
 
     sendSuccessResponse(

@@ -1,6 +1,7 @@
 import {
   createCategory,
   deleteCategory,
+  getAdminCategories,
   getAllCategories,
   getCategoryById,
   getHomePageCategories,
@@ -31,7 +32,7 @@ router.get("/homepage", getHomePageCategories);
  * @desc    Get all categories for admin (with full data)
  * @access  Admin
  */
-router.get("/admin", ...adminGuard("courses.manage"),getAllCategories);
+router.get("/admin", ...adminGuard("courses.manage"), getAdminCategories);
 
 /**
  * @route   GET /api/categories/admin/:id

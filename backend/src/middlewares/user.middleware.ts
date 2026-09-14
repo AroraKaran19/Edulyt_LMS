@@ -3,11 +3,7 @@ import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
 import { AppError } from "./error.middleware";
 import { UserModel } from "../models";
 import jwt from "jsonwebtoken";
-import {
-  BRAND_NOT_JOINED,
-  DEFAULT_BRAND,
-  brandNotJoinedMessage,
-} from "../constants/brands";
+import { BRAND_NOT_JOINED, brandNotJoinedMessage } from "../constants/brands";
 import { brandEnforcement } from "../config/brandFlags";
 import { canUseBrand, checkTokenBrand } from "../lib/brandSession";
 
@@ -77,7 +73,7 @@ export const optionalVerifyUser = async (
       userId: string;
       brand?: string;
     };
-    const requestBrand = req.brand ?? DEFAULT_BRAND;
+    const requestBrand = req.brand;
     const mode = brandEnforcement();
     if (checkTokenBrand(decoded.brand, requestBrand, mode) === "mismatch") {
       return next();
@@ -141,7 +137,7 @@ export const verifyUser = async (
       brand?: string;
     };
 
-    const requestBrand = req.brand ?? DEFAULT_BRAND;
+    const requestBrand = req.brand;
     const mode = brandEnforcement();
     // Refused before the account is read: a token minted for the other brand
     // is not a session here, whoever it belongs to.

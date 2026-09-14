@@ -7,13 +7,19 @@ import {
 } from "../types";
 import mongoose from "mongoose";
 import { couponUsableOnBrand } from "../lib/brandPurchase";
+import type { Brand } from "../constants/brands";
+import {
+  validateCouponBrandForCreate,
+  validateCouponBrandForUpdate,
+} from "./brandOwnership.services";
 
 export const getAllCouponsService = async (
   page: number,
   limit: number,
   search: string,
   isActive?: boolean,
-  source?: "regular" | "scholarship"
+  source?: "regular" | "scholarship",
+  brand?: Brand
 ): Promise<{
   coupons: Coupon[];
   total: number;
@@ -33,6 +39,10 @@ export const getAllCouponsService = async (
 
   if (isActive !== undefined) {
     filters.isActive = isActive;
+  }
+
+  if (brand) {
+    filters.brand = brand;
   }
 
   // A popular campaign mints one coupon per winner, so the two kinds get
@@ -121,6 +131,10 @@ export const createCouponService = async (
   couponData: Partial<Coupon>,
   createdBy: string
 ): Promise<Coupon> => {
+  const brand = await validateCouponBrandForCreate(
+    couponData as Record<string, unknown>
+  );
+
   // Check if code already exists
   const existingCoupon = await CouponModel.findOne({
     code: couponData.code?.toUpperCase(),
@@ -155,6 +169,7 @@ export const createCouponService = async (
     // of the page that just created it.
     sourceScholarshipTestId: null,
     code: couponData.code?.toUpperCase(),
+    brand,
     createdBy,
     usageCount: 0,
   });
@@ -177,6 +192,10 @@ export const updateCouponService = async (
   }
 
   await assertNotCampaignOwned(couponId);
+  await validateCouponBrandForUpdate(
+    couponId,
+    couponData as Record<string, unknown>
+  );
 
   // Never from a request body: accepting it would let this endpoint claim an
   // ordinary coupon for a campaign, or unlock a campaign's own by clearing it.

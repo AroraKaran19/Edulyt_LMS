@@ -147,7 +147,7 @@ async function finalizeCredentialLogin(
   if (!userId) {
     throw new AppError("User record is missing an id", 500);
   }
-  const brand = req.brand ?? DEFAULT_BRAND;
+  const brand = req.brand;
   // The password has already been checked, so saying which brand is missing
   // tells the holder nothing they could not already see.
   if (!canUseBrand(user, brand)) {
@@ -276,7 +276,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       userType,
       provider,
       extra: restData,
-      brand: req.brand ?? DEFAULT_BRAND,
+      brand: req.brand,
     });
     sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
     return;
@@ -290,7 +290,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     firstName,
     lastName,
     extra: restData, // Any additional fields (phone, address, bio, etc.)
-    brand: req.brand ?? DEFAULT_BRAND,
+    brand: req.brand,
   });
 
   sendSuccessResponse(res, started, SIGNUP_MESSAGES.CODE_SENT, 200);
@@ -398,7 +398,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
   }
 
-  const requestBrand = req.brand ?? DEFAULT_BRAND;
+  const requestBrand = req.brand;
   const identity = await verifyOAuthIdToken(
     provider,
     providerDetails?.id_token,
@@ -570,7 +570,7 @@ export const refreshToken = asyncHandler(
     const entryBrand = entry.brand ?? DEFAULT_BRAND;
     const mode = brandEnforcement();
     if (mode !== "off") {
-      if (entryBrand !== (req.brand ?? DEFAULT_BRAND)) {
+      if (entryBrand !== (req.brand)) {
         throw new AppError("Session is not valid for this site", 401);
       }
       // Membership can be taken away while a session is live.
@@ -746,7 +746,7 @@ export const generateResetPasswordToken = asyncHandler(
   async (req: Request, res: Response) => {
     // The password is shared, so the reset acts on the identity. Only the link
     // and the sender follow the site it was requested from.
-    const brand = req.brand ?? DEFAULT_BRAND;
+    const brand = req.brand;
     const frontendUrl = brandFrontendUrl(brand);
     if (!frontendUrl) {
       throw new AppError(`${brandFrontendUrlEnv(brand)} is not set`, 500);

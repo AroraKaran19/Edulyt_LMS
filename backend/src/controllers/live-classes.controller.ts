@@ -21,7 +21,6 @@ import {
   setLiveClassAttendanceOverrideService,
   updateLiveClassService,
 } from "../services/live-classes.services";
-import { DEFAULT_BRAND } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 import type {
   CreateLiveClassBody,
@@ -245,7 +244,7 @@ export const getStudentLiveClasses = asyncHandler(
       String(user._id),
       page,
       limit,
-      readableBrands(req.brand ?? DEFAULT_BRAND),
+      readableBrands(req.brand),
     );
 
     sendSuccessResponse(
@@ -274,7 +273,7 @@ export const getStudentCourseLiveClasses = asyncHandler(
       String(user._id),
       page,
       limit,
-      readableBrands(req.brand ?? DEFAULT_BRAND),
+      readableBrands(req.brand),
     );
 
     sendSuccessResponse(

@@ -1,4 +1,5 @@
 import { EnrollmentModel } from "../models";
+import type { Brand } from "../constants/brands";
 
 /**
  * Resolve gifter display name: live user (ObjectId or string id), else snapshot, else raw id.
@@ -94,6 +95,7 @@ export type EnrollmentStatusFilter = "all" | "active" | "revoked";
 
 export interface AdminEnrollmentItem {
   _id: string;
+  brand?: Brand;
   type: "paid" | "gift" | "trial";
   userId: { firstName?: string; lastName?: string; email?: string };
   courseId: { title?: string; slug?: string; thumbnail?: string };
@@ -122,12 +124,14 @@ export const getAdminEnrollmentsService = async (
   enrollmentType: EnrollmentTypeFilter = "paid",
   search?: string,
   _paymentStatus?: string, // deprecated – kept for API compatibility, not used
-  enrollmentStatus?: EnrollmentStatusFilter
+  enrollmentStatus?: EnrollmentStatusFilter,
+  brand?: Brand
 ) => {
   const skip = (page - 1) * limit;
 
   const buildEnrollmentMatch = (type: EnrollmentTypeFilter): Record<string, unknown> => {
     const match: Record<string, unknown> = {};
+    if (brand) match.brand = brand;
     if (type === "paid") {
       // Paid = not gift or trial (includes direct, promotion, legacy)
       match.enrollmentSource = { $nin: ["gift", "trial"] };
@@ -232,6 +236,7 @@ export const getAdminEnrollmentsService = async (
         _id: 1,
         userId: "$user",
         courseId: "$course",
+        brand: 1,
         planType: 1,
         status: 1,
         date: "$enrolledAt",
@@ -300,6 +305,7 @@ export const getAdminEnrollmentsService = async (
       enrollments: enrollments.map((e: any) => ({
         _id: e._id.toString(),
         type: "paid" as const,
+        brand: e.brand,
         userId: e.userId,
         courseId: e.courseId,
         planType: e.planType || "essential",
@@ -321,6 +327,7 @@ export const getAdminEnrollmentsService = async (
 
   if (enrollmentType === "gift" || enrollmentType === "trial") {
     const match: Record<string, unknown> = {};
+    if (brand) match.brand = brand;
     if (enrollmentType === "gift") {
       match.enrollmentSource = "gift";
     } else {
@@ -346,6 +353,7 @@ export const getAdminEnrollmentsService = async (
         planType: 1,
         status: 1,
         date: "$enrolledAt",
+        brand: 1,
         trialExpiresAt: 1,
         giftFrom: enrollmentType === "gift" ? "$giftFromName" : "$giftFrom",
       },
@@ -400,6 +408,7 @@ export const getAdminEnrollmentsService = async (
       enrollments: enrollments.map((e: any) => ({
         _id: e._id.toString(),
         type: enrollmentType,
+        brand: e.brand,
         userId: e.userId,
         courseId: e.courseId,
         planType: e.planType || "essential",
@@ -420,6 +429,7 @@ export const getAdminEnrollmentsService = async (
   // (the old version capped each type at 500 and reported the merged length,
   // so "All" could read *lower* than a single type).
   const allMatch: Record<string, unknown> = {};
+  if (brand) allMatch.brand = brand;
   if (enrollmentStatus === "active") {
     allMatch.status = { $nin: ["dropped", "revoked"] };
   } else if (enrollmentStatus === "revoked") {
@@ -483,6 +493,7 @@ export const getAdminEnrollmentsService = async (
       planType: 1,
       status: 1,
       date: "$enrolledAt",
+      brand: 1,
       trialExpiresAt: 1,
       giftFrom: "$giftFromName",
       orderId: { $arrayElemAt: ["$order._id", 0] },
@@ -549,6 +560,7 @@ export const getAdminEnrollmentsService = async (
       const base = {
         _id: e._id.toString(),
         type: e.type as "paid" | "gift" | "trial",
+        brand: e.brand,
         userId: e.userId,
         courseId: e.courseId,
         planType: e.planType || "essential",

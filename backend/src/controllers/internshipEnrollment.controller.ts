@@ -35,7 +35,6 @@ import {
   retryOfferLetterJobService,
 } from "../services/offerLetterJob.services";
 import type { OfferLetterJobStatus } from "../types/offerLetterJob";
-import { DEFAULT_BRAND } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 
 /**
@@ -68,7 +67,7 @@ export const listMyInternshipEnrollmentsController = asyncHandler(
       limit,
       search,
       statuses,
-      readableBrands(req.brand ?? DEFAULT_BRAND),
+      readableBrands(req.brand),
     );
     sendSuccessResponse(
       res,

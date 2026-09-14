@@ -32,7 +32,7 @@ import {
   reorderLessonsService,
   reorderContentService,
 } from "../services/course.services";
-import { DEFAULT_BRAND } from "../constants/brands";
+import { isBrand } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 
 export const getAllCourses = asyncHandler(
@@ -43,7 +43,7 @@ export const getAllCourses = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
-    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const brands = readableBrands(req.brand);
     const result = await getAllCoursesService(
       Number(page),
       Number(limit),
@@ -75,7 +75,7 @@ export const getFeaturedCourses = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
-    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const brands = readableBrands(req.brand);
     const result = await getFeaturedCoursesService(
       Number(page),
       Number(limit),
@@ -116,7 +116,7 @@ export const getCoursesByAudience = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
-    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const brands = readableBrands(req.brand);
     const result = await getAllCoursesService(
       Number(page),
       Number(limit),
@@ -152,7 +152,7 @@ export const getCoursesByCategory = asyncHandler(
       throw new AppError("Page and limit must be positive numbers", 400);
     }
 
-    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const brands = readableBrands(req.brand);
     const result = await getAllCoursesService(
       Number(page),
       Number(limit),
@@ -184,7 +184,7 @@ export const getCourseById = asyncHandler(
       throw new AppError("Course ID is required", 400);
     }
 
-    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const brands = readableBrands(req.brand);
     const result = await getCourseByIdService(courseId, false, brands);
     if (!result) {
       sendSuccessResponse(res, [], "Course not found", 200);
@@ -202,7 +202,7 @@ export const getCourseBySlug = asyncHandler(
       throw new AppError("Slug is required", 400);
     }
 
-    const brands = readableBrands(req.brand ?? DEFAULT_BRAND);
+    const brands = readableBrands(req.brand);
     const result = await getCourseBySlugService(slug, false, brands);
     if (!result) {
       // A missing OR disabled course (the service filters on isActive) is a
@@ -235,7 +235,8 @@ export const getAdminCourses = asyncHandler(
       sortOrder as string,
       instructors as string,
       isActive === "true" ? true : isActive === "false" ? false : undefined,
-      searchTitleOnly === "true" || searchTitleOnly === "1"
+      searchTitleOnly === "true" || searchTitleOnly === "1",
+      isBrand(req.query.brand) ? [req.query.brand] : undefined
     );
     sendSuccessResponse(res, result, "Courses retrieved successfully", 200);
     return;
@@ -278,6 +279,7 @@ export const getAdminCourseOptions = asyncHandler(
       sortBy: sortBy as "createdAt" | "updatedAt" | "title",
       sortOrder: sortOrder as "asc" | "desc",
       searchTitleOnly: searchTitleOnly === "true" || searchTitleOnly === "1",
+      brand: isBrand(req.query.brand) ? req.query.brand : undefined,
     });
 
     sendSuccessResponse(res, result, "Course options retrieved successfully", 200);
@@ -654,7 +656,7 @@ export const duplicateCourseMetadata = asyncHandler(
       throw new AppError("Course ID is required", 400);
     }
 
-    const result = await DuplicateCourseMetadataService(courseId);
+    const result = await DuplicateCourseMetadataService(courseId, req.body ?? {});
     if (!result) {
       throw new AppError("Failed to duplicate course metadata", 500);
     }
@@ -670,7 +672,7 @@ export const duplicateCourseWithModules = asyncHandler(
       throw new AppError("Course ID is required", 400);
     }
 
-    const result = await DuplicateCourseWithModulesService(courseId);
+    const result = await DuplicateCourseWithModulesService(courseId, req.body ?? {});
     if (!result) {
       throw new AppError("Failed to duplicate course with modules", 500);
     }

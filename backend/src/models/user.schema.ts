@@ -294,6 +294,8 @@ userSchema.index({ phone: 1 }, { sparse: true });
 // Staff pickers filter by role and status then sort by name. Without this the
 // lookup scans every user, and the collection is mostly students.
 userSchema.index({ userType: 1, status: 1, firstName: 1 });
+// The admin panel filters the user list by brand membership.
+userSchema.index({ brands: 1, userType: 1, status: 1 });
 // Create the base User model
 const UserModel = mongoose.model<User>("User", userSchema);
 

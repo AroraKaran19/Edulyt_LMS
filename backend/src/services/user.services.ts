@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import type { Brand } from "../constants/brands";
 import {
   InstructorModel,
   PartnerModel,
@@ -74,6 +75,8 @@ export interface GetUsersParams {
   /** Inclusive signup-date (`createdAt`) window. Both optional. */
   from?: Date;
   to?: Date;
+  /** Members of this brand only. */
+  brand?: Brand;
   /** Ignore paging and return every match up to `maxRows`. For the CSV export. */
   exportAll?: boolean;
   maxRows?: number;
@@ -128,6 +131,7 @@ export const getUsersService = async (
     search,
     userType,
     status,
+    brand,
     excludeEnrolledInCourseIds,
     enrollmentStatusForCourseIds,
     includeTotalSpend = false,
@@ -162,6 +166,11 @@ export const getUsersService = async (
 
   if (status && status !== "all") {
     filters.status = status;
+  }
+
+  // Membership, so an Edulyt filter also shows a learner who joined both.
+  if (brand) {
+    filters.brands = brand;
   }
 
   // Exclude users already enrolled in any of the given courses (gift modal)

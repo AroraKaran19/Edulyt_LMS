@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { brandFromHeaders } from "../lib/brandRequest";
-import { DEFAULT_BRAND, type Brand } from "../constants/brands";
+import type { Brand } from "../constants/brands";
 import { AppError } from "./error.middleware";
 
 export const resolveBrand = (req: Request, _res: Response, next: NextFunction) => {
@@ -15,7 +15,7 @@ export const resolveBrand = (req: Request, _res: Response, next: NextFunction) =
  */
 export const requireBrand =
   (brand: Brand) => (req: Request, _res: Response, next: NextFunction) => {
-    if ((req.brand ?? DEFAULT_BRAND) !== brand) {
+    if ((req.brand) !== brand) {
       return next(new AppError("Not found", 404));
     }
     next();

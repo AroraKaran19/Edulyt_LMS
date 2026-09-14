@@ -18,7 +18,7 @@ import {
   validateReferralCode,
 } from "../services/referral.services";
 import type { ReferralWithdrawalStatus } from "../types/referral";
-import { DEFAULT_BRAND, isBrand } from "../constants/brands";
+import { isBrand } from "../constants/brands";
 
 function asObjectId(req: Request): mongoose.Types.ObjectId {
   const id = req.user?._id;
@@ -31,7 +31,7 @@ function asObjectId(req: Request): mongoose.Types.ObjectId {
 export const getReferralOverviewController = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = asObjectId(req);
-    const overview = await getReferralOverviewForUser(userId, req.brand ?? DEFAULT_BRAND);
+    const overview = await getReferralOverviewForUser(userId, req.brand);
     sendSuccessResponse(res, overview, "Referral overview fetched");
   },
 );
@@ -41,7 +41,7 @@ export const updateReferralUpiController = asyncHandler(
     const userId = asObjectId(req);
     const result = await setReferralUpiForUser(
       userId,
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
       req.body?.upiId,
     );
     sendSuccessResponse(res, result, "UPI ID updated");
@@ -54,7 +54,7 @@ export const validateReferralCodeController = asyncHandler(
     const result = await validateReferralCode(
       req.body?.code,
       userId,
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
     );
     sendSuccessResponse(res, result, "Referral code validated");
   },
@@ -70,7 +70,7 @@ export const listMyReferralSalesController = asyncHandler(
     );
     const result = await listReferralSalesForUser(
       userId,
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
       page,
       limit,
     );
@@ -83,7 +83,7 @@ export const createReferralWithdrawalController = asyncHandler(
     const userId = asObjectId(req);
     const result = await createReferralWithdrawalForUser(
       userId,
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
       req.body?.amount,
     );
     sendSuccessResponse(res, result, "Withdrawal requested", 201);
@@ -100,7 +100,7 @@ export const listMyReferralWithdrawalsController = asyncHandler(
     );
     const result = await listWithdrawalsForUser(
       userId,
-      req.brand ?? DEFAULT_BRAND,
+      req.brand,
       page,
       limit,
     );

@@ -1,6 +1,6 @@
 import { CategoryModel, CourseModel } from "../models";
 import { Category } from "../types/category";
-import type { Brand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
 
 export const getAllCategoriesService = async (
   page: number,
@@ -93,20 +93,20 @@ export const getHomePageCategoriesService = async (
 
 export const createCategoryService = async (
   name: string,
-  description?: string,
-  showOnHomePage?: boolean,
-  showOnCourseList?: boolean,
-  categoryImage?: string,
-  audience?: "college-students" | "professionals"
+  description: string | undefined,
+  showOnHomePage: boolean | undefined,
+  showOnCourseList: boolean | undefined,
+  categoryImage: string | undefined,
+  audience: "college-students" | "professionals" | undefined,
+  brand: Brand
 ): Promise<Category | null> => {
   const validAudience = audience && ["college-students", "professionals"].includes(audience)
     ? audience
     : "college-students";
 
-  // Check if trying to set showOnHomePage to true
+  // Each brand has its own home page, so each has its own four.
   if (showOnHomePage === true) {
-    // Count existing categories with showOnHomePage: true
-    const count = await CategoryModel.countDocuments({ showOnHomePage: true });
+    const count = await CategoryModel.countDocuments({ showOnHomePage: true, brand });
     if (count >= 4) {
       throw new Error("Maximum of 4 categories can be shown on home page");
     }
@@ -119,6 +119,7 @@ export const createCategoryService = async (
     showOnCourseList: showOnCourseList ?? true,
     categoryImage: categoryImage || "",
     audience: validAudience,
+    brand,
   });
   const savedCategory = await category.save();
 
@@ -143,9 +144,12 @@ export const updateCategoryService = async (
 ): Promise<Category | null> => {
   // Check if trying to set showOnHomePage to true
   if (updateData.showOnHomePage === true) {
-    // Count existing categories with showOnHomePage: true (excluding current category)
+    const current = await CategoryModel.findById(id)
+      .select("brand")
+      .lean<{ brand?: unknown } | null>();
     const count = await CategoryModel.countDocuments({
       showOnHomePage: true,
+      brand: asBrand(current?.brand),
       _id: { $ne: id },
     });
     if (count >= 4) {

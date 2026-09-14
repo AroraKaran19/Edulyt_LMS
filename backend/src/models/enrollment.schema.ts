@@ -325,6 +325,8 @@ enrollmentSchema.index({ isTrial: 1, trialExpiresAt: 1 }); // Index for trial en
 enrollmentSchema.index({ isTrial: 1, validUntil: 1 }); // Index for non-trial enrollment validity
 enrollmentSchema.plugin(brandPlugin, { derive: (doc) => courseBrand(doc.get("courseId")) });
 enrollmentSchema.index({ userId: 1, brand: 1, status: 1 });
+// The admin enrollment list filters by brand, newest first.
+enrollmentSchema.index({ brand: 1, enrolledAt: -1 });
 
 // NOTE: We intentionally do NOT use a TTL index for trial enrollments.
 // Trial enrollments should remain in the database after `trialExpiresAt` so we can
