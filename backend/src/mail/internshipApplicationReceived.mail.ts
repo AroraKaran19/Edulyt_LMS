@@ -1,7 +1,7 @@
 import { defineMailTemplate } from "../utils/mailTemplates";
 
 /**
- * Variables for `internship-application-received.html`.
+ * Variables for `airkrit_internship-application-received.html`.
  *
  * Four of these carry HTML rather than text. MSG91 substitutes values and
  * evaluates nothing, so a block that appears for one registration and not
@@ -38,7 +38,7 @@ export type InternshipApplicationReceivedVariables = {
  * can carry is promotional, but it is a card inside a transactional email
  * rather than the reason for sending one.
  *
- * Payment confirmation is a separate email (`purchase-confirmation.html`), so
+ * Payment confirmation is a separate email (`airkrit_purchase-confirmation.html`), so
  * nothing here needs to wait on or report a payment outcome.
  *
  * Subject in the dashboard: `You're registered for {{internshipName}}`.

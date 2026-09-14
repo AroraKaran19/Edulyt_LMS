@@ -1,6 +1,6 @@
 import { defineMailTemplate } from "../utils/mailTemplates";
 
-/** Variables for `password-reset.html`. */
+/** Variables for `airkrit_password-reset.html`. */
 export type PasswordResetVariables = {
   name: string;
   /** Full reset link including the signed token. Rendered as button and text. */

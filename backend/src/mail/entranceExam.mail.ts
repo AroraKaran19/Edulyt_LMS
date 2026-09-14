@@ -10,7 +10,7 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  * asks for documents the learner cannot upload until they are selected.
  */
 
-/** Variables for `entrance-exam-passed.html`. */
+/** Variables for `airkrit_entrance-exam-passed.html`. */
 export type EntranceExamPassedVariables = {
   name: string;
   internshipName: string;
@@ -19,7 +19,7 @@ export type EntranceExamPassedVariables = {
   year: number;
 };
 
-/** Variables for `entrance-exam-rejected.html`. */
+/** Variables for `airkrit_entrance-exam-rejected.html`. */
 export type EntranceExamRejectedVariables = {
   name: string;
   internshipName: string;

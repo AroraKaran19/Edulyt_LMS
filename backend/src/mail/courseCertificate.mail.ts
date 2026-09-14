@@ -13,7 +13,7 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  * in when there are any.
  */
 
-/** Variables for `course-certificate.html`. */
+/** Variables for `airkrit_course-certificate.html`. */
 export type CourseCertificateIssuedVariables = {
   name: string;
   /** Outcome sentence, HTML. Built by `buildCourseReasonLine`. */
@@ -27,7 +27,7 @@ export type CourseCertificateIssuedVariables = {
 };
 
 /**
- * Variables for `course-certificate-pending.html`.
+ * Variables for `airkrit_course-certificate-pending.html`.
  *
  * No `certificateUrl` and no `linkedInUrl`: this template is sent precisely when
  * the certificate file does not exist, and there is nothing to verify yet.

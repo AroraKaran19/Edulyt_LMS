@@ -10,7 +10,7 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  * derived from the five closure outcomes.
  */
 
-/** Variables for `certification-exam-passed.html`. */
+/** Variables for `airkrit_certification-exam-passed.html`. */
 export type InternshipCertificateIssuedVariables = {
   name: string;
   /** Outcome sentence, HTML. Built by `buildReasonLine`. */
@@ -24,7 +24,7 @@ export type InternshipCertificateIssuedVariables = {
 };
 
 /**
- * Variables for `internship-certificate-pending.html`.
+ * Variables for `airkrit_internship-certificate-pending.html`.
  *
  * No `certificateUrl` and no `linkedInUrl`: this template is sent precisely when
  * the certificate file does not exist, and there is nothing to verify yet.
@@ -36,7 +36,7 @@ export type InternshipCertificatePendingVariables = {
   year: number;
 };
 
-/** Variables for `certification-exam-failed.html`. */
+/** Variables for `airkrit_certification-exam-failed.html`. */
 export type InternshipCertificateWithheldVariables = {
   name: string;
   /** Outcome sentence, HTML. Built by `buildReasonLine`. */

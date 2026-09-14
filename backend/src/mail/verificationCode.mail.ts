@@ -1,7 +1,7 @@
 import { defineMailTemplate } from "../utils/mailTemplates";
 
 /**
- * Variables for `verification-code.html`. The OTP is split per digit because
+ * Variables for `airkrit_verification-code.html`. The OTP is split per digit because
  * the template renders each digit in its own tile.
  *
  * Declared as a type alias rather than an interface: only aliases get an

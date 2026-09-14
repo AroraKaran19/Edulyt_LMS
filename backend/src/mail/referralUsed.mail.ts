@@ -2,7 +2,7 @@ import { EMAIL_PREFERENCE_CATEGORIES } from "../constants/emailPreferences";
 import { defineOptOutMailTemplate } from "../utils/mailTemplates";
 
 /**
- * Variables for `referral-used.html`.
+ * Variables for `airkrit_referral-used.html`.
  *
  * `unsubscribeUrl` is absent on purpose: `defineOptOutMailTemplate` injects a
  * signed one per recipient, so a send site cannot forget it or get it wrong.

@@ -1,7 +1,7 @@
 import { defineMailTemplate } from "../utils/mailTemplates";
 
 /**
- * Variables for `enquiry-received.html`.
+ * Variables for `airkrit_enquiry-received.html` and `edulyt_enquiry-received.html`.
  *
  * All plain text: the template carries no conditional block, so nothing has to
  * arrive pre-rendered as HTML the way the internship templates do.

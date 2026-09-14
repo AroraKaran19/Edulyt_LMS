@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="color-scheme" content="light only" />
+  <meta name="supported-color-schemes" content="light only" />
+  <title>Edulyt</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .logo-pad { padding-left: 20px !important; padding-right: 20px !important; }
+      .hero-pad { padding: 22px 20px !important; }
+      .hero-title { font-size: 21px !important; line-height: 27px !important; }
+      .hero-motif { width: 56px !important; }
+      .hero-motif img { width: 50px !important; height: 50px !important; }
+      .body-pad { padding-left: 20px !important; padding-right: 20px !important; }
+      .cta-link { display: block !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#F4F4F2;">
+  <!-- Preheader -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+    Your {{internshipName}} entrance exam result, plus a limited-seat option to still join.
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color:#F4F4F2;">
+    <tr>
+      <td align="center" style="padding: 32px 16px 40px 16px;">
+        <table role="presentation" class="container" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%; max-width:600px;">
+
+          <tr>
+            <td style="padding:0; background-color:#FFFFFF; border:1px solid #E5E5E1; border-radius:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+
+                <tr>
+                  <td class="logo-pad" align="center" style="padding: 26px 40px 18px 40px; border-radius:20px 20px 0 0;">
+                    <a href="https://www.edulyt.com" target="_blank" style="text-decoration:none;">
+                      <img src="https://www.edulyt.com/logo.png" width="150" alt="Edulyt" style="display:block; margin:0 auto; border:0; outline:none; text-decoration:none; height:auto; max-width:150px;" />
+                    </a>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="hero-pad" bgcolor="#0B0B0C" style="background-color:#0B0B0C; padding: 26px 40px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td valign="middle">
+                          <p style="margin:0 0 8px 0; font-size:12px; line-height:16px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase; color:#FF9273;">Entrance Exam Result</p>
+                          <h1 class="hero-title" style="margin:0; font-size:24px; line-height:30px; font-weight:800; color:#FFFFFF;">Thanks for taking the exam</h1>
+                        </td>
+                        <td class="hero-motif" valign="middle" align="right" width="88" style="width:88px;">
+                          <img src="https://img.icons8.com/ios-filled/100/FF9273/ticket.png" width="72" height="72" alt="" style="display:block; border:0; outline:none;" />
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td class="body-pad" style="padding: 32px 40px 34px 40px;">
+
+                    <p style="margin:0 0 16px 0; font-size:15px; line-height:24px; color:#55555C;">Hi {{name}},</p>
+
+                    <!-- "Not selected" rather than "didn't make the merit list": an admin can
+                         reject from `in_merit_pool` as well as from `exam_attempted`, so a learner
+                         who did reach the shortlist can receive this. Naming the merit list would
+                         tell them they failed a step they actually passed. -->
+                    <p style="margin:0 0 6px 0; font-size:15px; line-height:24px; color:#55555C;">Thank you for taking the entrance exam for <strong style="color:#0B0B0C;">{{internshipName}}</strong>. You were not selected for this batch, and we know that's not the news you hoped for.</p>
+
+                    <p style="margin:16px 0 28px 0; font-size:15px; line-height:24px; color:#55555C;">But you can still join, a limited number of seats are open right now.</p>
+
+                    <!-- Limited-seat offer (primary) -->
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-radius:16px;">
+                      <tr>
+                        <td align="center" bgcolor="#C2380F" style="border-radius:16px; background-color:#C2380F; padding:28px 28px 30px 28px;">
+                          <span style="display:inline-block; background-color:rgba(255,255,255,0.18); color:#FFFFFF; font-size:11px; line-height:14px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; padding:6px 13px; border-radius:20px;">Limited seats left</span>
+                          <p style="margin:16px 0 10px 0; font-size:20px; line-height:27px; font-weight:800; color:#FFFFFF;">Secure your seat now</p>
+                          <p style="margin:0 0 22px 0; font-size:14px; line-height:22px; color:#F4F4F2;">Reserve one of the remaining seats in {{internshipName}} before they're gone.</p>
+                          <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto;">
+                            <tr>
+                              <td align="center" bgcolor="#FFFFFF" style="border-radius:12px; background-color:#FFFFFF;">
+                                <a href="{{confirmSeatUrl}}" target="_blank" class="cta-link" style="display:inline-block; padding:15px 42px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size:15px; line-height:20px; font-weight:800; color:#C2380F; text-decoration:none; border-radius:12px;">Confirm your seat</a>
+                              </td>
+                            </tr>
+                          </table>
+                        </td>
+                      </tr>
+                    </table>
+
+                    <p style="margin:26px 0 0 0; font-size:13px; line-height:20px; color:#6D6D75;">Not ready right now? You're always welcome to apply again in a future batch. Questions? Reach us at <a href="mailto:info@edulyt.com" style="color:#C2380F; text-decoration:none; font-weight:600;">info@edulyt.com</a>.</p>
+
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding: 22px 16px 4px 16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:0 auto 18px auto;">
+                <tr>
+                  <td align="center" style="padding:0 7px;"><a href="https://www.instagram.com/edulyt_india/" target="_blank" style="text-decoration:none;"><img src="https://img.icons8.com/ios-filled/50/D2410E/instagram-new.png" width="22" height="22" alt="Instagram" style="display:block; border:0; outline:none;" /></a></td>
+                  <td align="center" style="padding:0 7px;"><a href="https://www.linkedin.com/company/edulytindia/" target="_blank" style="text-decoration:none;"><img src="https://img.icons8.com/ios-filled/50/D2410E/linkedin.png" width="22" height="22" alt="LinkedIn" style="display:block; border:0; outline:none;" /></a></td>
+                  <td align="center" style="padding:0 7px;"><a href="https://www.youtube.com/@EdulytIndia" target="_blank" style="text-decoration:none;"><img src="https://img.icons8.com/ios-filled/50/D2410E/youtube-play.png" width="22" height="22" alt="YouTube" style="display:block; border:0; outline:none;" /></a></td>
+                  <td align="center" style="padding:0 7px;"><a href="https://www.facebook.com/people/Edulyt-India/100066801796718/" target="_blank" style="text-decoration:none;"><img src="https://img.icons8.com/ios-filled/50/D2410E/facebook-new.png" width="22" height="22" alt="Facebook" style="display:block; border:0; outline:none;" /></a></td>
+                </tr>
+              </table>
+              <p style="margin:0 0 6px 0; font-size:12px; line-height:18px; color:#6D6D75;">Need help? Reach us at <a href="mailto:info@edulyt.com" style="color:#C2380F; text-decoration:none; font-weight:600;">info@edulyt.com</a></p>
+              <p style="margin:0; font-size:12px; line-height:18px; color:#8A8A92;">&copy; {{year}} Edulyt. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
