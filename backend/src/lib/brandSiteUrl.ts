@@ -1,7 +1,7 @@
 import type { Brand } from "../constants/brands";
 
 const FRONTEND_URL_ENV: Record<Brand, string> = {
-  airkrit: "FRONTEND_URL",
+  airkrit: "AIRKRIT_FRONTEND_URL",
   edulyt: "EDULYT_FRONTEND_URL",
 };
 

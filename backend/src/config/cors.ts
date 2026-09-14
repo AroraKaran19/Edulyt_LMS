@@ -21,8 +21,8 @@ const allowedOrigins = (): Set<string> => {
     .map(stripTrailingSlash)
     .filter(Boolean);
 
-  const frontend = process.env.FRONTEND_URL
-    ? [stripTrailingSlash(process.env.FRONTEND_URL)]
+  const frontend = process.env.AIRKRIT_FRONTEND_URL
+    ? [stripTrailingSlash(process.env.AIRKRIT_FRONTEND_URL)]
     : [];
 
   return new Set([...PRODUCTION_ORIGINS, ...configured, ...frontend]);

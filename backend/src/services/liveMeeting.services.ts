@@ -25,7 +25,7 @@ const ENROLLED_STATUSES = ["enrolled", "completed"] as const;
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 function frontendBase(): string {
-  return (process.env.FRONTEND_URL || "http://localhost:3000").replace(
+  return (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(
     /\/+$/,
     "",
   );

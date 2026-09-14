@@ -41,7 +41,7 @@ const INSTRUCTOR_REF_FIELDS = "firstName lastName email profilePicture";
 // ───────── helpers ─────────
 
 function frontendBase(): string {
-  return (process.env.FRONTEND_URL || "http://localhost:3000").replace(
+  return (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(
     /\/+$/,
     "",
   );

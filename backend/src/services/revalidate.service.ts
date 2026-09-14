@@ -4,7 +4,7 @@ import axios from "axios";
 const REVALIDATE_PATH = "/revalidate";
 
 /**
- * Falls back to `FRONTEND_URL` so a normal deploy only has to set
+ * Falls back to `AIRKRIT_FRONTEND_URL` so a normal deploy only has to set
  * `REVALIDATE_SECRET`. Set `FRONTEND_REVALIDATE_URL` when the frontend is
  * reachable at a different address from inside the network than it is publicly.
  */
@@ -12,7 +12,7 @@ function resolveRevalidateUrl(): string | null {
   const explicit = process.env.FRONTEND_REVALIDATE_URL?.trim();
   if (explicit) return explicit;
 
-  const base = process.env.FRONTEND_URL?.trim();
+  const base = process.env.AIRKRIT_FRONTEND_URL?.trim();
   if (!base) return null;
 
   return `${base.replace(/\/+$/, "")}${REVALIDATE_PATH}`;

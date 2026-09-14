@@ -19,7 +19,7 @@
  */
 
 export const frontendBaseUrl = (): string =>
-  (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+  (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 /** The learner's programme list. */
 export const dashboardInternshipsUrl = (): string =>

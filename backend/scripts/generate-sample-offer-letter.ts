@@ -33,7 +33,7 @@ async function main(): Promise<void> {
   };
 
   const verificationUrl = `${
-    process.env.FRONTEND_URL || "http://localhost:3000"
+    process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000"
   }/verify/intern/${sample.internId}`;
 
   const out = await generateOfferLetterBuffer(sample, { verificationUrl });

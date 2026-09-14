@@ -33,7 +33,7 @@ dotenv.config();
  *   // anywhere - note: no await
  *   welcomeMail.send(
  *     { email: user.email, name: user.name },
- *     { name: user.name, loginUrl: `${process.env.FRONTEND_URL}/login` },
+ *     { name: user.name, loginUrl: `${process.env.AIRKRIT_FRONTEND_URL}/login` },
  *   );
  *
  * Template ids are declared in code, never read from env: they are dashboard

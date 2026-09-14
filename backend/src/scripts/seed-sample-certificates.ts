@@ -49,7 +49,7 @@ dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 // Config
 // ---------------------------------------------------------------------------
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const AIRKRIT_FRONTEND_URL = process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000";
 
 const TEMPLATE_DIR = path.resolve(
   __dirname,
@@ -217,7 +217,7 @@ async function main(): Promise<void> {
       const studentName = "Sample Student";
       const courseName = "Full Stack Web Development";
       const verificationCode = `VER-${SAMPLE_TRAINING_ID}-SAMPLE`;
-      const verificationUrl = `${FRONTEND_URL}/verify-certificate/${verificationCode}`;
+      const verificationUrl = `${AIRKRIT_FRONTEND_URL}/verify-certificate/${verificationCode}`;
 
       console.log(`Generating Training Certificate (${SAMPLE_TRAINING_ID})...`);
       const pdf = await docxTemplateToPdfBuffer(TRAINING_TEMPLATE, {
@@ -269,7 +269,7 @@ async function main(): Promise<void> {
       const studentName = "Sample Student";
       const internshipTitle = "Data Analytics Internship";
       const verificationCode = `VER-${SAMPLE_INTERNSHIP_ID}-SAMPLE`;
-      const verificationUrl = `${FRONTEND_URL}/verify-certificate/${verificationCode}`;
+      const verificationUrl = `${AIRKRIT_FRONTEND_URL}/verify-certificate/${verificationCode}`;
 
       // The internship template also carries a role, a month count and a period.
       const durationMonths = 3;
@@ -326,7 +326,7 @@ async function main(): Promise<void> {
       const studentName = "Sample Student";
       const programName = "Full Stack Web Development";
       const verificationCode = `VER-${SAMPLE_LOR_ID}-SAMPLE`;
-      const verificationUrl = `${FRONTEND_URL}/verify-certificate/${verificationCode}`;
+      const verificationUrl = `${AIRKRIT_FRONTEND_URL}/verify-certificate/${verificationCode}`;
 
       console.log(`Generating Letter of Recommendation (${SAMPLE_LOR_ID})...`);
       const pdf = await docxTemplateToPdfBuffer(LOR_TEMPLATE, {
@@ -376,7 +376,7 @@ async function main(): Promise<void> {
       // Frontend page scanned from the letter's QR. It resolves via
       // GET /api/internship-enrollments/verify/:internId, which looks up an
       // InternshipEnrollment by internId — seeded below so the link works.
-      const verificationUrl = `${FRONTEND_URL}/verify/intern/${encodeURIComponent(SAMPLE_OFFER_INTERN_ID)}`;
+      const verificationUrl = `${AIRKRIT_FRONTEND_URL}/verify/intern/${encodeURIComponent(SAMPLE_OFFER_INTERN_ID)}`;
 
       console.log(`Generating Offer Letter (${SAMPLE_OFFER_INTERN_ID})...`);
       const pdf = await generateOfferLetterPdfBuffer({

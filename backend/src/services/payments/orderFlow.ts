@@ -133,7 +133,7 @@ export const beginGatewayCheckout = async (
 
   const provider = getProvider(order.paymentMethod);
   const paymentToken = generatePaymentGatewayToken(orderId);
-  const callbackUrl = `${process.env.FRONTEND_URL}/payment/status/${orderId}?token=${paymentToken}`;
+  const callbackUrl = `${process.env.AIRKRIT_FRONTEND_URL}/payment/status/${orderId}?token=${paymentToken}`;
 
   const result = await provider.initiatePayment({
     order,

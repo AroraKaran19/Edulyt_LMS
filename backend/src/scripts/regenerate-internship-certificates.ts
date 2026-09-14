@@ -101,7 +101,7 @@ async function main() {
 
       const verificationUrl =
         cert.verificationUrl ||
-        `${process.env.FRONTEND_URL || "http://localhost:3000"}/verify-certificate/${cert.verificationCode}`;
+        `${process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000"}/verify-certificate/${cert.verificationCode}`;
 
       const pdf = await renderInternshipCertificatePdf(ctx, cert.certificateId, verificationUrl);
       assertFontsHealthy(pdf, label);

@@ -163,8 +163,8 @@ async function processOfferLetterJob(job: {
 }
 
 export function startOfferLetterWorker(): void {
-  // Never run in development: offer-letter generation bakes FRONTEND_URL-based
-  // links and uploads real PDFs to S3 — a dev FRONTEND_URL would produce wrong
+  // Never run in development: offer-letter generation bakes AIRKRIT_FRONTEND_URL-based
+  // links and uploads real PDFs to S3 — a dev AIRKRIT_FRONTEND_URL would produce wrong
   // links on live offer letters. Force on with OFFER_LETTER_WORKER_ENABLED=true
   // only if you explicitly need it locally.
   if (

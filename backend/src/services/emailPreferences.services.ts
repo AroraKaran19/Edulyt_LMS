@@ -68,7 +68,7 @@ export const buildUnsubscribeUrl = (
   userId: string,
   category: EmailPreferenceCategory,
 ): string => {
-  const base = (process.env.FRONTEND_URL || "").replace(/\/+$/, "");
+  const base = (process.env.AIRKRIT_FRONTEND_URL || "").replace(/\/+$/, "");
   const params = new URLSearchParams({
     uid: String(userId),
     cat: category,

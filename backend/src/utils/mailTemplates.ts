@@ -49,7 +49,7 @@ import {
  *
  *   welcomeMail.send(
  *     { email: user.email, name: user.name },
- *     { name: user.name, loginUrl: `${process.env.FRONTEND_URL}/login` },
+ *     { name: user.name, loginUrl: `${process.env.AIRKRIT_FRONTEND_URL}/login` },
  *   );
  *
  * `send` is queued and returns immediately - never await it in a request path.
@@ -113,7 +113,7 @@ const applyPreferences = async <V extends MailVariables>(
         // link resolves to a page that says the link is not valid.
         unsubscribeUrl: preference
           ? buildUnsubscribeUrl(preference.userId, category)
-          : `${(process.env.FRONTEND_URL || "").replace(/\/+$/, "")}/unsubscribe`,
+          : `${(process.env.AIRKRIT_FRONTEND_URL || "").replace(/\/+$/, "")}/unsubscribe`,
       } as WithUnsubscribe<V>,
     });
   }

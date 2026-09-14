@@ -440,7 +440,7 @@ const mailCoupon = (
   campaignTitle: string,
   reward: { awardedPercent: number; couponCode: string; expiresAt: Date },
 ): void => {
-  const base = (process.env.FRONTEND_URL || "http://localhost:3000").replace(
+  const base = (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(
     /\/+$/,
     "",
   );
@@ -453,7 +453,7 @@ const mailCoupon = (
       validUntil: formatIstDate(reward.expiresAt),
       /*
        * The course listing, because that is where the code is spent. Built from
-       * FRONTEND_URL rather than hardcoded, so a mail sent from staging does
+       * AIRKRIT_FRONTEND_URL rather than hardcoded, so a mail sent from staging does
        * not walk people into production, and `/programs` rather than
        * `/courses`, which is only a 301 alias kept for old bookmarks.
        */
