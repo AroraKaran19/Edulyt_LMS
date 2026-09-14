@@ -41,7 +41,14 @@ import { tryPartnershipImportWhitelistAfterRegister } from "../services/collabor
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import { tryAwardRegistrationBonus } from "../services/successPoints.services";
 import { verifyOAuthIdToken } from "../services/oauthIdentity.services";
-import { DEFAULT_BRAND } from "../constants/brands";
+import {
+  BRAND_NOT_JOINED,
+  DEFAULT_BRAND,
+  brandNotJoinedMessage,
+  type Brand,
+} from "../constants/brands";
+import { brandEnforcement } from "../config/brandFlags";
+import { canUseBrand } from "../lib/brandSession";
 import {
   RESET_REQUESTED_MESSAGE,
   RESET_TOKEN_TTL_MINUTES,
@@ -136,11 +143,18 @@ async function finalizeCredentialLogin(
   if (!userId) {
     throw new AppError("User record is missing an id", 500);
   }
+  const brand = req.brand ?? DEFAULT_BRAND;
+  // The password has already been checked, so saying which brand is missing
+  // tells the holder nothing they could not already see.
+  if (brandEnforcement() !== "off" && !canUseBrand(user, brand)) {
+    throw new AppError(brandNotJoinedMessage(brand), 403, BRAND_NOT_JOINED);
+  }
   const protectedLoggedInUser = await protectedUser(user);
   const { plaintext: refreshToken, entry } = createRefreshToken(
     buildDeviceInfo(req),
+    brand,
   );
-  const accessToken = await generateAccessToken(userId, entry.family);
+  const accessToken = await generateAccessToken(userId, entry.family, brand);
   await UserModel.findByIdAndUpdate(user._id, {
     $push: { refreshTokens: entry },
   });
@@ -164,8 +178,9 @@ async function finalizeCredentialLogin(
  * straight from the form, so "verified" names the shape rather than a claim
  * that anything was proved.
  */
-const createAccountFromSignup = async (verified: VerifiedSignup) => {
+const createAccountFromSignup = async (verified: VerifiedSignup, brand: Brand) => {
   const newUser = await createVerifiedUser({
+    brands: [brand],
     email: verified.email,
     password: verified.passwordHash, // already hashed - do not re-hash
     userType: verified.userType as User["userType"],
@@ -186,7 +201,7 @@ const createAccountFromSignup = async (verified: VerifiedSignup) => {
     verified.userType,
   );
 
-  const accessToken = await generateAccessToken(newUser._id);
+  const accessToken = await generateAccessToken(newUser._id, undefined, brand);
   // One-time welcome bonus is granted at registration (never on login).
   try {
     await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
@@ -237,15 +252,18 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
    * same message and code `startSignupVerification` would have returned.
    */
   if (!EMAIL_OTP_ENABLED) {
-    const created = await createAccountFromSignup({
-      email: normalizeEmail(email),
-      firstName: String(firstName).trim(),
-      lastName: String(lastName ?? "").trim(),
-      passwordHash: await bcrypt.hash(password, 10),
-      userType,
-      provider,
-      extra: restData,
-    });
+    const created = await createAccountFromSignup(
+      {
+        email: normalizeEmail(email),
+        firstName: String(firstName).trim(),
+        lastName: String(lastName ?? "").trim(),
+        passwordHash: await bcrypt.hash(password, 10),
+        userType,
+        provider,
+        extra: restData,
+      },
+      req.brand ?? DEFAULT_BRAND,
+    );
     sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
     return;
   }
@@ -281,7 +299,10 @@ export const verifyRegistrationOtp = asyncHandler(
     }
 
     const verified = await verifySignupOtp(String(pendingId), String(otp));
-    const created = await createAccountFromSignup(verified);
+    const created = await createAccountFromSignup(
+      verified,
+      req.brand ?? DEFAULT_BRAND,
+    );
 
     sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
   },
@@ -404,6 +425,7 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(Math.random().toString(36), 10);
     const newUser = await registerUser({
+      brands: [requestBrand],
       email: normalizedEmail,
       firstName: providerDetails?.name?.split(" ")[0] || "",
       lastName: providerDetails?.name?.split(" ")[1] || "",
@@ -446,6 +468,13 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     if (user.status !== "active") {
       throw new AppError(ACCOUNT_DISABLED_MESSAGE, 403);
     }
+    if (brandEnforcement() !== "off" && !canUseBrand(user, requestBrand)) {
+      throw new AppError(
+        brandNotJoinedMessage(requestBrand),
+        403,
+        BRAND_NOT_JOINED,
+      );
+    }
   }
 
   if (!user) {
@@ -456,8 +485,13 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
 
   const { plaintext: refreshToken, entry } = createRefreshToken(
     buildDeviceInfo(req),
+    requestBrand,
   );
-  const accessToken = await generateAccessToken(user._id, entry.family);
+  const accessToken = await generateAccessToken(
+    user._id,
+    entry.family,
+    requestBrand,
+  );
 
   await UserModel.findByIdAndUpdate(user._id, {
     $push: { refreshTokens: entry },
@@ -509,9 +543,27 @@ export const refreshToken = asyncHandler(
       }
     }
 
+    // A session opened before brand binding is an Airkrit session.
+    const entryBrand = entry.brand ?? DEFAULT_BRAND;
+    const mode = brandEnforcement();
+    if (mode !== "off") {
+      if (entryBrand !== (req.brand ?? DEFAULT_BRAND)) {
+        throw new AppError("Session is not valid for this site", 401);
+      }
+      // Membership can be taken away while a session is live.
+      if (!canUseBrand(user, entryBrand)) {
+        throw new AppError(
+          brandNotJoinedMessage(entryBrand),
+          403,
+          BRAND_NOT_JOINED,
+        );
+      }
+    }
+
     const newAccessToken = await generateAccessToken(
       String(user._id),
       entry.family,
+      entryBrand,
     );
     const { plaintext: newRefreshToken, entry: child } = rotateRefreshToken(
       entry.family,
@@ -520,6 +572,7 @@ export const refreshToken = asyncHandler(
       // Next.js proxy, so rebuilding from this request would overwrite the real
       // browser identity with the proxy's ("axios", "::1").
       entry.deviceInfo,
+      entryBrand,
     );
 
     // Invalidate the presented token (keep it for the grace window) ...
@@ -637,7 +690,11 @@ export const revokeOtherSessionsController = asyncHandler(
   },
 );
 
-export const generateAccessToken = async (userId: string, family?: string) => {
+export const generateAccessToken = async (
+  userId: string,
+  family?: string,
+  brand?: Brand,
+) => {
   if (!process.env.JWT_SECRET) {
     throw new AppError("JWT_SECRET is not set", 500);
   }
@@ -645,7 +702,7 @@ export const generateAccessToken = async (userId: string, family?: string) => {
     // `family` (the refresh-token lineage / session id) lets verifyUser mark
     // which session made the request — used by the Active Sessions screen.
     return jwt.sign(
-      { userId, ...(family ? { family } : {}) },
+      { userId, ...(family ? { family } : {}), ...(brand ? { brand } : {}) },
       process.env.JWT_SECRET,
       { expiresIn: ACCESS_TOKEN_TTL },
     );

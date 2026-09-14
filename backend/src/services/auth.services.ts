@@ -9,6 +9,7 @@ import {
   UserModel,
 } from "../models";
 import { User } from "../types";
+import { DEFAULT_BRAND, type Brand } from "../constants/brands";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { validatePassword } from "../utils/passwordValidation";
@@ -177,6 +178,7 @@ export const removeRefreshTokenFamily = async (
 /** One active login session (a refresh-token `family`), summarized for display. */
 export type SessionSummary = {
   family: string;
+  brand: Brand;
   deviceInfo?: { userAgent?: string; ipAddress?: string; deviceType?: string };
   createdAt: Date;
   lastActive: Date;
@@ -198,6 +200,7 @@ export const listUserSessions = async (
 
   type Acc = {
     family: string;
+    brand: Brand;
     deviceInfo?: SessionSummary["deviceInfo"];
     createdAt: number;
     lastActive: number;
@@ -206,6 +209,7 @@ export const listUserSessions = async (
 
   for (const rt of (user.refreshTokens ?? []) as unknown as {
     family: string;
+    brand?: Brand;
     deviceInfo?: SessionSummary["deviceInfo"];
     createdAt?: Date | string;
     lastUsed?: Date | string;
@@ -225,6 +229,7 @@ export const listUserSessions = async (
     if (!prev) {
       byFamily.set(rt.family, {
         family: rt.family,
+        brand: rt.brand ?? DEFAULT_BRAND,
         deviceInfo: rt.deviceInfo,
         createdAt: created,
         lastActive: used,
@@ -241,6 +246,7 @@ export const listUserSessions = async (
   return [...byFamily.values()]
     .map((s) => ({
       family: s.family,
+      brand: s.brand,
       deviceInfo: s.deviceInfo,
       createdAt: new Date(s.createdAt),
       lastActive: new Date(s.lastActive),

@@ -3,6 +3,13 @@ import { ACCOUNT_DISABLED_MESSAGE } from "../constants/authMessages";
 import { AppError } from "./error.middleware";
 import { UserModel } from "../models";
 import jwt from "jsonwebtoken";
+import {
+  BRAND_NOT_JOINED,
+  DEFAULT_BRAND,
+  brandNotJoinedMessage,
+} from "../constants/brands";
+import { brandEnforcement } from "../config/brandFlags";
+import { canUseBrand, checkTokenBrand } from "../lib/brandSession";
 
 /**
  * Blocks partner accounts from learner-only flows (cart purchases, voucher
@@ -68,11 +75,20 @@ export const optionalVerifyUser = async (
   try {
     const decoded = jwt.verify(accessToken, process.env.JWT_SECRET) as {
       userId: string;
+      brand?: string;
     };
+    const requestBrand = req.brand ?? DEFAULT_BRAND;
+    const mode = brandEnforcement();
+    if (checkTokenBrand(decoded.brand, requestBrand, mode) === "mismatch") {
+      return next();
+    }
     const user = await UserModel.findById(decoded.userId).select(
       "-password -successPointsHistory"
     );
     if (user && user.status === "active") {
+      if (mode !== "off" && !canUseBrand(user, requestBrand)) {
+        return next();
+      }
       req.user = user;
     }
   } catch {
@@ -122,7 +138,16 @@ export const verifyUser = async (
       userId: string;
       userType: string;
       family?: string;
+      brand?: string;
     };
+
+    const requestBrand = req.brand ?? DEFAULT_BRAND;
+    const mode = brandEnforcement();
+    // Refused before the account is read: a token minted for the other brand
+    // is not a session here, whoever it belongs to.
+    if (checkTokenBrand(decoded.brand, requestBrand, mode) === "mismatch") {
+      return next(new AppError("Session is not valid for this site", 401));
+    }
 
     const user = await UserModel.findById(decoded.userId).select(
       "-password -successPointsHistory"
@@ -134,6 +159,13 @@ export const verifyUser = async (
 
     if (user.status !== "active") {
       return next(new AppError(ACCOUNT_DISABLED_MESSAGE, 403));
+    }
+
+    // Read off the document already loaded, so membership costs no extra query.
+    if (mode !== "off" && !canUseBrand(user, requestBrand)) {
+      return next(
+        new AppError(brandNotJoinedMessage(requestBrand), 403, BRAND_NOT_JOINED),
+      );
     }
 
     // Immediate remote sign-out: an access token is a self-contained JWT valid

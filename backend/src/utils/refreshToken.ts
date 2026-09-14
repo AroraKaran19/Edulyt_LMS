@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { REFRESH_ABSOLUTE_MS, REFRESH_IDLE_MS } from "../constants/tokens";
 import type { DeviceInfo, RefreshTokenEntry } from "../types";
+import type { Brand } from "../constants/brands";
 
 export const generateRefreshTokenString = (): string =>
   crypto.randomBytes(32).toString("hex");
@@ -13,7 +14,8 @@ export const hashRefreshToken = (token: string): string =>
  * Returns the plaintext (hand to the client once) and the entry (store in DB).
  */
 export const createRefreshToken = (
-  deviceInfo?: DeviceInfo,
+  deviceInfo: DeviceInfo | undefined,
+  brand: Brand,
 ): { plaintext: string; entry: RefreshTokenEntry } => {
   const plaintext = generateRefreshTokenString();
   const now = new Date();
@@ -22,6 +24,7 @@ export const createRefreshToken = (
     entry: {
       tokenHash: hashRefreshToken(plaintext),
       family: crypto.randomUUID(),
+      brand,
       deviceInfo,
       createdAt: now,
       lastUsed: now,
@@ -40,7 +43,8 @@ export const createRefreshToken = (
 export const rotateRefreshToken = (
   family: string,
   absoluteExpiresAt: Date,
-  deviceInfo?: DeviceInfo,
+  deviceInfo: DeviceInfo | undefined,
+  brand: Brand,
 ): { plaintext: string; entry: RefreshTokenEntry } => {
   const plaintext = generateRefreshTokenString();
   const now = new Date();
@@ -51,6 +55,7 @@ export const rotateRefreshToken = (
     entry: {
       tokenHash: hashRefreshToken(plaintext),
       family,
+      brand,
       deviceInfo,
       createdAt: now,
       lastUsed: now,

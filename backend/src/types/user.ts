@@ -252,6 +252,7 @@ export interface User {
   refreshTokens: {
     tokenHash: string;
     family: string;
+    brand?: Brand;
     deviceInfo?: {
       userAgent?: string;
       ipAddress?: string;
