@@ -16,8 +16,13 @@ import Pagination from "@/components/admin/Pagination";
 import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
 import useCsvExport from "@/hooks/useCsvExport";
 import { downloadCsv, type CsvColumn } from "@/lib/csv";
-import BrandChip from "@/components/admin/BrandChip";
-import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
+import BrandMark from "@/components/admin/BrandMark";
+import {
+  BRANDS,
+  BRAND_LABEL,
+  isBrand,
+  type BrandFilter,
+} from "@/constants/brands";
 
 interface OrderUser {
   firstName?: string;
@@ -441,13 +446,17 @@ const OrdersPage = () => {
                       <div className="flex items-center gap-2 min-w-0">
                         {renderProductIcon(item.orderKind)}
                         <div className="min-w-0">
+                          {isBrand(item.brand) && (
+                            <div className="mb-1">
+                              <BrandMark brand={item.brand} />
+                            </div>
+                          )}
                           <span className="text-sm text-gray-900 truncate block">
                             {getAdminOrderProductLabel(item)}
                           </span>
                           <span className="text-xs text-gray-500">
                             {getAdminOrderTypeLabel(item.orderKind)}
                           </span>
-                          <BrandChip brand={item.brand} />
                         </div>
                       </div>
                     </td>

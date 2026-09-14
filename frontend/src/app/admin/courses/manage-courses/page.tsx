@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
-import BrandChip from "@/components/admin/BrandChip";
+import BrandMark from "@/components/admin/BrandMark";
 import BrandSelect from "@/components/admin/BrandSelect";
 import CategoryInputWithManagement from "@/components/ui/inputs/CategoryInputWithManagement";
 import { BRANDS, BRAND_LABEL, isBrand, type Brand } from "@/constants/brands";
@@ -695,6 +695,11 @@ const ManageCoursesPage = () => {
 
                 {/* Course Content */}
                 <div className="p-4 flex flex-col h-full">
+                  {isBrand(course.brand) && (
+                    <div className="mb-2">
+                      <BrandMark brand={course.brand} />
+                    </div>
+                  )}
                   <h3 className="font-semibold text-gray-900 text-lg mb-2 line-clamp-2">
                     {course.title}
                   </h3>
@@ -723,7 +728,6 @@ const ManageCoursesPage = () => {
                           : "Professionals"}
                       </span>
                     </div>
-                    <BrandChip brand={course.brand} />
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-[#F7AD24]" fill="#F7AD24" />
                       <span className="">

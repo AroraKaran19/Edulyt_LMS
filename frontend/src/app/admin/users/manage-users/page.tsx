@@ -44,7 +44,7 @@ import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
 import PromoteToStaffModal from "./components/PromoteToStaffModal";
 import useCsvExport from "@/hooks/useCsvExport";
 import { downloadCsv, type CsvColumn } from "@/lib/csv";
-import BrandChip from "@/components/admin/BrandChip";
+import BrandMark from "@/components/admin/BrandMark";
 import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
 
 /**
@@ -829,6 +829,13 @@ const ManageUsersPage = () => {
                           )}
                         </div>
                         <div className="ml-4">
+                          {user.brands && user.brands.length > 0 && (
+                            <div className="mb-1 flex items-center gap-2">
+                              {user.brands.map((b) => (
+                                <BrandMark key={b} brand={b} />
+                              ))}
+                            </div>
+                          )}
                           <div className="text-sm font-medium text-gray-900">
                             {user.firstName || "Unknown"}{" "}
                             {user.lastName || "User"}
@@ -861,13 +868,6 @@ const ManageUsersPage = () => {
                       >
                         {formatUserTypeLabel(user.userType)}
                       </span>
-                      {user.brands && user.brands.length > 0 && (
-                        <div className="mt-1 flex gap-1">
-                          {user.brands.map((b) => (
-                            <BrandChip key={b} brand={b} />
-                          ))}
-                        </div>
-                      )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span

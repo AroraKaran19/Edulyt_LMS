@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/buttons/button";
 import useUserManagement from "@/hooks/useUserManagement";
 import { User } from "@/types/user";
 import { cn } from "@/lib/utils";
+import BrandMark from "@/components/admin/BrandMark";
+import { isBrand } from "@/constants/brands";
 import {
   getUserTypeBadgeColor,
   getStatusBadgeColor,
@@ -55,6 +57,7 @@ export default function StaffUserDetailsModal({
 
   const { getUserById } = useUserManagement();
   const displayUser = fullUserData || user;
+  const brands = (displayUser?.brands ?? []).filter(isBrand);
 
   useEffect(() => {
     if (!isOpen || !user?._id) return;
@@ -95,6 +98,13 @@ export default function StaffUserDetailsModal({
               height={64}
             />
             <div>
+              {brands.length > 0 && (
+                <div className="mb-1.5 flex items-center gap-2">
+                  {brands.map((b) => (
+                    <BrandMark key={b} brand={b} />
+                  ))}
+                </div>
+              )}
               <h2 className="text-xl font-bold text-gray-900">
                 {displayUser?.firstName || (user as any).firstName || "Unknown"}{" "}
                 {displayUser?.lastName || (user as any).lastName || "User"}

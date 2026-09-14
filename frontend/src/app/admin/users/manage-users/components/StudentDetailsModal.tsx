@@ -30,6 +30,8 @@ import { User } from "@/types/user";
 import { Enrollment } from "@/types/enrollment";
 import type { InternshipEnrollmentListRow } from "@/types";
 import { cn } from "@/lib/utils";
+import BrandMark from "@/components/admin/BrandMark";
+import { isBrand } from "@/constants/brands";
 import SuccessPointsHistoryModal from "./SuccessPointsHistoryModal";
 import {
   getUserTypeBadgeColor,
@@ -98,6 +100,7 @@ export default function StudentDetailsModal({
   const { getUserDetailsForAdmin, getTimeSpentPerDay } = useUserManagement();
 
   const displayUser = fullUserData || user;
+  const brands = (displayUser?.brands ?? []).filter(isBrand);
 
   useEffect(() => {
     if (!isOpen || !user?._id) return;
@@ -183,6 +186,13 @@ export default function StudentDetailsModal({
               </div>
             )}
             <div>
+              {brands.length > 0 && (
+                <div className="mb-1.5 flex items-center gap-2">
+                  {brands.map((b) => (
+                    <BrandMark key={b} brand={b} />
+                  ))}
+                </div>
+              )}
               <h2 className="text-xl font-bold text-gray-900">
                 {displayUser?.firstName || (user as any).firstName || "Unknown"}{" "}
                 {displayUser?.lastName || (user as any).lastName || "User"}
