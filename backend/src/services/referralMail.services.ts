@@ -6,6 +6,8 @@ import { referralUsedMail } from "../mail";
 // needed, not because it is specific to that email.
 import { formatInr } from "../lib/purchaseConfirmationMail";
 import { escapeHtml } from "../lib/htmlEscape";
+import { brandFrontendUrl } from "../lib/brandSiteUrl";
+import type { Brand } from "../constants/brands";
 
 /**
  * Tells a referrer that their code earned a commission.
@@ -19,11 +21,13 @@ import { escapeHtml } from "../lib/htmlEscape";
  * sent.
  */
 
-const frontendBase = (): string =>
-  (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+const frontendBase = (brand: Brand): string =>
+  brandFrontendUrl(brand) ?? "http://localhost:3000";
 
 interface ReferralUsedInput {
   referrerUserId: mongoose.Types.ObjectId | string;
+  /** The brand the sale was made on, which is the balance it credited. */
+  brand: Brand;
   /** Name captured on the sale row. May be empty on older or odd orders. */
   buyerName?: string;
   commissionAmount: number;
@@ -33,6 +37,7 @@ export const sendReferralUsedEmail = async ({
   referrerUserId,
   buyerName,
   commissionAmount,
+  brand,
 }: ReferralUsedInput): Promise<void> => {
   // A zero-commission tier earns nothing, and "Reward earned: ₹0" reads as a
   // bug rather than a tier rule.
@@ -66,9 +71,10 @@ export const sendReferralUsedEmail = async ({
       // link to: the balance, tier and withdrawal controls all live in that
       // modal, so a bare `/dashboard` link would leave the reader hunting for
       // the button. `DashboardBanner` reads the param and strips it.
-      ctaUrl: `${frontendBase()}/dashboard?refer=1`,
+      ctaUrl: `${frontendBase(brand)}/dashboard?refer=1`,
       year: new Date().getFullYear(),
     },
+    { brand },
   );
 };
 

@@ -30,6 +30,7 @@ import { sendInternshipBatchChangedEmail } from "./internshipBatchChangedMail.se
 import { queueInternshipApplicationReceivedEmail } from "./internshipApplicationMail.services";
 import { cached, PUBLIC_CACHE_TTL_MS } from "../utils/ttlCache";
 import type { Brand } from "../constants/brands";
+import { addBrandMembership } from "./brandMembership.services";
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -932,6 +933,9 @@ export async function registerForExam(
     throw new AppError("The application period for this batch has ended", 400);
   }
 
+  // Every internship is Edulyt's.
+  await addBrandMembership(String(userId), "edulyt");
+
   const existing = await InternshipEnrollmentModel.findOne({
     user: userId,
     internship: new mongoose.Types.ObjectId(internshipId),
@@ -1220,6 +1224,9 @@ export async function registerForPaidSeat(
   } else if (!isApplicationWindowOpenIst(batch.applicationLastDate)) {
     throw new AppError("The application period for this batch has ended", 400);
   }
+
+  // Every internship is Edulyt's.
+  await addBrandMembership(String(userId), "edulyt");
 
   if (existing) {
     return completePaidSeatRegistrationForExistingDoc(existing, answersDoc);

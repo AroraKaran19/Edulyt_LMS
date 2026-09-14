@@ -22,6 +22,9 @@ import {
   issueInternshipVoucher,
 } from "../internshipVoucher.services";
 import { parseProgramDurationMonthsFromAnswers } from "../../lib/certificationExamSchedule";
+import { asBrand } from "../../constants/brands";
+import { addBrandMembership } from "../brandMembership.services";
+import { brandOfCourseDoc } from "../productBrand.services";
 
 /**
  * After payment success: confirm paid internship seat and mark cohort enrolled.
@@ -422,6 +425,8 @@ export const createEnrollmentAfterPayment = async (order: any) => {
       throw new AppError(`Course not found with ID: ${order.courseId}`, 404);
     }
 
+    await addBrandMembership(String(order.userId), brandOfCourseDoc(course));
+
     // Create new enrollment
     const enrollment = new EnrollmentModel({
       userId: order.userId,
@@ -552,6 +557,7 @@ export const createEnrollmentAfterPayment = async (order: any) => {
           courseName: String(order.courseName ?? course.title ?? ""),
           buyerName,
           amount: Number(order.amount ?? 0),
+          brand: asBrand((order as { brand?: unknown }).brand),
         });
       } catch (refErr) {
         // Non-critical: the referrer can be reconciled manually if this fails.

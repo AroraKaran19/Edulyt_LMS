@@ -117,6 +117,7 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     user._id as string,
     courseId,
     planType,
+    req.brand ?? DEFAULT_BRAND,
     couponCode,
     typeof referralCode === "string" ? referralCode : undefined,
     useSuccessPoints === true,
@@ -124,7 +125,6 @@ export const createOrder = asyncHandler(async (req: Request, res: Response) => {
     // Validated against the course's own offer in the service; the client
     // chooses a duration, never a price.
     courseInternshipMonths,
-    req.brand ?? DEFAULT_BRAND,
   );
 
   if (!order) {
@@ -158,8 +158,8 @@ export const createInternshipSeatOrder = asyncHandler(
     const order = await createInternshipSeatOrderService(
       String(req.user._id),
       internshipEnrollmentId,
-      typeof gateway === "string" ? gateway : undefined,
       req.brand ?? DEFAULT_BRAND,
+      typeof gateway === "string" ? gateway : undefined,
     );
 
     if (!order) {
@@ -199,8 +199,8 @@ export const createInternshipSuccessPointsOrder = asyncHandler(
       String(req.user._id),
       internshipEnrollmentId,
       Number(quantity),
-      typeof gateway === "string" ? gateway : undefined,
       req.brand ?? DEFAULT_BRAND,
+      typeof gateway === "string" ? gateway : undefined,
     );
 
     if (!order) {

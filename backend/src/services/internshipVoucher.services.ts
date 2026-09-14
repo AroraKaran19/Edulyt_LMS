@@ -16,6 +16,7 @@ import {
 import { AppError } from "../middlewares/error.middleware";
 import { isVoucherRedemptionWindowOpen } from "../utils/applicationWindow";
 import { sanitizeApplicationAnswers } from "./internshipEnrollment.services";
+import { addBrandMembership } from "./brandMembership.services";
 import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
 import { queueInternshipApplicationReceivedEmail } from "./internshipApplicationMail.services";
 import { parseProgramDurationMonthsFromAnswers } from "../lib/certificationExamSchedule";
@@ -450,6 +451,9 @@ export async function redeemInternshipVoucher(params: {
         : {}),
     });
   }
+
+  // Every internship is Edulyt's.
+  await addBrandMembership(userId, "edulyt");
 
   // 6. Mark voucher redeemed — expires immediately after single use
   await InternshipVoucherModel.findByIdAndUpdate(voucher._id, {

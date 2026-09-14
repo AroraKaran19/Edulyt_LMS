@@ -1,5 +1,6 @@
 import { PasswordResetRequestModel, UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
+import type { Brand } from "../constants/brands";
 import { passwordResetMail } from "../mail";
 
 /**
@@ -99,6 +100,8 @@ const claimSend = async (email: string): Promise<boolean> => {
 export const requestPasswordReset = async (
   rawEmail: unknown,
   buildResetUrl: (userId: string, email: string) => string,
+  /** The site the reset was asked for, which is who the mail comes from. */
+  brand: Brand,
 ): Promise<void> => {
   const email = normalizeEmail(rawEmail);
   if (!email) {
@@ -138,5 +141,6 @@ export const requestPasswordReset = async (
       expiryMinutes: RESET_TOKEN_TTL_MINUTES,
       year: new Date().getFullYear(),
     },
+    { brand },
   );
 };

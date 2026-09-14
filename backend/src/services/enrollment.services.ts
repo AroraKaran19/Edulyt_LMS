@@ -24,6 +24,8 @@ import {
 import { createCertificateJobService } from "./certificateJob.services";
 import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
 import type { Brand } from "../constants/brands";
+import { addBrandMembership } from "./brandMembership.services";
+import { brandOfCourseDoc } from "./productBrand.services";
 
 /**
  * Check if an enrollment is still valid (not expired)
@@ -245,6 +247,14 @@ export const CreateEnrollmentService = async (
     // Fetch the course once: used for the courseName snapshot here AND the
     // instructor analytics update below.
     const course = await CourseModel.findById(enrollmentData.courseId);
+
+    // Covers both the revive and the create path below.
+    if (course) {
+      await addBrandMembership(
+        String(enrollmentData.userId),
+        brandOfCourseDoc(course),
+      );
+    }
 
     if (existingEnrollment) {
       return await reviveInactiveEnrollment({

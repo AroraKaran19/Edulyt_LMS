@@ -31,7 +31,17 @@ async function main() {
       }),
     });
 
-    for (const collection of ["courses", "internships", "categories", "enrollments", "certificates", "orders"]) {
+    for (const collection of [
+      "courses",
+      "internships",
+      "categories",
+      "enrollments",
+      "certificates",
+      "orders",
+      "referralprofiles",
+      "referralsales",
+      "referralwithdrawals",
+    ]) {
       checks.push({
         label: `${collection} with no brand`,
         count: await db.collection(collection).countDocuments({ brand: { $exists: false } }),

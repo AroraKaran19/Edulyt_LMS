@@ -44,6 +44,8 @@ export const SIGNUP_MESSAGES = {
   CODE_SENT: "Verification code sent to your email",
   CODE_RESENT: "Verification code resent",
   REGISTERED: "User registered successfully",
+  JOINED_BRAND:
+    "You're all set. Sign in with the password you already use for this email.",
 } as const;
 
 /** Wrong code, with the budget left so the learner knows where they stand. */

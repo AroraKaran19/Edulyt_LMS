@@ -29,7 +29,7 @@ import { getPointsSettings } from "./pointsSettings.services";
 import type { CourseDiscount, Discount } from "../types";
 import type { OrderScholarshipSnapshot } from "../types/order";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
-import { DEFAULT_BRAND, type Brand } from "../constants/brands";
+import type { Brand } from "../constants/brands";
 import { assertBrandReadable } from "../lib/brandPurchase";
 import { brandOfCourseDoc } from "./productBrand.services";
 
@@ -446,13 +446,14 @@ export const createOrderService = async (
   userId: string,
   courseId: string,
   planType: "elite" | "essential",
+  /** The site the checkout runs on. Never inferred: both brands sell here. */
+  brand: Brand,
   couponCode?: string,
   referralCode?: string,
   useSuccessPoints?: boolean,
   gateway?: string,
   /** Course-internship add-on: duration the learner picked, if any. */
   courseInternshipMonths?: number,
-  brand: Brand = DEFAULT_BRAND,
 ) => {
   // The provider's isConfigured() owns credential validation now.
   const gatewayName = resolveGateway(gateway);
@@ -523,8 +524,12 @@ export const createOrderService = async (
     const res = await validateReferralCode(
       refRaw,
       new mongoose.Types.ObjectId(userId),
+      brand,
     );
     if (!res.valid) {
+      if (res.reason === "other-brand" && res.message) {
+        throw new AppError(res.message, 400);
+      }
       if (res.reason === "self") {
         throw new AppError("You can't use your own referral code.", 400);
       }
@@ -677,8 +682,8 @@ export const createOrderService = async (
 export const createInternshipSeatOrderService = async (
   userId: string,
   internshipEnrollmentId: string,
+  brand: Brand,
   gateway?: string,
-  brand: Brand = DEFAULT_BRAND,
 ) => {
   // Every internship is Edulyt's.
   assertBrandReadable("edulyt", brand, "internship");
@@ -829,8 +834,8 @@ export const createInternshipSuccessPointsOrderService = async (
   userId: string,
   internshipEnrollmentId: string,
   quantity: number,
+  brand: Brand,
   gateway?: string,
-  brand: Brand = DEFAULT_BRAND,
 ) => {
   // Every internship is Edulyt's.
   assertBrandReadable("edulyt", brand, "internship");

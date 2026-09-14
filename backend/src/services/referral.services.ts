@@ -7,6 +7,7 @@ import { ReferralWithdrawalModel } from "../models/referralWithdrawal.schema";
 import { UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { queueReferralUsedEmail } from "./referralMail.services";
+import { BRAND_MAIL, asBrand, type Brand } from "../constants/brands";
 import type {
   ReferralCommissionTier,
   ReferralSale,
@@ -36,29 +37,32 @@ function round2(n: number): number {
 // ─── Profile (lazy-create) ───────────────────────────────────────────────────
 
 /**
- * Returns the user's referral profile, creating it (with a unique code) on the
- * first call. Retries on the rare unique-code collision.
+ * Returns the user's referral profile on a brand, creating it (with a unique
+ * code) on the first call. One profile per user per brand. Retries on the rare
+ * unique-code collision.
  */
 export async function getOrCreateReferralProfileForUser(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
 ) {
-  const existing = await ReferralProfileModel.findOne({ userId }).lean();
+  const existing = await ReferralProfileModel.findOne({ userId, brand }).lean();
   if (existing) return existing;
 
   for (let attempt = 0; attempt < CODE_MAX_RETRIES; attempt++) {
     try {
       const doc = await ReferralProfileModel.create({
         userId,
+        brand,
         code: generateReferralCode(),
       });
       return doc.toObject();
     } catch (err: unknown) {
       const e = err as { code?: number; keyPattern?: Record<string, unknown> };
       if (e.code === 11000) {
-        // Could be a races on `userId` (another concurrent call won) or a code
-        // collision. Re-read userId; otherwise retry with a fresh code.
+        // Either another concurrent call won the { userId, brand } key, or the
+        // code collided. Re-read the profile; otherwise retry with a fresh code.
         if (e.keyPattern && "userId" in e.keyPattern) {
-          const raced = await ReferralProfileModel.findOne({ userId }).lean();
+          const raced = await ReferralProfileModel.findOne({ userId, brand }).lean();
           if (raced) return raced;
         }
         continue;
@@ -118,11 +122,12 @@ interface BalanceSnapshot {
  */
 export async function computeReferralBalance(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
 ): Promise<BalanceSnapshot> {
   const [salesAgg, tiers, outflowAgg] = await Promise.all([
-    // Rides the { referrerUserId, status, createdAt } index.
+    // Rides the { referrerUserId, brand, status, createdAt } index.
     ReferralSaleModel.aggregate<{ _id: null; count: number; earned: number }>([
-      { $match: { referrerUserId: userId, status: "active" } },
+      { $match: { referrerUserId: userId, brand, status: "active" } },
       {
         $group: {
           _id: null,
@@ -136,6 +141,7 @@ export async function computeReferralBalance(
       {
         $match: {
           referrerUserId: userId,
+          brand,
           status: { $in: ["pending", "processing", "success"] },
         },
       },
@@ -210,10 +216,11 @@ export interface ReferralOverviewResult {
 
 export async function getReferralOverviewForUser(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
 ): Promise<ReferralOverviewResult> {
-  const profile = await getOrCreateReferralProfileForUser(userId);
-  const balance = await computeReferralBalance(userId);
-  const recent = await ReferralSaleModel.find({ referrerUserId: userId })
+  const profile = await getOrCreateReferralProfileForUser(userId, brand);
+  const balance = await computeReferralBalance(userId, brand);
+  const recent = await ReferralSaleModel.find({ referrerUserId: userId, brand })
     .sort({ createdAt: -1 })
     .limit(5)
     .lean();
@@ -235,6 +242,7 @@ export async function getReferralOverviewForUser(
 
 export async function setReferralUpiForUser(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
   upiIdRaw: unknown,
 ): Promise<{ upiId: string }> {
   const upiId = typeof upiIdRaw === "string" ? upiIdRaw.trim() : "";
@@ -247,8 +255,8 @@ export async function setReferralUpiForUser(
       400,
     );
   }
-  await getOrCreateReferralProfileForUser(userId);
-  await ReferralProfileModel.updateOne({ userId }, { $set: { upiId } });
+  await getOrCreateReferralProfileForUser(userId, brand);
+  await ReferralProfileModel.updateOne({ userId, brand }, { $set: { upiId } });
   return { upiId };
 }
 
@@ -257,7 +265,10 @@ export async function setReferralUpiForUser(
 export interface ValidateReferralCodeResult {
   valid: boolean;
   referrerName?: string;
-  reason?: "not-found" | "self" | "empty";
+  reason?: "not-found" | "self" | "empty" | "other-brand";
+  /** Set with `other-brand`: where the code can be used. */
+  codeBrand?: Brand;
+  message?: string;
   /** Buyer discount % to apply at checkout when this code is valid. */
   buyerDiscountPercent?: number;
 }
@@ -272,18 +283,33 @@ export async function getReferralBuyerDiscountPercent(): Promise<number> {
   return Math.min(100, Math.max(0, pct));
 }
 
+export const otherBrandReferralMessage = (codeBrand: Brand): string =>
+  `This referral code belongs to ${BRAND_MAIL[codeBrand].fromName} and cannot be used here.`;
+
 export async function validateReferralCode(
   codeRaw: unknown,
   buyerUserId: mongoose.Types.ObjectId,
+  brand: Brand,
 ): Promise<ValidateReferralCodeResult> {
   const code =
     typeof codeRaw === "string" ? codeRaw.trim().toUpperCase() : "";
   if (!code) return { valid: false, reason: "empty" };
 
   const profile = await ReferralProfileModel.findOne({ code })
-    .select("userId code")
+    .select("userId code brand")
     .lean();
   if (!profile) return { valid: false, reason: "not-found" };
+
+  // Codes are globally unique, so the code alone says which brand it pays on.
+  const codeBrand = asBrand((profile as { brand?: unknown }).brand);
+  if (codeBrand !== brand) {
+    return {
+      valid: false,
+      reason: "other-brand",
+      codeBrand,
+      message: otherBrandReferralMessage(codeBrand),
+    };
+  }
 
   if (String(profile.userId) === String(buyerUserId)) {
     return { valid: false, reason: "self" };
@@ -317,15 +343,19 @@ export async function recordReferralSaleForOrder(params: {
   courseName?: string;
   buyerName?: string;
   amount: number;
+  /** The order's brand. A sale only ever credits the balance on that brand. */
+  brand: Brand;
 }): Promise<void> {
   const code = String(params.code ?? "").trim().toUpperCase();
   if (!code) return;
 
   const profile = await ReferralProfileModel.findOne({ code })
-    .select("userId code")
+    .select("userId code brand")
     .lean();
   if (!profile) return;
   if (String(profile.userId) === String(params.buyerUserId)) return;
+  // Checkout already refuses this; kept so a replayed order cannot cross brands.
+  if (asBrand((profile as { brand?: unknown }).brand) !== params.brand) return;
 
   // Rate this sale against the referrer's count *including* this sale, so a
   // `1+` tier pays out on their very first one.
@@ -333,6 +363,7 @@ export async function recordReferralSaleForOrder(params: {
     loadCommissionTiers(),
     ReferralSaleModel.countDocuments({
       referrerUserId: profile.userId,
+      brand: params.brand,
       status: "active",
     }),
   ]);
@@ -354,6 +385,7 @@ export async function recordReferralSaleForOrder(params: {
       commissionPercent,
       commissionAmount,
       code,
+      brand: params.brand,
       status: "active",
     });
   } catch (err: unknown) {
@@ -369,6 +401,7 @@ export async function recordReferralSaleForOrder(params: {
     referrerUserId: profile.userId,
     buyerName: params.buyerName,
     commissionAmount,
+    brand: params.brand,
   });
 }
 
@@ -381,13 +414,14 @@ export interface PaginatedReferralSales {
 
 export async function listReferralSalesForUser(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
   page: number,
   limit: number,
 ): Promise<PaginatedReferralSales> {
   const p = Math.max(1, Math.floor(page));
   const l = Math.min(100, Math.max(1, Math.floor(limit)));
 
-  const filter = { referrerUserId: userId };
+  const filter = { referrerUserId: userId, brand };
   const [docs, total] = await Promise.all([
     ReferralSaleModel.find(filter)
       .sort({ createdAt: -1 })
@@ -413,6 +447,7 @@ const MIN_WITHDRAWAL_AMOUNT = 500;
 
 export interface WithdrawalRow {
   _id: string;
+  brand: Brand;
   amount: number;
   upiIdSnapshot: string;
   status: ReferralWithdrawalStatus;
@@ -438,6 +473,7 @@ export interface PaginatedWithdrawals<T> {
 
 export async function createReferralWithdrawalForUser(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
   amountRaw: unknown,
 ): Promise<WithdrawalRow> {
   const amount = Math.floor(Number(amountRaw));
@@ -448,7 +484,7 @@ export async function createReferralWithdrawalForUser(
     );
   }
 
-  const profile = await getOrCreateReferralProfileForUser(userId);
+  const profile = await getOrCreateReferralProfileForUser(userId, brand);
   const upi = String(profile.upiId ?? "").trim();
   if (!upi) {
     throw new AppError(
@@ -457,7 +493,7 @@ export async function createReferralWithdrawalForUser(
     );
   }
 
-  const balance = await computeReferralBalance(userId);
+  const balance = await computeReferralBalance(userId, brand);
   if (amount > balance.available) {
     throw new AppError(
       `Requested amount exceeds your available balance (₹${balance.available}).`,
@@ -467,6 +503,7 @@ export async function createReferralWithdrawalForUser(
 
   const created = await ReferralWithdrawalModel.create({
     referrerUserId: userId,
+    brand,
     amount,
     upiIdSnapshot: upi,
     status: "pending",
@@ -479,6 +516,7 @@ function serializeWithdrawal(input: unknown): WithdrawalRow {
   const doc = input as Record<string, unknown>;
   return {
     _id: String(doc._id),
+    brand: asBrand(doc.brand),
     amount: Number(doc.amount ?? 0),
     upiIdSnapshot: String(doc.upiIdSnapshot ?? ""),
     status: String(doc.status ?? "pending") as ReferralWithdrawalStatus,
@@ -503,13 +541,14 @@ function serializeWithdrawal(input: unknown): WithdrawalRow {
 
 export async function listWithdrawalsForUser(
   userId: mongoose.Types.ObjectId,
+  brand: Brand,
   page: number,
   limit: number,
 ): Promise<PaginatedWithdrawals<WithdrawalRow>> {
   const p = Math.max(1, Math.floor(page));
   const l = Math.min(100, Math.max(1, Math.floor(limit)));
 
-  const filter = { referrerUserId: userId };
+  const filter = { referrerUserId: userId, brand };
   const [docs, total] = await Promise.all([
     ReferralWithdrawalModel.find(filter)
       .sort({ createdAt: -1 })
@@ -627,6 +666,7 @@ const ESCAPE_REGEX = (s: string) =>
 export async function listAllReferralWithdrawalsAdmin(opts: {
   status?: ReferralWithdrawalStatus;
   q?: string;
+  brand?: Brand;
   page: number;
   limit: number;
 }): Promise<PaginatedWithdrawals<AdminWithdrawalRow>> {
@@ -635,6 +675,7 @@ export async function listAllReferralWithdrawalsAdmin(opts: {
 
   const filter: Record<string, unknown> = {};
   if (opts.status) filter.status = opts.status;
+  if (opts.brand) filter.brand = opts.brand;
 
   const q = (opts.q ?? "").trim();
   if (q) {

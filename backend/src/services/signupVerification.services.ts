@@ -6,6 +6,9 @@ import { AppError } from "../middlewares/error.middleware";
 import { getPointsSettings } from "./pointsSettings.services";
 import { signupVerificationMail } from "../mail";
 import { buildWelcomeBonusBlock } from "../lib/signupVerificationMail";
+import { asBrand, type Brand } from "../constants/brands";
+import { canJoinBrand, canUseBrand } from "../lib/brandSession";
+import { addBrandMembership } from "./brandMembership.services";
 import {
   SIGNUP_ERROR_CODES,
   SIGNUP_MESSAGES,
@@ -36,6 +39,7 @@ export interface PendingSignupInput {
   userType?: string;
   provider?: string;
   extra?: Record<string, unknown>;
+  brand: Brand;
 }
 
 export interface StartedVerification {
@@ -84,12 +88,14 @@ const sendVerificationEmail = async (
     firstName: string;
     lastName?: string;
     userType?: string;
+    brand?: unknown;
   },
   otp: string,
+  joining: boolean,
 ): Promise<void> => {
-  // Only students earn the welcome bonus, and only when it is configured.
+  // Only a new student earns the welcome bonus, and only when it is configured.
   let bonusPoints = 0;
-  if (pending.userType === "student") {
+  if (pending.userType === "student" && !joining) {
     try {
       const { loginSuccessPoints } = await getPointsSettings();
       bonusPoints = Math.max(0, Math.floor(Number(loginSuccessPoints) || 0));
@@ -123,6 +129,7 @@ const sendVerificationEmail = async (
       // there is no bonus, rather than a second variant to keep in step.
       welcomeBonusBlock: buildWelcomeBonusBlock(bonusPoints),
     },
+    { brand: asBrand(pending.brand) },
   );
 
   if (!result.ok) {
@@ -154,14 +161,23 @@ export const startSignupVerification = async (
 ): Promise<StartedVerification> => {
   const email = normalizeEmail(input.email);
 
-  const existingUser = await UserModel.findOne({ email }).select("_id").lean();
-  if (existingUser) {
+  const existingUser = await UserModel.findOne({ email })
+    .select("_id userType brands")
+    .lean();
+  // An identity that has not joined this brand signs up like anyone new. The
+  // response is the same until the mailbox is proven, so nothing is revealed.
+  if (
+    existingUser &&
+    (canUseBrand(existingUser, input.brand) ||
+      !canJoinBrand(existingUser, input.brand))
+  ) {
     throw new AppError(
       SIGNUP_MESSAGES.USER_EXISTS,
       400,
       SIGNUP_ERROR_CODES.USER_EXISTS,
     );
   }
+  const joining = Boolean(existingUser);
 
   const otp = generateOtp();
   const now = new Date();
@@ -174,6 +190,7 @@ export const startSignupVerification = async (
       firstName: input.firstName.trim(),
       lastName: input.lastName?.trim() || "",
       password: await bcrypt.hash(input.password, 10),
+      brand: input.brand,
       userType: input.userType || "student",
       provider: input.provider || "credentials",
       extra: input.extra ?? {},
@@ -208,7 +225,7 @@ export const startSignupVerification = async (
     throw buildThrottleError(await loadThrottleState({ email }));
   }
 
-  await sendOrRollback(pending, otp);
+  await sendOrRollback(pending, otp, joining);
 
   return {
     pendingId: String(pending._id),
@@ -274,9 +291,10 @@ const loadThrottleState = async (
 const sendOrRollback = async (
   pending: any,
   otp: string,
+  joining: boolean,
 ): Promise<void> => {
   try {
-    await sendVerificationEmail(pending, otp);
+    await sendVerificationEmail(pending, otp, joining);
   } catch (error) {
     await PendingSignupModel.findByIdAndUpdate(pending._id, {
       $set: { lastSentAt: new Date(0) },
@@ -295,6 +313,7 @@ export interface VerifiedSignup {
   userType: string;
   provider: string;
   extra: Record<string, unknown>;
+  brand: Brand;
 }
 
 /**
@@ -377,7 +396,39 @@ export const verifySignupOtp = async (
     userType: claimed.userType,
     provider: claimed.provider,
     extra: (claimed.extra as Record<string, unknown>) ?? {},
+    brand: asBrand((claimed as { brand?: unknown }).brand),
   };
+};
+
+/**
+ * Finishes a verified signup for an address that already has an identity by
+ * adding the brand. The typed password is never written: the password belongs
+ * to the identity, and changing it here would let a signup form reset it.
+ *
+ * Re-checks membership because the identity may have joined, or been created,
+ * while the code was out.
+ */
+export const joinExistingIdentity = async (
+  verified: VerifiedSignup,
+): Promise<boolean> => {
+  const existing = await UserModel.findOne({ email: verified.email })
+    .select("_id userType brands")
+    .lean();
+  if (!existing) return false;
+
+  if (
+    canUseBrand(existing, verified.brand) ||
+    !canJoinBrand(existing, verified.brand)
+  ) {
+    throw new AppError(
+      SIGNUP_MESSAGES.USER_EXISTS,
+      400,
+      SIGNUP_ERROR_CODES.USER_EXISTS,
+    );
+  }
+
+  await addBrandMembership(String(existing._id), verified.brand);
+  return true;
 };
 
 /** Issues a fresh code for an existing attempt, subject to cooldown and cap. */
@@ -430,7 +481,8 @@ export const resendSignupOtp = async (
     throw buildThrottleError(existing);
   }
 
-  await sendOrRollback(pending, otp);
+  const joining = Boolean(await UserModel.exists({ email: pending.email }));
+  await sendOrRollback(pending, otp, joining);
 
   return {
     pendingId: String(pending._id),

@@ -45,3 +45,9 @@ export const checkTokenBrand = (
   }
   return mode === "grace" && requestBrand === DEFAULT_BRAND ? "ok" : "mismatch";
 };
+
+/** The partner portal is Airkrit's, so a partner never joins another brand. */
+export const canJoinBrand = (
+  user: { userType?: unknown },
+  brand: Brand,
+): boolean => String(user.userType) !== "partner" || brand === DEFAULT_BRAND;

@@ -18,6 +18,7 @@ import {
   revokeRefreshTokenFamily,
 } from "../services/auth.services";
 import {
+  joinExistingIdentity,
   normalizeEmail,
   resendSignupOtp,
   startSignupVerification,
@@ -48,7 +49,9 @@ import {
   type Brand,
 } from "../constants/brands";
 import { brandEnforcement } from "../config/brandFlags";
-import { canUseBrand } from "../lib/brandSession";
+import { canJoinBrand, canUseBrand } from "../lib/brandSession";
+import { addBrandMembership } from "../services/brandMembership.services";
+import { brandFrontendUrl, brandFrontendUrlEnv } from "../lib/brandSiteUrl";
 import {
   RESET_REQUESTED_MESSAGE,
   RESET_TOKEN_TTL_MINUTES,
@@ -138,6 +141,7 @@ async function finalizeCredentialLogin(
   req: Request,
   res: Response,
   user: User,
+  options: { joinBrand?: boolean } = {},
 ) {
   const userId = String(user._id ?? "");
   if (!userId) {
@@ -146,8 +150,16 @@ async function finalizeCredentialLogin(
   const brand = req.brand ?? DEFAULT_BRAND;
   // The password has already been checked, so saying which brand is missing
   // tells the holder nothing they could not already see.
-  if (brandEnforcement() !== "off" && !canUseBrand(user, brand)) {
-    throw new AppError(brandNotJoinedMessage(brand), 403, BRAND_NOT_JOINED);
+  if (!canUseBrand(user, brand)) {
+    const enforced = brandEnforcement() !== "off";
+    if (!canJoinBrand(user, brand)) {
+      // No code, so no UI offers a join that could never succeed.
+      if (enforced) throw new AppError(PARTNER_USE_PORTAL_LOGIN_MESSAGE, 403);
+    } else if (options.joinBrand) {
+      await addBrandMembership(userId, brand);
+    } else if (enforced) {
+      throw new AppError(brandNotJoinedMessage(brand), 403, BRAND_NOT_JOINED);
+    }
   }
   const protectedLoggedInUser = await protectedUser(user);
   const { plaintext: refreshToken, entry } = createRefreshToken(
@@ -178,9 +190,9 @@ async function finalizeCredentialLogin(
  * straight from the form, so "verified" names the shape rather than a claim
  * that anything was proved.
  */
-const createAccountFromSignup = async (verified: VerifiedSignup, brand: Brand) => {
+const createAccountFromSignup = async (verified: VerifiedSignup) => {
   const newUser = await createVerifiedUser({
-    brands: [brand],
+    brands: [verified.brand],
     email: verified.email,
     password: verified.passwordHash, // already hashed - do not re-hash
     userType: verified.userType as User["userType"],
@@ -201,7 +213,11 @@ const createAccountFromSignup = async (verified: VerifiedSignup, brand: Brand) =
     verified.userType,
   );
 
-  const accessToken = await generateAccessToken(newUser._id, undefined, brand);
+  const accessToken = await generateAccessToken(
+    newUser._id,
+    undefined,
+    verified.brand,
+  );
   // One-time welcome bonus is granted at registration (never on login).
   try {
     await tryAwardRegistrationBonus(String(newUser._id), newUser.userType);
@@ -252,18 +268,16 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
    * same message and code `startSignupVerification` would have returned.
    */
   if (!EMAIL_OTP_ENABLED) {
-    const created = await createAccountFromSignup(
-      {
-        email: normalizeEmail(email),
-        firstName: String(firstName).trim(),
-        lastName: String(lastName ?? "").trim(),
-        passwordHash: await bcrypt.hash(password, 10),
-        userType,
-        provider,
-        extra: restData,
-      },
-      req.brand ?? DEFAULT_BRAND,
-    );
+    const created = await createAccountFromSignup({
+      email: normalizeEmail(email),
+      firstName: String(firstName).trim(),
+      lastName: String(lastName ?? "").trim(),
+      passwordHash: await bcrypt.hash(password, 10),
+      userType,
+      provider,
+      extra: restData,
+      brand: req.brand ?? DEFAULT_BRAND,
+    });
     sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
     return;
   }
@@ -276,6 +290,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     firstName,
     lastName,
     extra: restData, // Any additional fields (phone, address, bio, etc.)
+    brand: req.brand ?? DEFAULT_BRAND,
   });
 
   sendSuccessResponse(res, started, SIGNUP_MESSAGES.CODE_SENT, 200);
@@ -299,10 +314,18 @@ export const verifyRegistrationOtp = asyncHandler(
     }
 
     const verified = await verifySignupOtp(String(pendingId), String(otp));
-    const created = await createAccountFromSignup(
-      verified,
-      req.brand ?? DEFAULT_BRAND,
-    );
+    // A join keeps the existing password and signs nobody in, so there is no
+    // token and no registration bonus: that was paid when the identity was made.
+    if (await joinExistingIdentity(verified)) {
+      sendSuccessResponse(
+        res,
+        { joined: true, brand: verified.brand },
+        SIGNUP_MESSAGES.JOINED_BRAND,
+        200,
+      );
+      return;
+    }
+    const created = await createAccountFromSignup(verified);
 
     sendSuccessResponse(res, created, SIGNUP_MESSAGES.REGISTERED, 201);
   },
@@ -339,7 +362,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Invalid credentials", 401);
   }
 
-  await finalizeCredentialLogin(req, res, user);
+  await finalizeCredentialLogin(req, res, user, {
+    joinBrand: req.body?.joinBrand === true,
+  });
 });
 
 /**
@@ -468,12 +493,10 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     if (user.status !== "active") {
       throw new AppError(ACCOUNT_DISABLED_MESSAGE, 403);
     }
-    if (brandEnforcement() !== "off" && !canUseBrand(user, requestBrand)) {
-      throw new AppError(
-        brandNotJoinedMessage(requestBrand),
-        403,
-        BRAND_NOT_JOINED,
-      );
+    // The provider's consent screen is the explicit step, so a verified
+    // sign-in joins. Partners were refused above.
+    if (!canUseBrand(user, requestBrand)) {
+      await addBrandMembership(String(user._id), requestBrand);
     }
   }
 
@@ -721,15 +744,22 @@ export const generateAccessToken = async (
  */
 export const generateResetPasswordToken = asyncHandler(
   async (req: Request, res: Response) => {
-    if (!process.env.FRONTEND_URL) {
-      throw new AppError("FRONTEND_URL is not set", 500);
+    // The password is shared, so the reset acts on the identity. Only the link
+    // and the sender follow the site it was requested from.
+    const brand = req.brand ?? DEFAULT_BRAND;
+    const frontendUrl = brandFrontendUrl(brand);
+    if (!frontendUrl) {
+      throw new AppError(`${brandFrontendUrlEnv(brand)} is not set`, 500);
     }
-    const frontendUrl = process.env.FRONTEND_URL.replace(/\/+$/, "");
 
-    await requestPasswordReset(req.body?.email, (userId, email) => {
-      const token = generateResetUserPasswordToken(userId, email);
-      return `${frontendUrl}/reset-password?token=${token}`;
-    });
+    await requestPasswordReset(
+      req.body?.email,
+      (userId, email) => {
+        const token = generateResetUserPasswordToken(userId, email);
+        return `${frontendUrl}/reset-password?token=${token}`;
+      },
+      brand,
+    );
 
     sendSuccessResponse(res, null, RESET_REQUESTED_MESSAGE);
   },

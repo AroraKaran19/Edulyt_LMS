@@ -18,6 +18,7 @@ import {
   validateReferralCode,
 } from "../services/referral.services";
 import type { ReferralWithdrawalStatus } from "../types/referral";
+import { DEFAULT_BRAND, isBrand } from "../constants/brands";
 
 function asObjectId(req: Request): mongoose.Types.ObjectId {
   const id = req.user?._id;
@@ -30,7 +31,7 @@ function asObjectId(req: Request): mongoose.Types.ObjectId {
 export const getReferralOverviewController = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = asObjectId(req);
-    const overview = await getReferralOverviewForUser(userId);
+    const overview = await getReferralOverviewForUser(userId, req.brand ?? DEFAULT_BRAND);
     sendSuccessResponse(res, overview, "Referral overview fetched");
   },
 );
@@ -38,7 +39,11 @@ export const getReferralOverviewController = asyncHandler(
 export const updateReferralUpiController = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = asObjectId(req);
-    const result = await setReferralUpiForUser(userId, req.body?.upiId);
+    const result = await setReferralUpiForUser(
+      userId,
+      req.brand ?? DEFAULT_BRAND,
+      req.body?.upiId,
+    );
     sendSuccessResponse(res, result, "UPI ID updated");
   },
 );
@@ -46,7 +51,11 @@ export const updateReferralUpiController = asyncHandler(
 export const validateReferralCodeController = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = asObjectId(req);
-    const result = await validateReferralCode(req.body?.code, userId);
+    const result = await validateReferralCode(
+      req.body?.code,
+      userId,
+      req.brand ?? DEFAULT_BRAND,
+    );
     sendSuccessResponse(res, result, "Referral code validated");
   },
 );
@@ -59,7 +68,12 @@ export const listMyReferralSalesController = asyncHandler(
       100,
       Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20),
     );
-    const result = await listReferralSalesForUser(userId, page, limit);
+    const result = await listReferralSalesForUser(
+      userId,
+      req.brand ?? DEFAULT_BRAND,
+      page,
+      limit,
+    );
     sendSuccessResponse(res, result, "Referral sales fetched");
   },
 );
@@ -69,6 +83,7 @@ export const createReferralWithdrawalController = asyncHandler(
     const userId = asObjectId(req);
     const result = await createReferralWithdrawalForUser(
       userId,
+      req.brand ?? DEFAULT_BRAND,
       req.body?.amount,
     );
     sendSuccessResponse(res, result, "Withdrawal requested", 201);
@@ -83,7 +98,12 @@ export const listMyReferralWithdrawalsController = asyncHandler(
       100,
       Math.max(1, parseInt(String(req.query.limit ?? "20"), 10) || 20),
     );
-    const result = await listWithdrawalsForUser(userId, page, limit);
+    const result = await listWithdrawalsForUser(
+      userId,
+      req.brand ?? DEFAULT_BRAND,
+      page,
+      limit,
+    );
     sendSuccessResponse(res, result, "Withdrawals fetched");
   },
 );
@@ -127,6 +147,7 @@ export const listAllReferralWithdrawalsAdminController = asyncHandler(
     const result = await listAllReferralWithdrawalsAdmin({
       status,
       q,
+      brand: isBrand(req.query.brand) ? req.query.brand : undefined,
       page,
       limit,
     });

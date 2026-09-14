@@ -35,6 +35,7 @@ export type ReferralSaleStatus = "active" | "reversed";
 
 /** One row per qualifying course-order paid using a referral code. */
 export interface ReferralSale {
+  brand?: Brand;
   _id?: string;
   referrerUserId: mongoose.Types.ObjectId | string;
   buyerUserId: mongoose.Types.ObjectId | string;
@@ -65,6 +66,7 @@ export type ReferralWithdrawalStatus =
   | "rejected";
 
 export interface ReferralWithdrawal {
+  brand?: Brand;
   _id?: string;
   referrerUserId: mongoose.Types.ObjectId | string;
   amount: number;
