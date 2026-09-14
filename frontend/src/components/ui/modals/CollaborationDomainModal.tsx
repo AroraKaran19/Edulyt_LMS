@@ -26,6 +26,8 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { toast } from "react-toastify";
 import { mergeCourseSelections } from "@/lib/mergeCourseSelections";
+import BrandSelect from "@/components/admin/BrandSelect";
+import type { Brand } from "@/constants/brands";
 import {
   COURSE_AUDIENCE_FILTER_LABEL,
   enrollmentAudienceForApi,
@@ -93,6 +95,8 @@ const CollaborationDomainModal = ({
   const [plan, setPlan] = useState<Plan["type"]>("elite");
   const [audienceFilter, setAudienceFilter] =
     useState<CourseAudienceFilter>("college-students");
+  // College partnerships are Airkrit's by default; Edulyt is one click away.
+  const [brand, setBrand] = useState<Brand>("airkrit");
   const [durationDays, setDurationDays] = useState<number>(365);
 
   const [courseSearch, setCourseSearch] = useState("");
@@ -112,7 +116,7 @@ const CollaborationDomainModal = ({
       page: number,
       search: string,
       append: boolean,
-      opts?: { applyAudienceFilter?: boolean },
+      opts?: { applyAudienceFilter?: boolean; brand?: Brand },
     ) => {
       const applyAudience =
         opts?.applyAudienceFilter ??
@@ -125,6 +129,7 @@ const CollaborationDomainModal = ({
           limit: 20,
           search: search.trim() || undefined,
           isActive: true,
+          brand: opts?.brand ?? brand,
           ...(applyAudience && audienceFilter !== "all"
             ? { audience: audienceFilter }
             : {}),
@@ -144,7 +149,7 @@ const CollaborationDomainModal = ({
         setLoadingCourses(false);
       }
     },
-    [getAdminCourses, partnershipOffer, audienceFilter],
+    [getAdminCourses, partnershipOffer, audienceFilter, brand],
   );
 
   const loadColleges = useCallback(
@@ -460,6 +465,18 @@ const CollaborationDomainModal = ({
     [loadCourses, courseSearch],
   );
 
+  const handleBrandChange = useCallback(
+    (next: Brand) => {
+      setBrand(next);
+      setSelectedCourses((prev) => prev.filter((c) => c.brand === next));
+      setCourseResults([]);
+      setCoursePage(1);
+      setHasMoreCourses(true);
+      void loadCourses(1, courseSearch, false, { brand: next });
+    },
+    [loadCourses, courseSearch],
+  );
+
   const handleAudienceFilterChange = useCallback(
     (next: CourseAudienceFilter) => {
       setAudienceFilter(next);
@@ -653,6 +670,7 @@ const CollaborationDomainModal = ({
         const res = await getAdminCourseOptions({
           page,
           search: courseSearch.trim() || undefined,
+          brand,
           ...(audienceFilter !== "all" ? { audience: audienceFilter } : {}),
           isActive: true,
         });
@@ -684,7 +702,7 @@ const CollaborationDomainModal = ({
     } finally {
       setSelectingAllCourses(false);
     }
-  }, [accessType, partnershipOffer, audienceFilter, courseSearch, getAdminCourseOptions]);
+  }, [accessType, partnershipOffer, audienceFilter, courseSearch, getAdminCourseOptions, brand]);
 
   const toggleCourse = (course: Course) => {
     setSelectedCourses((prev) => {
@@ -1131,6 +1149,14 @@ const CollaborationDomainModal = ({
                 </select>
               </div>
 
+              <BrandSelect
+                required
+                value={brand}
+                onChange={(next) => {
+                  if (next !== "all") handleBrandChange(next);
+                }}
+              />
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Audience <span className="text-red-500">*</span>
@@ -1202,6 +1228,14 @@ const CollaborationDomainModal = ({
                   <option value="essential">Essential</option>
                 </select>
               </div>
+              <BrandSelect
+                required
+                value={brand}
+                onChange={(next) => {
+                  if (next !== "all") handleBrandChange(next);
+                }}
+              />
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                   Audience <span className="text-red-500">*</span>

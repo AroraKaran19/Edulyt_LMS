@@ -1,4 +1,5 @@
 import { User, Course, Category } from "./index";
+import type { Brand } from "@/constants/brands";
 
 export interface Coupon {
   _id?: string;
@@ -24,6 +25,7 @@ export interface Coupon {
    * of them: the API refuses, and the row is locked to match.
    */
   sourceScholarshipTestId?: string | null;
+  brand?: Brand;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 }
@@ -43,6 +45,7 @@ export interface CreateCouponData {
   validFrom: string;
   validUntil: string;
   isActive: boolean;
+  brand?: Brand;
 }
 
 export interface UpdateCouponData extends Partial<CreateCouponData> {}

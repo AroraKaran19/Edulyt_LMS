@@ -301,6 +301,15 @@ const RegisterPage = () => {
         email={pendingSignup.email}
         expiryMinutes={pendingSignup.expiryMinutes}
         onVerified={handleVerified}
+        onJoined={(message) => {
+          toast.success(message);
+          setPendingSignup(null);
+          router.push(
+            callbackUrl
+              ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+              : "/login",
+          );
+        }}
         onChangeEmail={() => setPendingSignup(null)}
         // Form state survives the step change, so the email, name and password
         // they already typed are still filled in and they can just resubmit.

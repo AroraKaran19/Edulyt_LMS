@@ -418,6 +418,8 @@ const CartForm = ({
         toast.error("You can't use your own referral code.");
       } else if (result.reason === "not-found") {
         toast.error("Referral code not found.");
+      } else if (result.reason === "other-brand") {
+        toast.error(result.message ?? "This referral code cannot be used here.");
       } else {
         toast.error("Invalid referral code.");
       }

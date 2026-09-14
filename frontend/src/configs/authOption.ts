@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import apiClient from "./apiConfig";
 import GoogleProvider from "next-auth/providers/google";
 import LinkedInProvider from "next-auth/providers/linkedin";
+import { BRAND_NOT_JOINED } from "@/constants/brands";
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
@@ -26,6 +27,8 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
         /** Partner page sends `"partner"` to route to `/auth/partner/login`; otherwise `/auth/login`. */
         portal: { label: "Portal", type: "text" },
+        /** `"true"` after the learner accepts the join prompt. */
+        joinBrand: { label: "Join brand", type: "text" },
       },
       authorize: async (credentials, req) => {
         if (!credentials?.email || !credentials?.password) {
@@ -53,6 +56,7 @@ export const authOptions: NextAuthOptions = {
             {
               email: credentials.email,
               password: credentials.password,
+              ...(credentials.joinBrand === "true" ? { joinBrand: true } : {}),
             },
             {
               headers: {
@@ -69,6 +73,10 @@ export const authOptions: NextAuthOptions = {
             refreshToken: response.data?.data?.refreshToken,
           };
         } catch (error: unknown) {
+          // A stable token the login page can match; the message is for people.
+          if ((error as any)?.response?.data?.error?.code === BRAND_NOT_JOINED) {
+            throw new Error(BRAND_NOT_JOINED);
+          }
           const message =
             (error as any)?.response?.data?.error?.message ||
             (error as Error)?.message ||

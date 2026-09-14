@@ -4,6 +4,7 @@ import { User } from "@/types/user";
 import { Course } from "@/types/course";
 import { Enrollment, PartialAccessControl } from "@/types/enrollment";
 import type { InternshipEnrollmentListRow } from "@/types";
+import type { Brand } from "@/constants/brands";
 
 export interface GetUsersParams {
   page?: number;
@@ -12,6 +13,7 @@ export interface GetUsersParams {
   emails?: string[];
   userType?: "student" | "instructor" | "admin" | "super-admin";
   status?: "active" | "inactive" | "blocked";
+  brand?: Brand;
   /** Exclude users enrolled in any of these course IDs */
   excludeEnrolledInCourseIds?: string[];
   /** Add alreadyEnrolledInSelected to each user */
@@ -104,6 +106,8 @@ const useUserManagement = () => {
               params.enrollmentStatusForCourseIds.join(",")
             );
           }
+
+          if (params.brand) queryParams.append("brand", params.brand);
 
           const response = await apiClient.get(
             `/users/admin?${queryParams.toString()}`

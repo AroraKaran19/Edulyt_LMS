@@ -18,6 +18,8 @@ import { toast } from "react-toastify";
 import EnrollmentDetailsModal from "./EnrollmentDetailsModal";
 import RevokeConfirmationModal from "./RevokeConfirmationModal";
 import Pagination from "@/components/admin/Pagination";
+import BrandChip from "@/components/admin/BrandChip";
+import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
 
 interface EnrollmentUser {
   firstName?: string;
@@ -34,6 +36,7 @@ interface EnrollmentCourse {
 interface EnrollmentItem {
   _id: string;
   type: "paid" | "gift" | "trial";
+  brand?: string;
   userId: EnrollmentUser;
   courseId: EnrollmentCourse;
   planType: string;
@@ -58,6 +61,7 @@ const EnrollmentsPage = () => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [enrollmentType, setEnrollmentType] = useState<string>("paid");
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>("all");
   const [enrollmentStatus, setEnrollmentStatus] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] =
@@ -136,6 +140,7 @@ const EnrollmentsPage = () => {
       params.append("page", page.toString());
       params.append("limit", "10");
       params.append("enrollmentType", enrollmentType);
+      if (brandFilter !== "all") params.append("brand", brandFilter);
       if (debouncedSearch) params.append("search", debouncedSearch);
       if (enrollmentStatus !== "all") {
         params.append("enrollmentStatus", enrollmentStatus);
@@ -160,7 +165,7 @@ const EnrollmentsPage = () => {
 
   useEffect(() => {
     fetchEnrollments();
-  }, [page, debouncedSearch, enrollmentType, enrollmentStatus]);
+  }, [page, debouncedSearch, enrollmentType, enrollmentStatus, brandFilter]);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", {
@@ -238,7 +243,10 @@ const EnrollmentsPage = () => {
   };
 
   const hasActiveFilters =
-    debouncedSearch || enrollmentType !== "all" || enrollmentStatus !== "all";
+    debouncedSearch ||
+    enrollmentType !== "all" ||
+    enrollmentStatus !== "all" ||
+    brandFilter !== "all";
 
   const showExpiryColumn =
     enrollmentType === "trial" || enrollmentType === "all";
@@ -295,6 +303,20 @@ const EnrollmentsPage = () => {
                 setPage(1);
               }}
               placeholder="Revoked filter"
+            />
+          </div>
+          <div className="sm:w-40">
+            <Select
+              options={[
+                { value: "all", label: "All brands" },
+                ...BRANDS.map((b) => ({ value: b, label: BRAND_LABEL[b] })),
+              ]}
+              value={brandFilter}
+              onChange={(val) => {
+                setBrandFilter(val as BrandFilter);
+                setPage(1);
+              }}
+              placeholder="Brand"
             />
           </div>
         </div>
@@ -392,7 +414,10 @@ const EnrollmentsPage = () => {
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm whitespace-nowrap min-w-[80px]">
-                      {renderTypeBadge(item)}
+                      <div className="flex items-center gap-2">
+                        {renderTypeBadge(item)}
+                        <BrandChip brand={item.brand} />
+                      </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 capitalize whitespace-nowrap">
                       {item.planType ?? "—"}

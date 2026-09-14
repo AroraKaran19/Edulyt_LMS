@@ -25,6 +25,10 @@ import {
 } from "lucide-react";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
+import BrandChip from "@/components/admin/BrandChip";
+import BrandSelect from "@/components/admin/BrandSelect";
+import CategoryInputWithManagement from "@/components/ui/inputs/CategoryInputWithManagement";
+import { BRANDS, BRAND_LABEL, isBrand, type Brand } from "@/constants/brands";
 
 type AudienceFilter = "" | "college-students" | "professionals";
 
@@ -42,6 +46,7 @@ function readStoredFilters() {
       audience: (parsed.audience === "college-students" || parsed.audience === "professionals")
         ? (parsed.audience as AudienceFilter)
         : "",
+      brand: isBrand(parsed.brand) ? parsed.brand : ("" as Brand | ""),
       status: (parsed.status === "active" || parsed.status === "inactive")
         ? (parsed.status as string)
         : "",
@@ -86,6 +91,10 @@ const ManageCoursesPage = () => {
     const stored = readStoredFilters();
     return stored?.audience ?? "";
   });
+  const [filterBrand, setFilterBrand] = useState<Brand | "">(() => {
+    const stored = readStoredFilters();
+    return stored?.brand ?? "";
+  });
   const [filterStatus, setFilterStatus] = useState<string>(() => {
     const stored = readStoredFilters();
     return stored?.status ?? "";
@@ -118,6 +127,7 @@ const ManageCoursesPage = () => {
         categoryIds: string[];
         instructorIds: string[];
         audience: AudienceFilter;
+        brand?: Brand | "";
         status: string;
         sort: string;
       },
@@ -125,6 +135,7 @@ const ManageCoursesPage = () => {
       const categoryIds = filters?.categoryIds ?? filterCategoryIds;
       const instructorIds = filters?.instructorIds ?? filterInstructorIds;
       const audience = filters?.audience ?? filterAudience;
+      const brand = filters?.brand ?? filterBrand;
       const status = filters?.status ?? filterStatus;
       const sort = filters?.sort ?? sortOrder;
 
@@ -139,6 +150,7 @@ const ManageCoursesPage = () => {
           instructors:
             instructorIds.length > 0 ? instructorIds.join(",") : undefined,
           audience: audience || undefined,
+          brand: brand || undefined,
           isActive:
             status === "active"
               ? true
@@ -168,7 +180,7 @@ const ManageCoursesPage = () => {
         setIsLoadingMore(false);
       }
     },
-    [getAdminCourses, filterCategoryIds, filterInstructorIds, filterAudience, filterStatus, sortOrder],
+    [getAdminCourses, filterCategoryIds, filterInstructorIds, filterAudience, filterBrand, filterStatus, sortOrder],
   );
 
   // Debounce search input
@@ -201,11 +213,12 @@ const ManageCoursesPage = () => {
         categoryIds: filterCategoryIds,
         instructorIds: filterInstructorIds,
         audience: filterAudience,
+        brand: filterBrand,
         status: filterStatus,
         sortOrder,
       })
     );
-  }, [filterCategoryIds, filterInstructorIds, filterAudience, filterStatus, sortOrder]);
+  }, [filterCategoryIds, filterInstructorIds, filterAudience, filterBrand, filterStatus, sortOrder]);
 
   // Auto-apply filters on change (effect above handles loadCourses)
   const handleCategoryFilterChange = useCallback((value: string | string[]) => {
@@ -221,6 +234,11 @@ const ManageCoursesPage = () => {
   const handleAudienceFilterChange = useCallback((value: string | string[]) => {
     const aud = (Array.isArray(value) ? value[0] : value) as AudienceFilter;
     setFilterAudience(aud);
+  }, []);
+
+  const handleBrandFilterChange = useCallback((value: string | string[]) => {
+    const next = Array.isArray(value) ? value[0] : value;
+    setFilterBrand(isBrand(next) ? next : "");
   }, []);
 
   const handleStatusFilterChange = useCallback((value: string | string[]) => {
@@ -306,10 +324,25 @@ const ManageCoursesPage = () => {
     }
   };
 
+  const [duplicateBrand, setDuplicateBrand] = useState<Brand | "">("");
+  const [duplicateCategories, setDuplicateCategories] = useState<string[]>([]);
+  const sourceBrand: Brand =
+    courseToDuplicate && isBrand(courseToDuplicate.brand)
+      ? courseToDuplicate.brand
+      : "airkrit";
+  // Categories belong to one brand, so a copy to the other one needs its own.
+  const duplicateTarget =
+    duplicateBrand && duplicateBrand !== sourceBrand
+      ? { brand: duplicateBrand, category: duplicateCategories }
+      : undefined;
+  const duplicateBlocked = !!duplicateTarget && duplicateCategories.length === 0;
+
   // Handle duplicate course option click
   const handleDuplicateClick = (course: Course) => {
     setOpenMenuId(null);
     setCourseToDuplicate(course);
+    setDuplicateBrand(isBrand(course.brand) ? course.brand : "airkrit");
+    setDuplicateCategories([]);
     setShowDuplicateModal(true);
   };
 
@@ -321,7 +354,7 @@ const ManageCoursesPage = () => {
     setDuplicatingCourseId(courseId);
 
     try {
-      const duplicatedCourse = await duplicateCourse(courseId);
+      const duplicatedCourse = await duplicateCourse(courseId, duplicateTarget);
       if (duplicatedCourse && duplicatedCourse._id) {
         toast.success("Course metadata duplicated successfully!");
         // Navigate to edit page for the duplicated course
@@ -348,7 +381,7 @@ const ManageCoursesPage = () => {
     setDuplicatingCourseId(courseId);
 
     try {
-      const duplicatedCourse = await duplicateCourseWithModules(courseId);
+      const duplicatedCourse = await duplicateCourseWithModules(courseId, duplicateTarget);
       if (duplicatedCourse && duplicatedCourse._id) {
         toast.success("Course with modules duplicated successfully!");
         // Navigate to edit page for the duplicated course
@@ -521,6 +554,21 @@ const ManageCoursesPage = () => {
           </div>
           <div>
             <InfiniteScrollSelect
+              label="Brand"
+              placeholder="All brands"
+              value={filterBrand}
+              onChange={handleBrandFilterChange}
+              multi={false}
+              fetchOptions={async () => ({
+                items: BRANDS.map((b) => ({ value: b, label: BRAND_LABEL[b] })),
+                totalPages: 1,
+              })}
+              searchPlaceholder="Search brands..."
+              emptyMessage="No brands found"
+            />
+          </div>
+          <div>
+            <InfiniteScrollSelect
               label="Audience"
               placeholder="All audiences"
               value={filterAudience}
@@ -675,6 +723,7 @@ const ManageCoursesPage = () => {
                           : "Professionals"}
                       </span>
                     </div>
+                    <BrandChip brand={course.brand} />
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 text-[#F7AD24]" fill="#F7AD24" />
                       <span className="">
@@ -934,11 +983,33 @@ const ManageCoursesPage = () => {
             </p>
 
             <div className="space-y-3 mb-6">
+              <BrandSelect
+                label="Copy to brand"
+                value={duplicateBrand}
+                onChange={(next) => {
+                  if (next === "all") return;
+                  setDuplicateBrand(next);
+                  setDuplicateCategories([]);
+                }}
+              />
+              {duplicateTarget && (
+                <CategoryInputWithManagement
+                  label={`${BRAND_LABEL[duplicateTarget.brand]} categories`}
+                  name="duplicateCategories"
+                  value={duplicateCategories}
+                  setChange={setDuplicateCategories}
+                  brand={duplicateTarget.brand}
+                  required
+                />
+              )}
+            </div>
+
+            <div className="space-y-3 mb-6">
               <button
                 onClick={() =>
                   handleDuplicateCourse(courseToDuplicate._id || "")
                 }
-                disabled={duplicatingCourseId === courseToDuplicate._id}
+                disabled={duplicatingCourseId === courseToDuplicate._id || duplicateBlocked}
                 className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
                   duplicatingCourseId === courseToDuplicate._id
                     ? "opacity-50 cursor-not-allowed border-gray-200"
@@ -958,7 +1029,7 @@ const ManageCoursesPage = () => {
                 onClick={() =>
                   handleDuplicateCourseWithModules(courseToDuplicate._id || "")
                 }
-                disabled={duplicatingCourseId === courseToDuplicate._id}
+                disabled={duplicatingCourseId === courseToDuplicate._id || duplicateBlocked}
                 className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
                   duplicatingCourseId === courseToDuplicate._id
                     ? "opacity-50 cursor-not-allowed border-gray-200"

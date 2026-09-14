@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { Course, CourseModule, CourseLesson, Content } from "@/types";
+import type { Brand } from "@/constants/brands";
 
 // ===================
 // Filter Interfaces
@@ -14,6 +15,7 @@ export interface CourseFilters {
   categories?: string;
   instructors?: string;
   audience?: "college-students" | "professionals";
+  brand?: Brand;
   isActive?: boolean;
   skillLevel?: string;
   isFeatured?: boolean;
@@ -382,6 +384,8 @@ export const useCourse = () => {
         if (filters.sortBy) params.append("sortBy", filters.sortBy);
         if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
 
+        if (filters.brand) params.append("brand", filters.brand);
+
         const response = await apiClient.get(
           `/courses/admin?${params.toString()}`
         );
@@ -408,6 +412,8 @@ export const useCourse = () => {
           params.append("isActive", filters.isActive.toString());
         if (filters.sortBy) params.append("sortBy", filters.sortBy);
         if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+        if (filters.brand) params.append("brand", filters.brand);
 
         const response = await apiClient.get(
           `/courses/admin/options?${params.toString()}`
@@ -484,10 +490,14 @@ export const useCourse = () => {
   );
 
   const duplicateCourse = useCallback(
-    async (id: string): Promise<Course | null> => {
+    async (
+      id: string,
+      target?: { brand: Brand; category: string[] }
+    ): Promise<Course | null> => {
       return handleRequest(async () => {
         const response = await apiClient.post(
-          `/courses/admin/duplicate-metadata/${id}`
+          `/courses/admin/duplicate-metadata/${id}`,
+          target ?? {}
         );
         return response.data.data;
       }, "Failed to duplicate course");
@@ -496,10 +506,14 @@ export const useCourse = () => {
   );
 
   const duplicateCourseWithModules = useCallback(
-    async (id: string): Promise<Course | null> => {
+    async (
+      id: string,
+      target?: { brand: Brand; category: string[] }
+    ): Promise<Course | null> => {
       return handleRequest(async () => {
         const response = await apiClient.post(
-          `/courses/admin/duplicate-with-modules/${id}`
+          `/courses/admin/duplicate-with-modules/${id}`,
+          target ?? {}
         );
         return response.data.data;
       }, "Failed to duplicate course with modules");

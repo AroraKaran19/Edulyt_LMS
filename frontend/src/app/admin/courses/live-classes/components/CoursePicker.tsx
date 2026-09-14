@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCourse, type AdminCourseOption } from "@/hooks/useCourse";
+import type { Brand } from "@/constants/brands";
 
 interface CoursePickerProps {
   label?: string;
@@ -21,6 +22,8 @@ interface CoursePickerProps {
   clearLabel?: string;
   disabled?: boolean;
   className?: string;
+  /** Lists this brand's courses only. Omit to list every brand. */
+  brand?: Brand | "";
 }
 
 const PAGE_SIZE = 20;
@@ -47,6 +50,7 @@ const CoursePicker: React.FC<CoursePickerProps> = ({
   clearLabel,
   disabled = false,
   className,
+  brand,
 }) => {
   const { getAdminCourseOptions } = useCourse();
 
@@ -104,6 +108,7 @@ const CoursePicker: React.FC<CoursePickerProps> = ({
           // Disabled courses are excluded: their watch page 404s, so a live
           // class scheduled against one is unreachable for every learner.
           isActive: true,
+          ...(brand ? { brand } : {}),
           ...(debouncedSearch
             ? { search: debouncedSearch, searchTitleOnly: true }
             : {}),
@@ -122,7 +127,7 @@ const CoursePicker: React.FC<CoursePickerProps> = ({
         if (reqId === activeRequest.current) setIsLoading(false);
       }
     },
-    [getAdminCourseOptions, debouncedSearch],
+    [getAdminCourseOptions, debouncedSearch, brand],
   );
 
   // (Re)load page 1 whenever the dropdown opens or the search term settles.

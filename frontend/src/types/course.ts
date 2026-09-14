@@ -1,4 +1,5 @@
 import { Discount, CourseDiscount, FAQ, Instructor, Review, User, Category } from ".";
+import type { Brand } from "@/constants/brands";
 
 // ===================
 // Document Types
@@ -245,6 +246,7 @@ export interface Course {
   createdBy: User | string | null;
   tags?: string[];
   audience: "college-students" | "professionals";
+  brand?: Brand;
 
   // SEO
   slug: string;

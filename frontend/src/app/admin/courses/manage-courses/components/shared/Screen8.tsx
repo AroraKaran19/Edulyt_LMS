@@ -19,6 +19,7 @@ import { useCourseFormContext } from "@/contexts/CourseFormContext";
 import { getTextFromHtml } from "@/lib/courseFormUtils";
 import { useSlugCheck } from "@/hooks/useSlugCheck";
 import { useCategory } from "@/hooks/useCategory";
+import { BRAND_LABEL, BRAND_SITE_URL } from "@/constants/brands";
 
 const Screen8 = () => {
   // Form context
@@ -45,6 +46,7 @@ const Screen8 = () => {
   const shortDescription = watch("shortDescription") || "";
   const category = watch("category") || "";
   const audience = watch("audience") || "college-students";
+  const brand = watch("brand") === "edulyt" ? "edulyt" : "airkrit";
   const skills = watch("skills") || [];
   const tags = watch("tags") || [];
   const slug = watch("slug") || "";
@@ -166,7 +168,7 @@ const Screen8 = () => {
       
       // Remove "(Copy)" from title if present for cleaner meta title
       const cleanTitle = (title || "Course").replace(/\s*\(Copy\)\s*$/i, "").trim();
-      const metaTitle = `${cleanTitle} - ${categoryStr} | Airkrit`;
+      const metaTitle = `${cleanTitle} - ${categoryStr} | ${BRAND_LABEL[brand]}`;
 
       // Generate meta description based on course details (strip HTML and limit to 160 chars)
       const getPlainText = (html: string) => getTextFromHtml(html || "");
@@ -383,7 +385,7 @@ const Screen8 = () => {
               )}
 
             <div className="flex justify-between items-center text-xs text-gray-500">
-              <span>URL: https://airkrit.com/programs/</span>
+              <span>URL: {BRAND_SITE_URL[brand]}/programs/</span>
               <span
                 className={`font-mono ${
                   slugValidation.isAvailable === true
@@ -550,7 +552,7 @@ const Screen8 = () => {
                 {metaTitle || "Your course title will appear here"}
               </div>
               <div className="text-green-600 text-sm">
-                https://airkrit.com/programs/
+                {BRAND_SITE_URL[brand]}/programs/
                 {slug || "your-course-slug"}
               </div>
               <div className="text-gray-600 text-sm">

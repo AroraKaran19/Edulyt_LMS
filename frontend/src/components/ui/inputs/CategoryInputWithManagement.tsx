@@ -16,6 +16,7 @@ import Input from "@/components/ui/inputs/Input";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import { useUpload } from "@/hooks/useUpload";
+import type { Brand } from "@/constants/brands";
 
 interface CategoryInputWithManagementProps {
   label: string;
@@ -28,6 +29,8 @@ interface CategoryInputWithManagementProps {
   initialCategoryNames?: Record<string, string>;
   /** Called when a category is added so the form can persist its name (for display after navigation) */
   onCategoryNameAdded?: (id: string, name: string) => void;
+  /** Lists and creates this brand's categories. Omit for the old, unscoped list. */
+  brand?: Brand;
 }
 
 const CategoryInputWithManagement: React.FC<
@@ -40,9 +43,11 @@ const CategoryInputWithManagement: React.FC<
   required = false,
   initialCategoryNames,
   onCategoryNameAdded,
+  brand,
 }) => {
   const {
     getActiveCategories,
+    getAdminCategories,
     getCategoryById,
     createCategory,
     updateCategory,
@@ -104,10 +109,36 @@ const CategoryInputWithManagement: React.FC<
 
   const PAGE_SIZE = 20;
 
+  /**
+   * The admin endpoint takes an explicit brand; the public one scopes by the
+   * site it is called from, which is always Airkrit here.
+   */
+  const fetchCategoryPage = useCallback(
+    async (page: number) => {
+      if (!brand) {
+        return getActiveCategories({ limit: PAGE_SIZE, page });
+      }
+      const result = await getAdminCategories({ limit: PAGE_SIZE, page, brand });
+      return result?.categories
+        ? {
+            ...result,
+            categories: result.categories.filter((c) => c.isActive !== false),
+          }
+        : result;
+    },
+    [brand, getActiveCategories, getAdminCategories],
+  );
+
+  useEffect(() => {
+    setCategories([]);
+    setCategoryPage(1);
+    setHasMore(true);
+  }, [brand]);
+
   // Load initial categories when dropdown opens
   const loadCategories = useCallback(async () => {
     try {
-      const result = await getActiveCategories({ limit: PAGE_SIZE, page: 1 });
+      const result = await fetchCategoryPage(1);
       if (result && result.categories) {
         setCategories(result.categories);
         setTotalPages(result.totalPages ?? 1);
@@ -122,7 +153,7 @@ const CategoryInputWithManagement: React.FC<
       setCategories([]);
       setHasMore(false);
     }
-  }, [getActiveCategories]);
+  }, [fetchCategoryPage]);
 
   // Load next page for infinite scroll
   const loadMoreCategories = useCallback(async () => {
@@ -131,10 +162,7 @@ const CategoryInputWithManagement: React.FC<
     setIsLoadingMore(true);
     try {
       const nextPage = categoryPage + 1;
-      const result = await getActiveCategories({
-        limit: PAGE_SIZE,
-        page: nextPage,
-      });
+      const result = await fetchCategoryPage(nextPage);
       if (result && result.categories && result.categories.length > 0) {
         setCategories((prev) => [...prev, ...result.categories]);
         setCategoryPage(nextPage);
@@ -148,7 +176,7 @@ const CategoryInputWithManagement: React.FC<
     } finally {
       setIsLoadingMore(false);
     }
-  }, [getActiveCategories, hasMore, isLoadingMore, categoryPage]);
+  }, [fetchCategoryPage, hasMore, isLoadingMore, categoryPage]);
 
   // Handle scroll for infinite loading
   const handleDropdownScroll = useCallback(
@@ -281,6 +309,7 @@ const CategoryInputWithManagement: React.FC<
     try {
       const result = await createCategory({
         name: newCategory.name.trim(),
+        ...(brand ? { brand } : {}),
         audience: newCategory.audience,
         showOnHomePage: newCategory.showOnHomePage || false,
         showOnCourseList: newCategory.showOnCourseList,

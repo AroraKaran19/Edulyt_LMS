@@ -1,3 +1,5 @@
+import type { Brand } from "@/constants/brands";
+
 export interface ReferralCommissionTier {
   thresholdSales: number;
   commissionPercent: number;
@@ -30,7 +32,10 @@ export interface ReferralOverview {
 export interface ReferralCodeValidationResult {
   valid: boolean;
   referrerName?: string;
-  reason?: "not-found" | "self" | "empty";
+  reason?: "not-found" | "self" | "empty" | "other-brand";
+  /** Set with `other-brand`: where the code can be used. */
+  codeBrand?: Brand;
+  message?: string;
   /** Buyer discount % to apply at checkout when this code is valid. */
   buyerDiscountPercent?: number;
 }

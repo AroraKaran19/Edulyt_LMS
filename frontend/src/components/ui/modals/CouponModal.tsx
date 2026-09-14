@@ -17,6 +17,7 @@ import { CreateCouponData, UpdateCouponData, Coupon } from "@/types/coupon";
 import { toast } from "react-toastify";
 import { useCourse } from "@/hooks/useCourse";
 import { useCategory } from "@/hooks/useCategory";
+import BrandSelect from "@/components/admin/BrandSelect";
 
 interface CouponModalProps {
   isOpen: boolean;
@@ -34,8 +35,9 @@ const CouponModal = ({
   mode = "create",
 }: CouponModalProps) => {
   const { createCoupon, updateCoupon, isLoading } = useCoupon();
-  const { getCourses } = useCourse();
-  const { getCategories } = useCategory();
+  // Admin endpoints: the public ones scope by the site, which is always Airkrit.
+  const { getAdminCourses } = useCourse();
+  const { getAdminCategories } = useCategory();
 
   const [formData, setFormData] = useState<CreateCouponData | UpdateCouponData>(
     {
@@ -53,6 +55,7 @@ const CouponModal = ({
       validFrom: "",
       validUntil: "",
       isActive: true,
+      brand: undefined,
     }
   );
 
@@ -79,12 +82,18 @@ const CouponModal = ({
   // Load categories with pagination
   const loadCategories = useCallback(
     async (page: number, search: string, append: boolean = false) => {
+      if (!formData.brand) {
+        setCategories([]);
+        setHasMoreCategories(false);
+        return;
+      }
       setLoadingCategories(true);
       try {
-        const categoriesRes = await getCategories({
+        const categoriesRes = await getAdminCategories({
           page,
           limit: 20,
           search: search || undefined,
+          brand: formData.brand,
         });
 
         if (categoriesRes && categoriesRes.categories) {
@@ -114,7 +123,7 @@ const CouponModal = ({
         setLoadingCategories(false);
       }
     },
-    [getCategories]
+    [getAdminCategories, formData.brand]
   );
 
   // Initial load categories on modal open
@@ -131,12 +140,18 @@ const CouponModal = ({
   // Load courses with pagination
   const loadCourses = useCallback(
     async (page: number, search: string, append: boolean = false) => {
+      if (!formData.brand) {
+        setCourses([]);
+        setHasMoreCourses(false);
+        return;
+      }
       setLoadingCourses(true);
       try {
-        const coursesRes = await getCourses({
+        const coursesRes = await getAdminCourses({
           page,
           limit: 20,
           search: search || undefined,
+          brand: formData.brand,
         });
 
         if (coursesRes && coursesRes.courses) {
@@ -163,7 +178,7 @@ const CouponModal = ({
         setLoadingCourses(false);
       }
     },
-    [getCourses]
+    [getAdminCourses, formData.brand]
   );
 
   // Initial load and reset on modal open
@@ -273,6 +288,7 @@ const CouponModal = ({
         validFrom: utcToIstDatetimeLocalValue(editingCoupon.validFrom),
         validUntil: utcToIstDatetimeLocalValue(editingCoupon.validUntil),
         isActive: editingCoupon.isActive,
+        brand: editingCoupon.brand,
       });
     } else {
       // Reset for create mode
@@ -291,12 +307,18 @@ const CouponModal = ({
         validFrom: "",
         validUntil: "",
         isActive: true,
+        brand: undefined,
       });
     }
   }, [editingCoupon, mode, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.brand) {
+      toast.error("Choose the brand this coupon is for");
+      return;
+    }
 
     if (!formData.code?.trim()) {
       toast.error("Coupon code is required");
@@ -393,6 +415,23 @@ const CouponModal = ({
             <h3 className="text-lg font-semibold text-gray-900">
               Basic Information
             </h3>
+
+            <BrandSelect
+              label="Brand"
+              required
+              placeholder="Choose a brand"
+              value={formData.brand ?? ""}
+              onChange={(next) => {
+                if (next === "all" || next === formData.brand) return;
+                // Courses and categories belong to one brand, so a switch clears them.
+                setFormData({
+                  ...formData,
+                  brand: next,
+                  applicableCourses: [],
+                  applicableCategories: [],
+                });
+              }}
+            />
 
             <Input
               label="Coupon Code"

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/buttons/button";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
+import BrandSelect from "@/components/admin/BrandSelect";
+import type { Brand } from "@/constants/brands";
 import { Course } from "@/types/course";
 import type { AdminUserOption } from "@/hooks/useUserManagement";
 import { toast } from "react-toastify";
@@ -39,6 +41,8 @@ const TrialCourseModal = ({
   const [audienceFilter, setAudienceFilter] = useState<
     "all" | "college-students" | "professionals"
   >("all");
+  const [brand, setBrand] = useState<Brand | "">("");
+  const lastBrandRef = useRef<string>("");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
@@ -88,8 +92,10 @@ const TrialCourseModal = ({
     setCourseSearch("");
     setDebouncedCourseSearch("");
     setAudienceFilter("all");
+    setBrand("");
     lastCourseSearchRef.current = "";
     lastAudienceFilterRef.current = "";
+    lastBrandRef.current = "";
     isLoadingCoursesRef.current = false;
     if (userImportInputRef.current) userImportInputRef.current.value = "";
   }, []);
@@ -192,6 +198,7 @@ const TrialCourseModal = ({
   // Fetch courses via lightweight admin options API (includes plans for eligibility)
   const fetchCourses = useCallback(
     async (page: number, append: boolean = false, search?: string) => {
+      if (!brand) return;
       // Prevent duplicate calls
       if (isLoadingCoursesRef.current) return;
 
@@ -204,6 +211,7 @@ const TrialCourseModal = ({
           limit,
           search: search || undefined,
           audience: audienceFilter === "all" ? undefined : audienceFilter,
+          brand,
           isActive: true,
         });
 
@@ -236,7 +244,7 @@ const TrialCourseModal = ({
         isLoadingCoursesRef.current = false;
       }
     },
-    [getAdminCourseOptions, audienceFilter],
+    [getAdminCourseOptions, audienceFilter, brand],
   );
 
   // Debounce course search
@@ -257,6 +265,7 @@ const TrialCourseModal = ({
     if (
       lastCourseSearchRef.current === debouncedCourseSearch &&
       lastAudienceFilterRef.current === audienceFilter &&
+      lastBrandRef.current === brand &&
       courses.length > 0
     ) {
       return;
@@ -264,6 +273,7 @@ const TrialCourseModal = ({
 
     lastCourseSearchRef.current = debouncedCourseSearch;
     lastAudienceFilterRef.current = audienceFilter;
+    lastBrandRef.current = brand;
 
     // Reset pagination
     setCurrentPage(1);
@@ -277,7 +287,7 @@ const TrialCourseModal = ({
       // Initial load without search (pagination enabled)
       fetchCourses(1, false);
     }
-  }, [trialStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter]);
+  }, [trialStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter, brand]);
 
   // Reset state when modal closes (mounted with isOpen=false while parent keeps instance)
   useEffect(() => {
@@ -739,6 +749,23 @@ const TrialCourseModal = ({
                       (Multiple selection allowed)
                     </span>
                   </label>
+                  <BrandSelect
+                    className="mb-3"
+                    required
+                    placeholder="Choose a brand first"
+                    value={brand}
+                    onChange={(next) => {
+                      if (next === "all") return;
+                      setBrand(next);
+                      setSelectedCourses([]);
+                    }}
+                  />
+                  {!brand && (
+                    <p className="text-sm text-gray-500 mb-3">
+                      Choose a brand to list its courses. The learner joins that
+                      brand when the trial is granted.
+                    </p>
+                  )}
                   {/* Course Search + Filters */}
                   <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="md:col-span-2">

@@ -17,6 +17,12 @@ interface VerifyEmailStepProps {
   expiryMinutes: number;
   /** Fires once the account exists, so the caller can sign the learner in. */
   onVerified: () => Promise<void> | void;
+  /**
+   * The address already had an identity, which has now joined this site. No
+   * account was created and nobody is signed in: they log in with the
+   * password they already use.
+   */
+  onJoined?: (message: string) => void;
   /** Returns to the register form so the address can be corrected. */
   onChangeEmail: () => void;
   /**
@@ -33,6 +39,7 @@ const VerifyEmailStep: React.FC<VerifyEmailStepProps> = ({
   email,
   expiryMinutes,
   onVerified,
+  onJoined,
   onChangeEmail,
   onExpired,
 }) => {
@@ -86,6 +93,14 @@ const VerifyEmailStep: React.FC<VerifyEmailStepProps> = ({
         pendingId: activePendingId,
         otp: code,
       });
+
+      if (response.data?.data?.joined) {
+        onJoined?.(
+          response.data?.message ||
+            "You're all set. Sign in with the password you already use.",
+        );
+        return;
+      }
 
       if (response.status === 201) {
         await onVerified();

@@ -16,6 +16,8 @@ import Pagination from "@/components/admin/Pagination";
 import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
 import useCsvExport from "@/hooks/useCsvExport";
 import { downloadCsv, type CsvColumn } from "@/lib/csv";
+import BrandChip from "@/components/admin/BrandChip";
+import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
 
 interface OrderUser {
   firstName?: string;
@@ -31,6 +33,7 @@ interface OrderCourse {
 
 interface OrderItem {
   _id: string;
+  brand?: string;
   userId: OrderUser | null;
   courseId: OrderCourse | null;
   courseName?: string;
@@ -124,6 +127,7 @@ const OrdersPage = () => {
   const [search, setSearch] = useState(searchFromUrl);
   const [debouncedSearch, setDebouncedSearch] = useState(searchFromUrl);
   const [paymentStatus, setPaymentStatus] = useState<string>("all");
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>("all");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<OrderItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -169,6 +173,7 @@ const OrdersPage = () => {
       if (paymentStatus !== "all") {
         params.append("paymentStatus", paymentStatus);
       }
+      if (brandFilter !== "all") params.append("brand", brandFilter);
 
       const response = await apiClient.get(
         `/admin/orders?${params.toString()}`,
@@ -189,7 +194,7 @@ const OrdersPage = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, debouncedSearch, paymentStatus]);
+  }, [page, debouncedSearch, paymentStatus, brandFilter]);
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString("en-IN", {
@@ -224,7 +229,8 @@ const OrdersPage = () => {
     return item.userName || "—";
   };
 
-  const hasActiveFilters = debouncedSearch || paymentStatus !== "all";
+  const hasActiveFilters =
+    debouncedSearch || paymentStatus !== "all" || brandFilter !== "all";
 
   const productIconWrap =
     "w-8 h-8 rounded bg-gray-100 flex items-center justify-center shrink-0";
@@ -290,6 +296,20 @@ const OrdersPage = () => {
               placeholder="Payment status"
             />
           </div>
+          <div className="sm:w-40">
+            <Select
+              options={[
+                { value: "all", label: "All brands" },
+                ...BRANDS.map((b) => ({ value: b, label: BRAND_LABEL[b] })),
+              ]}
+              value={brandFilter}
+              onChange={(val) => {
+                setBrandFilter(val as BrandFilter);
+                setPage(1);
+              }}
+              placeholder="Brand"
+            />
+          </div>
           <div className="flex items-center sm:self-stretch">
             <ExportCsvMenu
               pageRowCount={orders.length}
@@ -327,6 +347,7 @@ const OrdersPage = () => {
                     from,
                     to,
                     search: debouncedSearch || undefined,
+                    brand: brandFilter === "all" ? undefined : brandFilter,
                     paymentStatus:
                       statuses.length === EXPORT_STATUS_OPTIONS.length
                         ? undefined
@@ -426,6 +447,7 @@ const OrdersPage = () => {
                           <span className="text-xs text-gray-500">
                             {getAdminOrderTypeLabel(item.orderKind)}
                           </span>
+                          <BrandChip brand={item.brand} />
                         </div>
                       </div>
                     </td>

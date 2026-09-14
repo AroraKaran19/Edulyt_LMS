@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { Category } from "@/types";
 import { toast } from "react-toastify";
+import type { Brand } from "@/constants/brands";
 
 // ===================
 // Filter Interfaces
@@ -13,6 +14,7 @@ export interface CategoryFilters {
   search?: string;
   isActive?: boolean;
   audience?: "college-students" | "professionals";
+  brand?: Brand;
   sortBy?: "name" | "createdAt" | "updatedAt";
   sortOrder?: "asc" | "desc";
 }
@@ -35,6 +37,7 @@ export interface SingleCategoryResponse {
 export interface CreateCategoryData {
   name: string;
   audience: "college-students" | "professionals";
+  brand?: Brand;
   description?: string;
   showOnHomePage?: boolean;
   showOnCourseList?: boolean;
@@ -168,6 +171,8 @@ export const useCategory = () => {
           params.append("isActive", filters.isActive.toString());
         if (filters.sortBy) params.append("sortBy", filters.sortBy);
         if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+        if (filters.brand) params.append("brand", filters.brand);
 
         const response = await apiClient.get(
           `/categories/admin?${params.toString()}`

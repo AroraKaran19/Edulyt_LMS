@@ -13,11 +13,13 @@ import { awaitClientSessionAfterSignIn } from "@/lib/awaitClientSession";
 import { signInWithOAuthProvider } from "@/lib/oauthSignInClient";
 import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
 import type { User } from "@/types/user";
+import { BRAND_NOT_JOINED } from "@/constants/brands";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [joinPrompt, setJoinPrompt] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -54,39 +56,52 @@ const LoginPage = () => {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signInWithCredentials = async (joinBrand: boolean) => {
+    // Use NextAuth's credentials provider directly
+    const result = await signIn("credentials", {
+      email,
+      password,
+      ...(joinBrand ? { joinBrand: "true" } : {}),
+      redirect: false, // Don't redirect automatically
+      callbackUrl: callbackUrl || "/dashboard",
+    });
+
+    if (result?.error === BRAND_NOT_JOINED) {
+      setJoinPrompt(true);
+      return;
+    }
+    if (result?.error) {
+      showLoginErrorToast(result.error);
+    } else if (result?.ok) {
+      setJoinPrompt(false);
+      toast.success("Login successful!");
+      const session = await awaitClientSessionAfterSignIn();
+      if (session?.user) {
+        const dest = getPostLoginRedirectPath(
+          session.user as User,
+          callbackUrl
+        );
+        router.push(dest);
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  };
+
+  const runSignIn = async (joinBrand: boolean) => {
     try {
       setLoading(true);
-
-      // Use NextAuth's credentials provider directly
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false, // Don't redirect automatically
-        callbackUrl: callbackUrl || "/dashboard",
-      });
-
-      if (result?.error) {
-        showLoginErrorToast(result.error);
-      } else if (result?.ok) {
-        toast.success("Login successful!");
-        const session = await awaitClientSessionAfterSignIn();
-        if (session?.user) {
-          const dest = getPostLoginRedirectPath(
-            session.user as User,
-            callbackUrl
-          );
-          router.push(dest);
-        } else {
-          router.push("/dashboard");
-        }
-      }
+      await signInWithCredentials(joinBrand);
     } catch (error) {
       toast.error("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await runSignIn(false);
   };
 
   // Show loading overlay when OAuth is in progress
@@ -165,6 +180,22 @@ const LoginPage = () => {
           {loading ? "Logging in..." : "Login"}
         </OrangeButton>
       </form>
+      {joinPrompt && (
+        <div className="w-full rounded-lg border border-orange-200 bg-orange-50 p-4 flex flex-col gap-3">
+          <p className="text-sm text-gray-800">
+            This email already has an Edulyt account. Continue to use it on
+            Airkrit with the same password.
+          </p>
+          <OrangeButton
+            type="button"
+            className="w-full rounded-xl font-bold text-sm py-3"
+            disabled={loading}
+            onClick={() => runSignIn(true)}
+          >
+            {loading ? "Joining..." : "Continue with this account"}
+          </OrangeButton>
+        </div>
+      )}
       <div className="breaker w-full flex items-center justify-center gap-3 sm:gap-4 my-3 sm:my-4">
         <div className="flex-1 h-[3px] sm:h-[4px] bg-gray-200 max-w-[100px]"></div>
         <span className="text-sm sm:text-base text-gray-500 uppercase whitespace-nowrap font-medium">

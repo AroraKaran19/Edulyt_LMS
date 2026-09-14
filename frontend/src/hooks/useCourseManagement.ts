@@ -1,10 +1,8 @@
 import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { Course } from "@/types/course";
-import type {
-  AdminCourseOptionsResponse,
-  CourseFilters,
-} from "@/hooks/useCourse";
+import { useCourse } from "@/hooks/useCourse";
+import type { Brand } from "@/constants/brands";
 
 export interface GetCoursesParams {
   page?: number;
@@ -12,6 +10,7 @@ export interface GetCoursesParams {
   search?: string;
   category?: string;
   audience?: "college-students" | "professionals";
+  brand?: Brand;
   isActive?: boolean;
   isFeatured?: boolean;
 }
@@ -58,6 +57,7 @@ const useCourseManagement = () => {
         if (params.search) queryParams.append("search", params.search);
         if (params.category) queryParams.append("category", params.category);
         if (params.audience) queryParams.append("audience", params.audience);
+        if (params.brand) queryParams.append("brand", params.brand);
         if (params.isActive !== undefined)
           queryParams.append("isActive", params.isActive.toString());
         if (params.isFeatured !== undefined)
@@ -82,33 +82,8 @@ const useCourseManagement = () => {
     [handleRequest],
   );
 
-  const getAdminCourseOptions = useCallback(
-    async (
-      filters: CourseFilters = {},
-    ): Promise<AdminCourseOptionsResponse | null> => {
-      return handleRequest(async () => {
-        const params = new URLSearchParams();
-        if (filters.page) params.append("page", filters.page.toString());
-        if (filters.limit) params.append("limit", filters.limit.toString());
-        if (filters.search) params.append("search", filters.search);
-        if (filters.searchTitleOnly) params.append("searchTitleOnly", "true");
-        if (filters.categories) params.append("categories", filters.categories);
-        if (filters.instructors)
-          params.append("instructors", filters.instructors);
-        if (filters.audience) params.append("audience", filters.audience);
-        if (filters.isActive !== undefined)
-          params.append("isActive", filters.isActive.toString());
-        if (filters.sortBy) params.append("sortBy", filters.sortBy);
-        if (filters.sortOrder) params.append("sortOrder", filters.sortOrder);
-
-        const response = await apiClient.get(
-          `/courses/admin/options?${params.toString()}`,
-        );
-        return response.data.data;
-      }, "Failed to fetch admin course options");
-    },
-    [handleRequest],
-  );
+  // One client for the options endpoint, owned by useCourse.
+  const { getAdminCourseOptions } = useCourse();
 
   return {
     // State

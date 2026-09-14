@@ -11,7 +11,7 @@ import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { istDatetimeLocalToUtcIso } from "@/lib/ist";
 import { useCourse } from "@/hooks/useCourse";
-import CoursePicker from "./CoursePicker";
+import BrandCoursePicker from "./BrandCoursePicker";
 import type { Instructor } from "@/types";
 
 type Props = {
@@ -176,7 +176,7 @@ export default function LiveClassCreateModal({
       className="max-w-xl w-full mx-4 max-h-[90vh]"
     >
       <div className="flex flex-col gap-4">
-        <CoursePicker
+        <BrandCoursePicker
           label="Course"
           required
           value={courseId}

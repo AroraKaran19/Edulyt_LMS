@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
+import type { Brand } from "@/constants/brands";
 import {
   Coupon,
   CreateCouponData,
@@ -22,6 +23,7 @@ export interface CouponFilters {
   isActive?: boolean;
   /** Which tab: ordinary coupons, or the ones minted by scholarship winners. */
   source?: "regular" | "scholarship";
+  brand?: Brand;
 }
 
 export const useCoupon = () => {
@@ -63,6 +65,7 @@ export const useCoupon = () => {
         if (filters.isActive !== undefined)
           params.append("isActive", filters.isActive.toString());
         if (filters.source) params.append("source", filters.source);
+        if (filters.brand) params.append("brand", filters.brand);
 
         const response = await apiClient.get(`/coupons?${params.toString()}`);
         return response.data.data;

@@ -44,6 +44,8 @@ import ExportCsvMenu from "@/components/admin/ExportCsvMenu";
 import PromoteToStaffModal from "./components/PromoteToStaffModal";
 import useCsvExport from "@/hooks/useCsvExport";
 import { downloadCsv, type CsvColumn } from "@/lib/csv";
+import BrandChip from "@/components/admin/BrandChip";
+import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
 
 /**
  * Lead-sheet columns: identity and contact details plus the few qualifying
@@ -109,6 +111,7 @@ const ManageUsersPage = () => {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [userTypeFilter, setUserTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showGiftModal, setShowGiftModal] = useState(false);
@@ -162,6 +165,7 @@ const ManageUsersPage = () => {
       search: debouncedSearch || undefined,
       userType: userTypeFilter !== "all" ? (userTypeFilter as any) : undefined,
       status: statusFilter !== "all" ? (statusFilter as any) : undefined,
+      brand: brandFilter !== "all" ? brandFilter : undefined,
     });
 
     if (result) {
@@ -172,7 +176,7 @@ const ManageUsersPage = () => {
 
   useEffect(() => {
     fetchUsers();
-  }, [currentPage, debouncedSearch, userTypeFilter, statusFilter]);
+  }, [currentPage, debouncedSearch, userTypeFilter, statusFilter, brandFilter]);
 
   useEffect(() => {
     if (!isSuperAdmin && userTypeFilter === "super-admin") {
@@ -656,6 +660,20 @@ const ManageUsersPage = () => {
                 placeholder="Filter by status"
               />
             </div>
+
+            {/* Brand Filter */}
+            <div className="sm:col-span-1">
+              <Select
+                dropdownPortal
+                options={[
+                  { value: "all", label: "All brands" },
+                  ...BRANDS.map((b) => ({ value: b, label: BRAND_LABEL[b] })),
+                ]}
+                value={brandFilter}
+                onChange={(val) => setBrandFilter(val as BrandFilter)}
+                placeholder="Filter by brand"
+              />
+            </div>
           </div>
 
           {/* Right Section: Action Buttons */}
@@ -843,6 +861,13 @@ const ManageUsersPage = () => {
                       >
                         {formatUserTypeLabel(user.userType)}
                       </span>
+                      {user.brands && user.brands.length > 0 && (
+                        <div className="mt-1 flex gap-1">
+                          {user.brands.map((b) => (
+                            <BrandChip key={b} brand={b} />
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                       <span

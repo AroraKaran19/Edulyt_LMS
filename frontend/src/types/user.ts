@@ -1,4 +1,5 @@
 import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
+import type { Brand } from "@/constants/brands";
 
 export type SuccessPointEarnSource =
   | "purchased"
@@ -150,6 +151,8 @@ export interface SocialProfiles {
 export interface User {
   _id?: string;
   status: "active" | "inactive" | "blocked";
+  /** Platforms this person has joined. Absent on accounts that predate the split. */
+  brands?: Brand[];
 
   firstName?: string;
   lastName?: string;

@@ -21,6 +21,9 @@ import { Coupon } from "@/types/coupon";
 import CouponModal from "@/components/ui/modals/CouponModal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Pagination from "@/components/admin/Pagination";
+import BrandChip from "@/components/admin/BrandChip";
+import BrandSelect from "@/components/admin/BrandSelect";
+import type { BrandFilter } from "@/constants/brands";
 import { toast } from "react-toastify";
 
 /** Shown on every locked control, so the reason is never a mystery 409. */
@@ -39,6 +42,7 @@ const CouponsPage = () => {
   const [sourceTab, setSourceTab] = useState<"regular" | "scholarship">(
     "regular",
   );
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>("all");
   const [filterActive, setFilterActive] = useState<boolean | undefined>(
     undefined,
   );
@@ -74,6 +78,7 @@ const CouponsPage = () => {
       search: debouncedSearch,
       isActive: filterActive,
       source: sourceTab,
+      brand: brandFilter === "all" ? undefined : brandFilter,
     });
 
     if (result) {
@@ -85,7 +90,7 @@ const CouponsPage = () => {
 
   useEffect(() => {
     loadCoupons();
-  }, [page, debouncedSearch, filterActive, sourceTab]);
+  }, [page, debouncedSearch, filterActive, sourceTab, brandFilter]);
 
   const handleCreate = () => {
     setModalMode("create");
@@ -321,6 +326,16 @@ const CouponsPage = () => {
                 </div>
               </div>
 
+              <BrandSelect
+                className="w-full lg:w-44"
+                includeAll
+                value={brandFilter}
+                onChange={(next) => {
+                  setBrandFilter(next);
+                  setPage(1);
+                }}
+              />
+
               <div className="w-full lg:w-48">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Filter by Status
@@ -401,6 +416,7 @@ const CouponsPage = () => {
                           {coupon.code}
                         </span>
                       </div>
+                      <BrandChip brand={coupon.brand} />
                       <div className="px-3 py-1.5 bg-linear-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
                         <span className="text-green-800 text-sm font-bold">
                           {getDiscountDisplay(coupon)}

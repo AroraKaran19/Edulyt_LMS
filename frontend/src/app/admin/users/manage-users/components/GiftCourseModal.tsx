@@ -12,6 +12,8 @@ import {
 import { Button } from "@/components/ui/buttons/button";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Select from "@/components/ui/inputs/Select";
+import BrandSelect from "@/components/admin/BrandSelect";
+import type { Brand } from "@/constants/brands";
 import Input from "@/components/ui/inputs/Input";
 import { Course, CourseModule } from "@/types/course";
 import { PartialAccessControl, ModuleAccessControl } from "@/types/enrollment";
@@ -79,6 +81,8 @@ const GiftCourseModal = ({
   const [audienceFilter, setAudienceFilter] = useState<
     "all" | "college-students" | "professionals"
   >("all");
+  const [brand, setBrand] = useState<Brand | "">("");
+  const lastBrandRef = useRef<string>("");
   const coursesScrollRef = useRef<HTMLDivElement>(null);
   const coursesObserverTarget = useRef<HTMLDivElement>(null);
   const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
@@ -129,14 +133,17 @@ const GiftCourseModal = ({
     setCourseSearch("");
     setDebouncedCourseSearch("");
     setAudienceFilter("all");
+    setBrand("");
     lastCourseSearchRef.current = "";
     lastAudienceFilterRef.current = "";
+    lastBrandRef.current = "";
     isLoadingCoursesRef.current = false;
   }, []);
 
   // Fetch courses with pagination and search
   const fetchCourses = useCallback(
     async (page: number, append: boolean = false, search?: string) => {
+      if (!brand) return;
       // Prevent duplicate calls
       if (isLoadingCoursesRef.current) return;
 
@@ -148,6 +155,7 @@ const GiftCourseModal = ({
           limit: search ? 100 : 200, // 100 limit when searching, 200 for pagination
           search: search || undefined,
           audience: audienceFilter === "all" ? undefined : audienceFilter,
+          brand,
           isActive: true,
         });
 
@@ -169,7 +177,7 @@ const GiftCourseModal = ({
         isLoadingCoursesRef.current = false;
       }
     },
-    [getCourses, audienceFilter],
+    [getCourses, audienceFilter, brand],
   );
 
   // Debounce course search
@@ -190,6 +198,7 @@ const GiftCourseModal = ({
     if (
       lastCourseSearchRef.current === debouncedCourseSearch &&
       lastAudienceFilterRef.current === audienceFilter &&
+      lastBrandRef.current === brand &&
       courses.length > 0
     ) {
       return;
@@ -197,6 +206,7 @@ const GiftCourseModal = ({
 
     lastCourseSearchRef.current = debouncedCourseSearch;
     lastAudienceFilterRef.current = audienceFilter;
+    lastBrandRef.current = brand;
 
     // Reset pagination
     setCurrentPage(1);
@@ -210,7 +220,7 @@ const GiftCourseModal = ({
       // Initial load without search (pagination enabled)
       fetchCourses(1, false);
     }
-  }, [giftStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter]);
+  }, [giftStep, isOpen, debouncedCourseSearch, fetchCourses, audienceFilter, brand]);
 
   useEffect(() => {
     if (!isOpen) resetGiftModalState();
@@ -1290,6 +1300,23 @@ const GiftCourseModal = ({
                       (Multiple selection allowed)
                     </span>
                   </label>
+                  <BrandSelect
+                    className="mb-3"
+                    required
+                    placeholder="Choose a brand first"
+                    value={brand}
+                    onChange={(next) => {
+                      if (next === "all") return;
+                      setBrand(next);
+                      setSelectedCourses([]);
+                    }}
+                  />
+                  {!brand && (
+                    <p className="text-sm text-gray-500 mb-3">
+                      Choose a brand to list its courses. The learner joins that
+                      brand when the course is granted.
+                    </p>
+                  )}
                   {/* Course Search + Filters */}
                   <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="md:col-span-2">

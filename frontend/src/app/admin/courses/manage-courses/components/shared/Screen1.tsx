@@ -4,6 +4,7 @@ import { EditorHandle } from "@/components/shared/Editor/Editor";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import DropDown from "@/components/ui/dropdown/DropDown";
 import CategoryInputWithManagement from "@/components/ui/inputs/CategoryInputWithManagement";
+import BrandSelect from "@/components/admin/BrandSelect";
 import CheckBoxContainer from "@/components/ui/inputs/CheckBoxContainer";
 import Input from "@/components/ui/inputs/Input";
 import { useUpload } from "@/hooks/useUpload";
@@ -47,6 +48,14 @@ const Screen1 = () => {
   const brochureS3Key = watch("brochureS3Key");
   const brochureSource = watch("brochureSource");
   const titleValue = watch("title");
+  const brandValue = watch("brand");
+
+  // Airkrit sells college courses only, so its audience is not a choice.
+  useEffect(() => {
+    if (brandValue === "airkrit" && getValues("audience") !== "college-students") {
+      setValue("audience", "college-students", { shouldValidate: true });
+    }
+  }, [brandValue, getValues, setValue]);
 
   const [curriculumFolderName, setCurriculumFolderName] = useState(
     "courses/new_course/curriculum"
@@ -295,6 +304,29 @@ const Screen1 = () => {
             />
           )}
         />
+        <Controller
+          name="brand"
+          control={control}
+          rules={{ required: "Choose the brand this course is sold on" }}
+          render={({ field }) => (
+            <BrandSelect
+              label="Brand"
+              required
+              placeholder="Choose a brand"
+              value={field.value ?? ""}
+              onChange={(next) => {
+                if (next === "all" || next === field.value) return;
+                field.onChange(next);
+                // Categories belong to one brand, so a switch clears them.
+                setValue("category", [], { shouldValidate: true });
+                setValue("categoryNames", {});
+              }}
+            />
+          )}
+        />
+        {errors.brand?.message && (
+          <p className="text-red-500 text-sm mt-1">{errors.brand.message}</p>
+        )}
         <div className="flex gap-4">
           <Controller
             name="category"
@@ -316,6 +348,7 @@ const Screen1 = () => {
                 className="w-full max-w-full"
                 setChange={field.onChange}
                 required={true}
+                brand={brandValue}
                 initialCategoryNames={categoryNamesValue}
                 onCategoryNameAdded={(id, name) => {
                   const current = getValues("categoryNames") || {};
@@ -340,7 +373,11 @@ const Screen1 = () => {
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   field.onChange(e.target.value)
                 }
-                options={["college-students", "professionals"]}
+                options={
+                  brandValue === "airkrit"
+                    ? ["college-students"]
+                    : ["college-students", "professionals"]
+                }
                 optionLabels={{
                   "college-students": "College Students",
                   professionals: "Working Professionals",
