@@ -5,3 +5,7 @@ export const ACCOUNT_DISABLED_MESSAGE =
 /** Main /login & OAuth learner flows refuse partner-only accounts server-side. */
 export const PARTNER_USE_PORTAL_LOGIN_MESSAGE =
   "Partner accounts cannot sign in here. Use the partner login page.";
+
+/** A Google or LinkedIn sign-in whose id_token did not verify. */
+export const OAUTH_UNVERIFIED_MESSAGE =
+  "We could not verify this sign-in with the provider. Please try again.";

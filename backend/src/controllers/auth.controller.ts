@@ -40,6 +40,7 @@ import { enqueueCollaborationAllotmentAfterRegister } from "../services/collabor
 import { tryPartnershipImportWhitelistAfterRegister } from "../services/collaborationWhitelist.services";
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import { tryAwardRegistrationBonus } from "../services/successPoints.services";
+import { verifyOAuthIdToken } from "../services/oauthIdentity.services";
 import {
   RESET_REQUESTED_MESSAGE,
   RESET_TOKEN_TTL_MINUTES,
@@ -345,17 +346,13 @@ export const partnerLogin = asyncHandler(async (req: Request, res: Response) => 
 });
 
 export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
-  const { email, fullName, provider, providerDetails } = req.body;
-  if (!email || !fullName || !provider) {
-    throw new AppError("All fields are required", 400);
-  }
+  const { provider, providerDetails } = req.body;
   if (provider !== "google" && provider !== "linkedin") {
     throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
   }
 
-  // Normalized: accounts are stored lowercased, so a provider returning
-  // different casing must not create a second account for the same person.
-  const normalizedEmail = String(email).trim().toLowerCase();
+  const identity = await verifyOAuthIdToken(provider, providerDetails?.id_token);
+  const normalizedEmail = identity.email;
 
   let user = await UserModel.findOne({ email: normalizedEmail });
   if (!user) {
@@ -415,12 +412,12 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     user = newUser;
     void enqueueCollaborationAllotmentAfterRegister(
       newUser._id,
-      email,
+      normalizedEmail,
       "student",
     );
     void tryPartnershipImportWhitelistAfterRegister(
       newUser._id,
-      email,
+      normalizedEmail,
       "student",
     );
     // OAuth sign-up is a registration → grant the one-time welcome bonus.

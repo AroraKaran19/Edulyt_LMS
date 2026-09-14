@@ -80,11 +80,11 @@ export const authOptions: NextAuthOptions = {
     }),
     GoogleProvider({
       clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_SECRET!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     LinkedInProvider({
       clientId: process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_ID!,
-      clientSecret: process.env.NEXT_PUBLIC_LINKEDIN_CLIENT_SECRET!,
+      clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: "openid profile email",

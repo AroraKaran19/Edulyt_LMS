@@ -103,40 +103,6 @@ export const loginUser = async (email: string, password: string) => {
   return userWithoutPassword;
 };
 
-export const oauthSignIn = async (
-  email: string,
-  firstName: string,
-  lastName: string,
-  provider: User["provider"],
-  userType = "student" as User["userType"],
-  profilePicture: string
-) => {
-  try {
-    const user = await UserModel.findOne({ email });
-    if (!user) {
-      const newUser = await registerUser({
-        email,
-        firstName,
-        lastName,
-        provider,
-        userType,
-        profilePicture,
-      });
-      return newUser;
-    }
-
-    if (user.provider !== provider) {
-      throw new AppError(
-        `User is registered with ${user.provider.toUpperCase()}!`,
-        401
-      );
-    }
-
-    return user;
-  } catch (error) {
-    throw new AppError("Internal server error", 500);
-  }
-};
 
 export const logoutUser = async (userId: string) => {
   try {
