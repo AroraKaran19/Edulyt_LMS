@@ -1,6 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { AppError } from "../middlewares/error.middleware";
 import { OAUTH_UNVERIFIED_MESSAGE } from "../constants/authMessages";
+import { brandEnvSuffix, type Brand } from "../constants/brands";
 
 export type OAuthProvider = "google" | "linkedin";
 
@@ -43,11 +44,15 @@ const keySetFor = (provider: OAuthProvider) => {
 export const verifyOAuthIdToken = async (
   provider: OAuthProvider,
   idToken: unknown,
+  brand: Brand,
 ): Promise<VerifiedOAuthIdentity> => {
   const config = PROVIDERS[provider];
-  const audience = process.env[config.clientIdEnv];
+  // Each brand signs in through its own provider app, so a token is only valid
+  // for the brand it was issued to.
+  const clientIdEnv = `${config.clientIdEnv}_${brandEnvSuffix(brand)}`;
+  const audience = process.env[clientIdEnv];
   if (!audience) {
-    throw new AppError(`${config.clientIdEnv} is not set`, 500);
+    throw new AppError(`${clientIdEnv} is not set`, 500);
   }
   if (typeof idToken !== "string" || idToken.length === 0) {
     throw new AppError(OAUTH_UNVERIFIED_MESSAGE, 401);

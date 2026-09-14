@@ -41,6 +41,7 @@ import { tryPartnershipImportWhitelistAfterRegister } from "../services/collabor
 import { downloadImageAndUploadToS3 } from "../services/upload.services";
 import { tryAwardRegistrationBonus } from "../services/successPoints.services";
 import { verifyOAuthIdToken } from "../services/oauthIdentity.services";
+import { DEFAULT_BRAND } from "../constants/brands";
 import {
   RESET_REQUESTED_MESSAGE,
   RESET_TOKEN_TTL_MINUTES,
@@ -351,7 +352,12 @@ export const oauthSignin = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError("Only Google and LinkedIn OAuth are supported", 400);
   }
 
-  const identity = await verifyOAuthIdToken(provider, providerDetails?.id_token);
+  const requestBrand = req.brand ?? DEFAULT_BRAND;
+  const identity = await verifyOAuthIdToken(
+    provider,
+    providerDetails?.id_token,
+    requestBrand,
+  );
   const normalizedEmail = identity.email;
 
   let user = await UserModel.findOne({ email: normalizedEmail });
