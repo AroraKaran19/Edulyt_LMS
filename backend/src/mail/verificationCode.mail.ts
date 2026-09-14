@@ -54,6 +54,8 @@ const VERIFICATION_CODE_TEMPLATE_ID = "airkrit_verification_code";
 
 export const verificationCodeMail =
   defineMailTemplate<VerificationCodeVariables>(
+    // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
+    // artwork until its id is added as `ids.edulyt`.
     VERIFICATION_CODE_TEMPLATE_ID,
     "verification-code",
   );

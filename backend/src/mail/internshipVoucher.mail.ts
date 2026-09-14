@@ -36,6 +36,8 @@ export const internshipVoucherAwardedMail =
   defineMailTemplate<InternshipVoucherAwardedVariables>(
     "airkrit_internship_via_course_voucher",
     "internship-voucher-awarded",
-    // Internships are Edulyt's, whichever site the learner came from.
+    // Internships are Edulyt's, whichever site the learner came from. Sends as
+    // Airkrit until cutover (`productMailBrand`).
+    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
     { brand: "edulyt" },
   );

@@ -30,6 +30,8 @@ export type EmailChangedVariables = {
 const EMAIL_CHANGED_TEMPLATE_ID = "airkrit_email_change_notification";
 
 export const emailChangedMail = defineMailTemplate<EmailChangedVariables>(
+  // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
+  // artwork until its id is added as `ids.edulyt`.
   EMAIL_CHANGED_TEMPLATE_ID,
   "email-changed-notice",
 );

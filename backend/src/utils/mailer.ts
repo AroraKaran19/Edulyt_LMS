@@ -6,6 +6,7 @@ import {
   brandEnvSuffix,
   DEFAULT_BRAND,
 } from "../constants/brands";
+import { edulytCutover } from "../config/brandFlags";
 
 dotenv.config();
 
@@ -692,6 +693,14 @@ export interface MailTemplate<V extends MailVariables> {
 }
 
 /**
+ * The brand mail about a product goes out as. Edulyt's products are sold on
+ * airkrit.com until cutover, so their mail keeps Airkrit's sender until then,
+ * the same rule `verificationBaseUrl` applies to certificate links.
+ */
+export const productMailBrand = (brand: Brand): Brand =>
+  brand === "edulyt" && !edulytCutover() ? "airkrit" : brand;
+
+/**
  * Declares a dashboard template as a typed sender.
  *
  * `templateId` is the id MSG91 shows for the approved template. `label` is only
@@ -700,7 +709,8 @@ export interface MailTemplate<V extends MailVariables> {
  *
  * Declare `brand` only when the artwork belongs to one product, e.g. a template
  * carrying the Edulyt logo. It then wins over any brand the caller passes, so
- * the sender can never contradict the artwork. Leave it off for neutral
+ * the sender can never contradict the artwork, though an Edulyt lock only takes
+ * effect at cutover (`productMailBrand`). Leave it off for neutral
  * templates (resets, receipts) and the caller decides, defaulting to Airkrit.
  */
 export const defineMailTemplate = <V extends MailVariables>(
@@ -712,7 +722,7 @@ export const defineMailTemplate = <V extends MailVariables>(
 
   /** A locked template ignores the caller; otherwise the caller decides. */
   const brandFor = (caller?: Brand): Brand =>
-    lockedBrand ?? caller ?? DEFAULT_BRAND;
+    lockedBrand ? productMailBrand(lockedBrand) : caller ?? DEFAULT_BRAND;
 
   const idFor = (brand: Brand): string => ids?.[brand] ?? templateId;
 

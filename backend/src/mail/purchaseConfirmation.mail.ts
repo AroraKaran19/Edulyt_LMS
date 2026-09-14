@@ -45,6 +45,8 @@ export type PurchaseConfirmationVariables = {
 /** Subject in the dashboard: `Order confirmed: {{itemName}}`. */
 export const purchaseConfirmationMail =
   defineMailTemplate<PurchaseConfirmationVariables>(
+    // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
+    // artwork until its id is added as `ids.edulyt`.
     "airkrit_order_confirmation",
     "purchase-confirmation",
   );

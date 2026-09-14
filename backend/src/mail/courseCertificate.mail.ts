@@ -51,6 +51,8 @@ export type CourseCertificatePendingVariables = {
  */
 export const courseCertificateIssuedMail =
   defineMailTemplate<CourseCertificateIssuedVariables>(
+    // TODO(brand-assets): no Edulyt copy in MSG91 yet; needed by cutover, when
+    // Edulyt courses start sending as Edulyt. Add its id as `ids.edulyt`.
     "course_certificate",
     "course-certificate-issued",
   );
@@ -69,6 +71,8 @@ export const courseCertificateIssuedMail =
  */
 export const courseCertificatePendingMail =
   defineMailTemplate<CourseCertificatePendingVariables>(
+    // TODO(brand-assets): no Edulyt copy in MSG91 yet; needed by cutover, when
+    // Edulyt courses start sending as Edulyt. Add its id as `ids.edulyt`.
     "course-cert-pending",
     "course-certificate-pending",
   );

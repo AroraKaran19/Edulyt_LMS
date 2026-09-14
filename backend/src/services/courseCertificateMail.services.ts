@@ -11,6 +11,7 @@
  */
 import mongoose from "mongoose";
 import { asBrand, type Brand } from "../constants/brands";
+import { productMailBrand } from "../utils/mailer";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { CourseModel } from "../models/course.schema";
 import { UserModel } from "../models/user.schema";
@@ -72,7 +73,7 @@ type CourseCertificateContext = {
   name: string;
   courseName: string;
   successPoints: number;
-  /** The enrollment's brand, so the mail comes from the site that sold it. */
+  /** The enrollment's brand, once cutover has moved its course to that site. */
   brand: Brand;
 };
 
@@ -119,7 +120,7 @@ const loadContext = async (
     // Zero or unset means the course awards none, and the copy then says nothing
     // about points rather than claiming zero were earned.
     successPoints: Number(course?.completionSuccessPoints ?? 0),
-    brand: asBrand(enrollment.brand),
+    brand: productMailBrand(asBrand(enrollment.brand)),
   };
 };
 

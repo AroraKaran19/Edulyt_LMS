@@ -113,6 +113,8 @@ function formatOfferLetterDate(d: Date): string {
   return `${String(d.getUTCDate()).padStart(2,"0")}-${months[d.getUTCMonth()]}-${d.getUTCFullYear()}`;
 }
 
+// TODO(brand-assets): no Edulyt offer letter template yet. Internships sell on
+// Airkrit until cutover, so Airkrit's letter stands in.
 // __dirname is backend/dist/services (or src/services); three segments reach repo root.
 const OFFER_LETTER_TEMPLATE = path.resolve(
   __dirname,

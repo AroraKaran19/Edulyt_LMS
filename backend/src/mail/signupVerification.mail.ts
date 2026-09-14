@@ -38,6 +38,8 @@ export type SignupVerificationVariables = {
 /** Subject in the dashboard is unchanged; only the points card moved. */
 export const signupVerificationMail =
   defineMailTemplate<SignupVerificationVariables>(
+    // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
+    // artwork until its id is added as `ids.edulyt`.
     "signup_verification_2",
     "signup-verification",
   );

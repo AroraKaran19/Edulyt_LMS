@@ -26,9 +26,10 @@ export type EnquiryReceivedVariables = {
  * Transactional: it is the receipt for an action the visitor just took, so it
  * uses `defineMailTemplate` and consults no preference.
  *
- * Both brands run an enquiry form, so this follows the request's brand. Until
- * an Airkrit version of the artwork exists in MSG91, both send the Edulyt
- * template from their own address: add the Airkrit id to `ids` to split them.
+ * Both brands run an enquiry form, so this follows the request's brand.
+ * TODO(brand-assets): only Edulyt's artwork exists in MSG91, so lead.controller
+ * sends this for Edulyt enquiries alone. Add Airkrit's id as `ids.airkrit` and
+ * remove that check once it is approved.
  *
  * Subject in the dashboard: `We have your enquiry, {{name}}`.
  */

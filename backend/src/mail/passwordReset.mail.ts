@@ -26,6 +26,8 @@ export type PasswordResetVariables = {
 const PASSWORD_RESET_TEMPLATE_ID = "airkrit_password_reset";
 
 export const passwordResetMail = defineMailTemplate<PasswordResetVariables>(
+  // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
+  // artwork until its id is added as `ids.edulyt`.
   PASSWORD_RESET_TEMPLATE_ID,
   "password-reset",
 );

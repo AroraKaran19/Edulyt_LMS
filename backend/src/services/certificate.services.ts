@@ -148,6 +148,8 @@ export const createCertificateService = async (
     )}/verify-certificate/${verificationCode}`;
 
     // Generate certificate DOCX file
+    // TODO(brand-assets): no Edulyt course certificate template yet. Edulyt courses
+    // sell on Airkrit until cutover, so Airkrit's template and filename stand in.
     const templatePath = path.join(
       process.cwd(),
       "../frontend/public/course-certificates/Airkrit Certificates",
@@ -444,6 +446,8 @@ export const renderInternshipCertificatePdf = async (
   certificateId: string,
   verificationUrl: string,
 ): Promise<Buffer> => {
+  // TODO(brand-assets): no Edulyt internship certificate template yet. Internships
+  // sell on Airkrit until cutover, so Airkrit's template and filename stand in.
   const templatePath = path.join(
     process.cwd(),
     "../frontend/public/course-certificates/Airkrit Certificates",
@@ -680,6 +684,8 @@ export const regenerateCertificateService = async (
     )}/verify-certificate/${newVerificationCode}`;
 
     // Generate certificate DOCX file
+    // TODO(brand-assets): no Edulyt course certificate template yet. Edulyt courses
+    // sell on Airkrit until cutover, so Airkrit's template and filename stand in.
     const templatePath = path.join(
       process.cwd(),
       "../frontend/public/course-certificates/Airkrit Certificates",

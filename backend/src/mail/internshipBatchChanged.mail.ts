@@ -27,6 +27,8 @@ export const internshipBatchChangedMail =
   defineMailTemplate<InternshipBatchChangedVariables>(
     "airkrit_internship_cohort_update",
     "internship-batch-changed",
-    // Internships are Edulyt's, whichever site the learner came from.
+    // Internships are Edulyt's, whichever site the learner came from. Sends as
+    // Airkrit until cutover (`productMailBrand`).
+    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
     { brand: "edulyt" },
   );

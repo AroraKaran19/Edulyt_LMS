@@ -22,9 +22,10 @@ export const INVOICE_ISSUER: Record<Brand, InvoiceIssuer | null> = {
     series: "invoice",
     filePrefix: "Airkrit_Invoice",
   },
-  // Pending: Edulyt's template, GSTIN and number series have not been supplied.
-  // Until they are, an Edulyt order's invoice job fails and raises an ops alert
-  // rather than going out under Airkrit's registration.
+  // TODO(brand-assets): Edulyt's template, GSTIN and number series are still to
+  // come. Until then an order placed on Edulyt gets no invoice and raises an ops
+  // alert rather than going out under Airkrit's registration. No such order can
+  // exist before cutover.
   edulyt: null,
 };
 
