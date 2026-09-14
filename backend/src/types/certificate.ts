@@ -1,8 +1,10 @@
 import { User } from "./user";
 import { Course } from "./course";
 import { Enrollment } from "./enrollment";
+import type { Brand } from "../constants/brands";
 
 export interface Certificate {
+  brand?: Brand;
   _id?: string;
   certificateType: "course" | "internship" | "lor";
   enrollmentModel: "Enrollment" | "InternshipEnrollment";

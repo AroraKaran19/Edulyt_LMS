@@ -1,4 +1,5 @@
 import { User } from ".";
+import type { Brand } from "../constants/brands";
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -130,6 +131,7 @@ export interface EnrollmentBatchSnapshot {
 // ─── Core enrollment document ─────────────────────────────────────────────────
 
 export interface InternshipEnrollment {
+  brand?: Brand;
   _id?: string;
 
   /** `Internship._id` — the internship program this enrollment belongs to. */

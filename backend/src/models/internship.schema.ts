@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Internship, InternshipBatches } from "../types/internship";
 import internshipBatchPlanSchema from "./internshipBatchPlan.schema";
+import { brandPlugin } from "./plugins/brand.plugin";
 
 const internshipBatchAnalyticsSchema = new mongoose.Schema(
   {
@@ -384,6 +385,7 @@ internshipSchema.index({ createdAt: -1 });
 internshipSchema.index({ updatedAt: -1 });
 internshipSchema.index({ "batches.status": 1 });
 internshipSchema.index({ "batches.internshipStartDate": 1 });
+internshipSchema.plugin(brandPlugin, { fixed: "edulyt" });
 
 export const InternshipModel = mongoose.model<Internship>(
   "Internship",

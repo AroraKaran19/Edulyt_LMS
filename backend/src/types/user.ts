@@ -1,4 +1,5 @@
 import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
+import type { Brand } from "../constants/brands";
 
 export type SuccessPointEarnSource =
   | "purchased"
@@ -246,6 +247,7 @@ export interface User {
   gender?: "male" | "female" | "other";
 
   permissions: string[];
+  brands?: Brand[];
 
   refreshTokens: {
     tokenHash: string;

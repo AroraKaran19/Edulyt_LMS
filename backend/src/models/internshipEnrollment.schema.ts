@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { computeProgramEndDate } from "../lib/internshipProgramWindow";
+import { brandPlugin } from "./plugins/brand.plugin";
 
 const internshipEnrollmentSchema = new mongoose.Schema(
   {
@@ -294,6 +295,7 @@ internshipEnrollmentSchema.index({ enrolledAt: 1 }, { sparse: true });
 // Serves the certificate-evaluation enqueuer: enrolled rows whose program
 // window has closed and that have not yet been judged.
 internshipEnrollmentSchema.index({ status: 1, endDate: 1 });
+internshipEnrollmentSchema.plugin(brandPlugin, { fixed: "edulyt" });
 
 // `endDate` is derived from the COHORT start + the learner's chosen duration —
 // NOT `enrolledAt`. `enrolledAt` is set when an admin approves the learner or

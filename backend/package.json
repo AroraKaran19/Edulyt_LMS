@@ -4,6 +4,11 @@
   "description": "Backend API for Airkrit platform",
   "main": "dist/server.js",
   "scripts": {
+    "scripts:backfill-brands": "ts-node src/scripts/backfill-brands.ts",
+    "scripts:backfill-brands:apply": "ts-node src/scripts/backfill-brands.ts --apply",
+    "scripts:brand-zero-count": "ts-node src/scripts/brand-zero-count.ts",
+    "scripts:migrate-brand-indexes": "ts-node src/scripts/migrate-brand-unique-indexes.ts",
+    "scripts:migrate-brand-indexes:apply": "ts-node src/scripts/migrate-brand-unique-indexes.ts --apply",
     "scripts:migrate-live-classes": "ts-node src/scripts/migrate-live-classes-to-datetime.ts",
     "scripts:migrate-live-classes:apply": "ts-node src/scripts/migrate-live-classes-to-datetime.ts --apply",
     "build": "tsc -p tsconfig.build.json",

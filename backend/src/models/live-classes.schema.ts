@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { validateUrl } from "./validators";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { courseBrand } from "../services/productBrand.services";
 
 // ===================
 // Live Class Schema
@@ -154,6 +156,7 @@ liveClassSchema.index({ startDateTime: -1 });
 liveClassSchema.index({ startDateTime: 1, endDateTime: 1 });
 liveClassSchema.index({ "link1.token": 1 }, { unique: true, sparse: true });
 liveClassSchema.index({ "link2.token": 1 }, { unique: true, sparse: true });
+liveClassSchema.plugin(brandPlugin, { derive: (doc) => courseBrand(doc.get("course")) });
 
 const LiveClassModel = mongoose.model("LiveClass", liveClassSchema);
 

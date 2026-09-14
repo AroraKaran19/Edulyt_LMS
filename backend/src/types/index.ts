@@ -1,4 +1,5 @@
 // Types - Data types for Airkrit platform
+import type { Brand } from "../constants/brands";
 
 // Discount for plans and other entities (uses date range)
 export interface Discount {
@@ -29,6 +30,7 @@ export interface DeviceInfo {
 export interface RefreshTokenEntry {
   tokenHash: string;
   family: string;
+  brand?: Brand;
   deviceInfo?: DeviceInfo;
   createdAt: Date;
   lastUsed: Date;

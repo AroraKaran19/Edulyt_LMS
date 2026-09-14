@@ -6,6 +6,7 @@ import path from "path";
 import errorHandler, { notFoundHandler } from "./middlewares/error.middleware";
 import cookieParser from "cookie-parser";
 import { corsOptions } from "./config/cors";
+import { resolveBrand } from "./middlewares/brand.middleware";
 import {
   authRoutes,
   emailPreferencesRoutes,
@@ -82,6 +83,7 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true, limit: "100mb" }));
 app.use(cookieParser());
+app.use(resolveBrand);
 
 app.get("/", (req, res) => {
   res.json({

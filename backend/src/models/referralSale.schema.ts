@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import type { ReferralSale } from "../types/referral";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 /**
  * One row per qualifying paid course order that carried a referral code.
@@ -58,6 +60,8 @@ const referralSaleSchema = new mongoose.Schema<ReferralSale>(
 );
 
 referralSaleSchema.index({ referrerUserId: 1, status: 1, createdAt: -1 });
+referralSaleSchema.plugin(brandPlugin, { defaultBrand: DEFAULT_BRAND });
+referralSaleSchema.index({ referrerUserId: 1, brand: 1, status: 1, createdAt: -1 });
 
 export const ReferralSaleModel = mongoose.model<ReferralSale>(
   "ReferralSale",

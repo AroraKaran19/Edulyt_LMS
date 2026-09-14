@@ -1,4 +1,5 @@
 import { User, Course } from ".";
+import type { Brand } from "../constants/brands";
 
 // Content completion tracking with timestamp
 export interface ContentCompletion {
@@ -80,6 +81,7 @@ export interface LastContentAccessed {
 }
 
 export interface Enrollment {
+  brand?: Brand;
   _id?: string;
   userId: User["_id"];
   courseId: Course["_id"];

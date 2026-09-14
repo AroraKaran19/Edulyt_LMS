@@ -213,6 +213,15 @@ const userSchema = new mongoose.Schema<User>(
       required: true,
       default: [],
     },
+    /**
+     * Platforms this person has joined. Absent on accounts that predate the
+     * brand split, which count as Airkrit.
+     */
+    brands: {
+      type: [{ type: String, enum: ["airkrit", "edulyt"] }],
+      required: true,
+      default: () => ["airkrit"],
+    },
     refreshTokens: [
       {
         // SHA-256 hash of the opaque refresh token (never store the plaintext).

@@ -1,5 +1,7 @@
 import { PaymentOrder } from "../types/order";
 import { model, Schema } from "mongoose";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 /**
  * Why a scholarship-discounted order was discounted, frozen at checkout.
@@ -177,6 +179,8 @@ orderSchema.index({ gatewayOrderId: 1 }, { sparse: true });
 // A tax-invoice number must never repeat. Sparse so the many orders without
 // one (pending, failed, not yet invoiced) do not collide on null.
 orderSchema.index({ invoiceNumber: 1 }, { unique: true, sparse: true });
+orderSchema.plugin(brandPlugin, { defaultBrand: DEFAULT_BRAND });
+orderSchema.index({ brand: 1, createdAt: -1 });
 
 orderSchema.pre("save", async function (next) {
   if (!this.isNew) return next();

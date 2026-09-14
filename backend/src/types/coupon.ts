@@ -1,6 +1,8 @@
 import { User, Course, Category } from "./index";
+import type { Brand } from "../constants/brands";
 
 export interface Coupon {
+  brand?: Brand;
   _id?: string;
   code: string;
   description?: string;

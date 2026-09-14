@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 /**
  * A signup that has been submitted but not yet verified by email OTP.
@@ -51,6 +53,7 @@ const pendingSignupSchema = new mongoose.Schema(
 
 // TTL: Mongo removes the document once `expiresAt` passes.
 pendingSignupSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+pendingSignupSchema.plugin(brandPlugin, { defaultBrand: DEFAULT_BRAND });
 
 export const PendingSignupModel = mongoose.model(
   "PendingSignup",

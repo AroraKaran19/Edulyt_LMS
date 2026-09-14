@@ -1,5 +1,6 @@
 import { User } from "./user";
 import { Course } from "./course";
+import type { Brand } from "../constants/brands";
 
 /**
  * One-off live class (Zoom/Meet/etc.) for a single course.
@@ -17,6 +18,7 @@ import { Course } from "./course";
  * always beats the computed one.
  */
 export interface LiveClass {
+  brand?: Brand;
   _id?: string;
   title: string;
   description?: string;

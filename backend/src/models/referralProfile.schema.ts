@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import type { ReferralProfile } from "../types/referral";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 /** Pattern check only — we do NOT verify whether the UPI actually exists. */
 const UPI_PATTERN = /^[\w.\-]+@[\w]+$/;
@@ -10,8 +12,6 @@ const referralProfileSchema = new mongoose.Schema<ReferralProfile>(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      unique: true,
-      index: true,
     },
     code: {
       type: String,
@@ -36,6 +36,10 @@ const referralProfileSchema = new mongoose.Schema<ReferralProfile>(
   },
   { timestamps: true },
 );
+
+// One profile per person per brand. The compound key also serves userId lookups.
+referralProfileSchema.plugin(brandPlugin, { defaultBrand: DEFAULT_BRAND });
+referralProfileSchema.index({ userId: 1, brand: 1 }, { unique: true });
 
 export const ReferralProfileModel = mongoose.model<ReferralProfile>(
   "ReferralProfile",

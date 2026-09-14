@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { courseBrand } from "../services/productBrand.services";
 
 /**
  * One learner's run through a CourseInternship, created by one course purchase.
@@ -89,6 +91,7 @@ const courseInternshipEnrollmentSchema = new mongoose.Schema(
 courseInternshipEnrollmentSchema.index({ user: 1, updatedAt: -1 });
 // Admin views scoped to one program.
 courseInternshipEnrollmentSchema.index({ courseInternship: 1, status: 1 });
+courseInternshipEnrollmentSchema.plugin(brandPlugin, { derive: (doc) => courseBrand(doc.get("course")) });
 
 export const CourseInternshipEnrollmentModel =
   mongoose.models.CourseInternshipEnrollment ||

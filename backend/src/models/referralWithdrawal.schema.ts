@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import type { ReferralWithdrawal } from "../types/referral";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 const referralWithdrawalSchema = new mongoose.Schema<ReferralWithdrawal>(
   {
@@ -31,6 +33,8 @@ const referralWithdrawalSchema = new mongoose.Schema<ReferralWithdrawal>(
 
 referralWithdrawalSchema.index({ status: 1, createdAt: -1 });
 referralWithdrawalSchema.index({ referrerUserId: 1, createdAt: -1 });
+referralWithdrawalSchema.plugin(brandPlugin, { defaultBrand: DEFAULT_BRAND });
+referralWithdrawalSchema.index({ referrerUserId: 1, brand: 1, createdAt: -1 });
 
 export const ReferralWithdrawalModel = mongoose.model<ReferralWithdrawal>(
   "ReferralWithdrawal",

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import type { Brand } from "../constants/brands";
 
 export interface ReferralCommissionTier {
   thresholdSales: number;
@@ -21,6 +22,7 @@ export interface ReferralCommissionConfig {
 
 /** Per-user referral profile — holds the unique code + UPI payout target. */
 export interface ReferralProfile {
+  brand?: Brand;
   _id?: string;
   userId: mongoose.Types.ObjectId | string;
   code: string;

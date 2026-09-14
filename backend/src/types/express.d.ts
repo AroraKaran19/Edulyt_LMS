@@ -1,4 +1,5 @@
 import { User } from "./user";
+import type { Brand } from "../constants/brands";
 
 declare global {
   namespace Express {
@@ -6,6 +7,8 @@ declare global {
       user?: User;
       /** Refresh-token family (session id) carried in the current access token. */
       currentFamily?: string;
+      /** Which platform this request came from. Set by `resolveBrand`. */
+      brand?: Brand;
       /**
        * Set by `requireScholarshipSession` on public campaign routes. Distinct
        * from `user`: that flow has no account, only a verified email.

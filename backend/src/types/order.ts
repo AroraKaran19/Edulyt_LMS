@@ -1,4 +1,5 @@
 import { Course, User } from "./";
+import type { Brand } from "../constants/brands";
 
 /** Distinguishes course checkout from internship batch (seat) orders. */
 export type PaymentOrderKind =
@@ -29,6 +30,7 @@ export interface OrderScholarshipSnapshot {
  * Purchased internship certification success points use `internship_success_points`.
  */
 export interface PaymentOrder {
+  brand?: Brand;
   _id?: string;
   amount: number;
   currency: "INR";

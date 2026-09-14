@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import type { Brand } from "../constants/brands";
 import {
   Discount,
   CourseDiscount,
@@ -192,6 +193,7 @@ export interface Testimonial {
 // ===================
 
 export interface Course {
+  brand?: Brand;
   _id?: string;
   title: string;
   description: string;

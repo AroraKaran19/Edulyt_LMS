@@ -1,4 +1,6 @@
 import mongoose from "mongoose";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { courseBrand } from "../services/productBrand.services";
 import {
   Enrollment,
   EnrollmentProgressSummary,
@@ -321,6 +323,8 @@ enrollmentSchema.index({ status: 1, enrolledAt: -1 });
 enrollmentSchema.index({ "completedContents.contentId": 1 }); // Index for querying completed content
 enrollmentSchema.index({ isTrial: 1, trialExpiresAt: 1 }); // Index for trial enrollments
 enrollmentSchema.index({ isTrial: 1, validUntil: 1 }); // Index for non-trial enrollment validity
+enrollmentSchema.plugin(brandPlugin, { derive: (doc) => courseBrand(doc.get("courseId")) });
+enrollmentSchema.index({ userId: 1, brand: 1, status: 1 });
 
 // NOTE: We intentionally do NOT use a TTL index for trial enrollments.
 // Trial enrollments should remain in the database after `trialExpiresAt` so we can

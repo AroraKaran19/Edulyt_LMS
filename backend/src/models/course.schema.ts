@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { Course } from "../types";
 import plansSchema from "./plans.schema";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { brandFromAudience } from "../lib/brandRules";
 import {
   richTextWithinLength,
   validateAudience,
@@ -404,6 +406,8 @@ courseSchema.index({ isFeatured: 1, isActive: 1 }); // For listing featured cour
 courseSchema.index({ createdAt: 1 }); // For listing courses by creation date
 courseSchema.index({ updatedAt: 1 }); // For listing courses by update date
 courseSchema.index({ title: "text" }); // For full-text search
+courseSchema.plugin(brandPlugin, { derive: (doc) => brandFromAudience(doc.get("audience")) });
+courseSchema.index({ brand: 1, isActive: 1 });
 
 courseSchema.pre("save", function (next) {
   this.set("updatedAt", new Date());

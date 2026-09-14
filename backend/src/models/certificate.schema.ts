@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { Certificate } from "../types/certificate";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { certificateBrand } from "../services/productBrand.services";
 
 const certificateSchema = new mongoose.Schema<Certificate>(
   {
@@ -162,6 +164,8 @@ const certificateSchema = new mongoose.Schema<Certificate>(
 certificateSchema.index({ userId: 1, courseId: 1 });
 certificateSchema.index({ userId: 1, issuedAt: -1 });
 certificateSchema.index({ enrollmentId: 1, isLatest: 1 }); // For finding latest certificate per enrollment
+certificateSchema.plugin(brandPlugin, { derive: certificateBrand });
+certificateSchema.index({ userId: 1, brand: 1, issuedAt: -1 });
 
 // Pre-save hook to generate verification code if not provided
 certificateSchema.pre("save", async function (next) {

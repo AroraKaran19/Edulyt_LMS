@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { validateUrl } from "./validators";
+import { brandPlugin } from "./plugins/brand.plugin";
 
 const liveMeetingLinkSchema = new mongoose.Schema(
   {
@@ -137,6 +138,7 @@ internshipLiveMeetingSchema.index({
 });
 internshipLiveMeetingSchema.index({ "link1.token": 1 }, { unique: true });
 internshipLiveMeetingSchema.index({ "link2.token": 1 }, { unique: true });
+internshipLiveMeetingSchema.plugin(brandPlugin, { fixed: "edulyt" });
 
 export const InternshipLiveMeetingModel = mongoose.model(
   "InternshipLiveMeeting",

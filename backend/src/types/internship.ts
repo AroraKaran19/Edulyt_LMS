@@ -1,3 +1,4 @@
+import type { Brand } from "../constants/brands";
 import {
   Testimonial,
   PartnerCollege,
@@ -90,6 +91,7 @@ export interface InternshipBatches {
 }
 
 export interface Internship {
+  brand?: Brand;
   _id?: string;
   title: string;
   description: string;

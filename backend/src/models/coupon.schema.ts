@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { Coupon } from "../types";
+import { brandPlugin } from "./plugins/brand.plugin";
+import { DEFAULT_BRAND } from "../constants/brands";
 
 const couponSchema = new mongoose.Schema<Coupon>(
   {
@@ -111,6 +113,7 @@ couponSchema.index({ createdBy: 1 });
 couponSchema.index({ applicableCourses: 1 });
 couponSchema.index({ applicableCategories: 1 });
 couponSchema.index({ sourceScholarshipTestId: 1 });
+couponSchema.plugin(brandPlugin, { defaultBrand: DEFAULT_BRAND });
 
 // Validation: validUntil must be after validFrom
 couponSchema.pre("save", function (next) {
