@@ -1,9 +1,10 @@
-import { withAuth } from "next-auth/middleware";
-import { NextResponse } from "next/server";
+import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
+import { NextResponse, type NextFetchEvent } from "next/server";
 import { getPostLoginRedirectPath } from "@/lib/postLoginRedirect";
+import { edulytRedirectUrl } from "@/lib/edulytRedirect";
 
-export default withAuth(
-  function proxy(req) {
+const authProxy = withAuth(
+  function authenticatedProxy(req) {
     const { pathname, searchParams } = req.nextUrl;
     const token = req.nextauth.token;
 
@@ -55,6 +56,16 @@ export default withAuth(
   }
 );
 
+export default function proxy(req: NextRequestWithAuth, event: NextFetchEvent) {
+  // Ahead of the auth check, so a signed-out learner on an old dashboard link
+  // lands on Edulyt rather than on Airkrit's login.
+  const moved = edulytRedirectUrl(req.nextUrl);
+  if (moved) {
+    return NextResponse.redirect(moved, 301);
+  }
+  return authProxy(req, event);
+}
+
 export const config = {
   matcher: [
     "/dashboard/:path*",
@@ -65,5 +76,7 @@ export const config = {
     "/cart/:path*",
     "/login",
     "/register",
+    "/internships",
+    "/internships/:path*",
   ],
 };

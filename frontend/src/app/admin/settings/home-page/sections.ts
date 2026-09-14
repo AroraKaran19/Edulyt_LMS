@@ -32,12 +32,6 @@ export const HOME_PAGE_SECTIONS: ReadonlyArray<{
     description: "Two-paths title and course audience for college students.",
   },
   {
-    slug: "internship-path",
-    key: "internshipPath",
-    title: "Internship Path",
-    description: "Highlight + rest title for the internships path block.",
-  },
-  {
     slug: "testimonial",
     key: "testimonial",
     title: "Testimonials",
@@ -74,28 +68,10 @@ export const HOME_PAGE_SECTIONS: ReadonlyArray<{
     description: "Heading and instructors featured on the home page.",
   },
   {
-    slug: "professional",
-    key: "professional",
-    title: "Professional Section",
-    description: "Working-professional prompts and help CTA.",
-  },
-  {
-    slug: "course-path-professionals",
-    key: "coursePathProfessionals",
-    title: "Course Path (Professionals)",
-    description: "Two-paths title and course audience for professionals.",
-  },
-  {
     slug: "dream-job",
     key: "dreamJob",
     title: "Dream Job Section",
     description: "Bullets, image and Get Started CTA.",
-  },
-  {
-    slug: "path-selection",
-    key: "pathSelection",
-    title: "Path Selection",
-    description: "Intro paragraphs and value-prop cards.",
   },
   {
     slug: "faq",

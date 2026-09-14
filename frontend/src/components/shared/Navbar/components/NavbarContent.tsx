@@ -5,7 +5,7 @@ import { ENDPOINTS } from "@/constants/endpoints";
 import { cn, fetcher } from "@/lib/utils";
 import { Course, NavItem, Category } from "@/types";
 import type { InternshipPublicListing } from "@/types/internship";
-import { AlertCircle, ChevronRight, Crown, ArrowLeft } from "lucide-react";
+import { AlertCircle, Crown, ArrowLeft } from "lucide-react";
 import Loader from "@/components/ui/Loader";
 import Link from "next/link";
 import { Suspense, useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -21,19 +21,14 @@ const NavbarContent = ({
 }) => {
   const { getActiveCategories } = useCategory();
 
+  // Airkrit sells college courses only, so there is no audience to choose.
   const audiences = [
     {
       label: "College Students",
       value: "college-students",
     },
-    {
-      label: "Working Professionals",
-      value: "professionals",
-    },
   ];
-  const [selectedAudience, setSelectedAudience] = useState<string>(
-    audiences[0].value,
-  );
+  const selectedAudience = audiences[0].value;
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null,
   );
@@ -609,31 +604,6 @@ const NavbarContent = ({
 
   return (
     <div className="bg-white w-full h-full flex gap-10">
-      {navLink?.label === "courses" && (
-        <div className="w-2/8 xl:w-1/5 flex flex-col gap-4 shrink-0 items-end">
-          <h1 className="text-2xl font-bold text-black/60">Audience</h1>
-          <div className="w-full flex flex-col gap-2 text-right">
-            {audiences.map((audience, index) => (
-              <div
-                key={index}
-                className={cn(
-                  "category w-full px-8 py-4 flex items-center justify-between hover:bg-gray-200 transition-all duration-300 cursor-pointer rounded-xl shrink-0",
-                  selectedAudience === audience.value && "bg-gray-200",
-                )}
-                onMouseEnter={() => {
-                  setSelectedAudience(audience.value);
-                  setSelectedCategory(null); // Reset category when audience changes
-                }}
-              >
-                <span className="text-base lg:text-lg font-normal wrap-break-word">
-                  {audience.label}
-                </span>
-                <ChevronRight className="size-4 md:size-6 stroke-2 shrink-0" />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       <div
         ref={scrollContainerRef}
         className={cn(

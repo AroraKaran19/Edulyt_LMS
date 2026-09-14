@@ -52,7 +52,6 @@ const Footer = () => {
   const footerLinks = {
     platform: [
       { label: "Programs", href: "/programs" },
-      { label: "Internships", href: "/internships" },
       { label: "Contact Us", href: "/contact" },
     ],
     support: [

@@ -12,6 +12,7 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { InternshipModel } from "../models/internship.schema";
 import { enqueueDueInternshipEvaluations } from "./internshipEvaluationJob.services";
 import { randomizeActiveCourseSeatsLeft } from "./course.services";
+import { verificationBaseUrl } from "../lib/verifyUrl";
 import { uploadFileToS3 } from "./upload.services";
 import {
   convertDocxToPdf,
@@ -284,8 +285,8 @@ export async function processOfferLetterForEnrollment(
     .programDurationMonths;
   const duration = String(typeof programMonths === "number" ? programMonths : 3);
 
-  const frontendBase = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
-  const verificationUrl = `${frontendBase}/verify/intern/${encodeURIComponent(internId)}`;
+  // Offer letters are internship documents, so Edulyt's.
+  const verificationUrl = `${verificationBaseUrl("edulyt")}/verify/intern/${encodeURIComponent(internId)}`;
 
   const docxBuffer = await generateOfferLetterBuffer(
     {

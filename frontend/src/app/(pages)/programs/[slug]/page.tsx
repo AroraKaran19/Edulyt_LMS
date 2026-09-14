@@ -5,22 +5,27 @@ import { AxiosError } from "axios";
 import CoursePage from "./CoursePage";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
+import { permanentRedirect } from "next/navigation";
+import { movedCourseUrl } from "@/lib/edulytRedirect";
 
 // Fetch course data
 async function fetchCourse(
   slug: string
-): Promise<{ status: number; course: Course | null }> {
+): Promise<{ status: number; course: Course | null; movedTo?: string }> {
   try {
     const response = await fetcher(`${ENDPOINTS.courses.bySlug}/${slug}`);
     return {
       status: response?.status || 500,
       course: response?.data?.data || null,
+      // `fetcher` returns error bodies instead of throwing.
+      movedTo: response?.data?.error?.meta?.movedTo,
     };
   } catch (error) {
     if (error instanceof AxiosError) {
       return {
         status: error.response?.status || 500,
         course: null,
+        movedTo: error.response?.data?.error?.meta?.movedTo,
       };
     }
     return { status: 500, course: null };
@@ -49,7 +54,10 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const slug = (await params).slug;
-  const { course } = await fetchCourse(slug);
+  const { course, movedTo } = await fetchCourse(slug);
+  if (movedTo === "edulyt") {
+    permanentRedirect(movedCourseUrl(slug));
+  }
 
   if (!isPublicViewableCourse(course)) {
     return {
@@ -96,7 +104,10 @@ const IndividualCoursePage = async ({
   params: Promise<{ slug: string }>;
 }) => {
   const { slug } = await params;
-  const { status, course } = await fetchCourse(slug);
+  const { status, course, movedTo } = await fetchCourse(slug);
+  if (movedTo === "edulyt") {
+    permanentRedirect(movedCourseUrl(slug));
+  }
 
   const errorConfig = getErrorUIConfig({
     statusCode: status,

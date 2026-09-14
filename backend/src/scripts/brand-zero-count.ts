@@ -41,6 +41,12 @@ async function main() {
       "referralprofiles",
       "referralsales",
       "referralwithdrawals",
+      // Unbranded, each of these is invisible to the learner it belongs to: the
+      // announcement feed, the course internships list and the live classes list
+      // all filter on brand.
+      "announcements",
+      "courseinternshipenrollments",
+      "liveclasses",
     ]) {
       checks.push({
         label: `${collection} with no brand`,

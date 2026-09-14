@@ -34,6 +34,7 @@ import {
 } from "../services/course.services";
 import { isBrand } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
+import { findCourseBrandOutside } from "../services/courseMove.services";
 
 export const getAllCourses = asyncHandler(
   async (req: Request, res: Response) => {
@@ -209,7 +210,13 @@ export const getCourseBySlug = asyncHandler(
       // 404, not a 200. Returning `[]` with 200 made callers treat the empty
       // array as a course — truthy, so their `!course` guards never fired and
       // the page crashed on `course.title` instead of showing "not found".
-      throw new AppError("Course not found", 404);
+      const movedTo = await findCourseBrandOutside(slug, brands);
+      throw new AppError(
+        "Course not found",
+        404,
+        movedTo ? "COURSE_MOVED" : undefined,
+        movedTo ? { movedTo } : undefined,
+      );
     }
     sendSuccessResponse(res, result, "Course retrieved successfully", 200);
     return;

@@ -26,9 +26,6 @@ const Navbar = () => {
   const [coursesCount, setCoursesCount] = useState<number | undefined>(
     undefined,
   );
-  const [internshipsCount, setInternshipsCount] = useState<number | undefined>(
-    undefined,
-  );
 
   useEffect(() => {
     if (!API_BASE_URL) return;
@@ -62,33 +59,6 @@ const Navbar = () => {
       }
     })();
 
-    (async () => {
-      try {
-        // Counts the same set the dropdown lists, closed programs included.
-        const res = await fetch(
-          `${API_BASE_URL}/internships?page=1&limit=1&includeClosed=true`,
-          { signal: controller.signal },
-        );
-
-        if (!res.ok) return;
-
-        const json = (await res.json()) as any;
-        const data = json?.data;
-
-        if (Array.isArray(data)) {
-          setInternshipsCount(data.length);
-          return;
-        }
-
-        const total = data?.total;
-        if (typeof total === "number") {
-          setInternshipsCount(total);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-
     return () => controller.abort();
   }, []);
 
@@ -99,11 +69,6 @@ const Navbar = () => {
       displayLabel: "Program",
       href: "/programs",
       count: coursesCount,
-    },
-    {
-      label: "internship",
-      href: "/internships",
-      count: internshipsCount,
     },
     {
       label: "community",
@@ -134,7 +99,7 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinkHasHoverDropdown = (item: NavItem) =>
-    item.label === "courses" || item.label === "internship";
+    item.label === "courses";
 
   useEffect(() => {
     if (isHoverContainerVisible) {

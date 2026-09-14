@@ -2,6 +2,8 @@ import mongoose from "mongoose";
 import { Certificate } from "../types/certificate";
 import { brandPlugin } from "./plugins/brand.plugin";
 import { certificateBrand } from "../services/productBrand.services";
+import { asBrand } from "../constants/brands";
+import { verificationBaseUrl } from "../lib/verifyUrl";
 
 const certificateSchema = new mongoose.Schema<Certificate>(
   {
@@ -177,10 +179,11 @@ certificateSchema.pre("save", async function (next) {
   }
 
   // Auto-generate verification URL if not provided
+  // `brand` is already set: the brand plugin stamps it during validation, which runs before save.
   if (!this.verificationUrl && this.verificationCode) {
-    this.verificationUrl = `${
-      process.env.FRONTEND_URL || "http://localhost:3000"
-    }/verify-certificate/${this.verificationCode}`;
+    this.verificationUrl = `${verificationBaseUrl(
+      asBrand(this.get("brand")),
+    )}/verify-certificate/${this.verificationCode}`;
   }
 
   // If this is a new certificate and isLatest is true, mark old certificates as not latest

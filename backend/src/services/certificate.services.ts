@@ -18,7 +18,8 @@ import {
 import path from "path";
 import fs from "fs";
 import os from "os";
-import type { Brand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
+import { verificationBaseUrl } from "../lib/verifyUrl";
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -142,8 +143,9 @@ export const createCertificateService = async (
     const verificationCode = `VER-${certificateId}-${Date.now()
       .toString(36)
       .toUpperCase()}`;
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verificationUrl = `${frontendUrl}/verify-certificate/${verificationCode}`;
+    const verificationUrl = `${verificationBaseUrl(
+      asBrand(course.get("brand")),
+    )}/verify-certificate/${verificationCode}`;
 
     // Generate certificate DOCX file
     const templatePath = path.join(
@@ -552,8 +554,8 @@ export const createInternshipCertificateService = async (
   );
 
   const verificationCode = `VER-${certificateId}-${Date.now().toString(36).toUpperCase()}`;
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  const verificationUrl = `${frontendUrl}/verify-certificate/${verificationCode}`;
+  // Every internship is Edulyt's.
+  const verificationUrl = `${verificationBaseUrl("edulyt")}/verify-certificate/${verificationCode}`;
 
   try {
     const pdfBuffer = await renderInternshipCertificatePdf(
@@ -673,8 +675,9 @@ export const regenerateCertificateService = async (
     const newVerificationCode = `VER-${newCertificateId}-${Date.now()
       .toString(36)
       .toUpperCase()}`;
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const newVerificationUrl = `${frontendUrl}/verify-certificate/${newVerificationCode}`;
+    const newVerificationUrl = `${verificationBaseUrl(
+      asBrand(course.get("brand")),
+    )}/verify-certificate/${newVerificationCode}`;
 
     // Generate certificate DOCX file
     const templatePath = path.join(
