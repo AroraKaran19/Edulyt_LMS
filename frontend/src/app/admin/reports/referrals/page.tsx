@@ -13,6 +13,8 @@ import ReportRowDetailModal from "../components/ReportRowDetailModal";
 import ReportStats from "../components/ReportStats";
 import ReportTableFooter from "../components/ReportTableFooter";
 import ReportToolbar from "../components/ReportToolbar";
+import BrandMark from "@/components/admin/BrandMark";
+import { BRANDS, BRAND_LABEL, type Brand } from "@/constants/brands";
 
 const count = (n: number) => (n ?? 0).toLocaleString("en-IN");
 
@@ -23,6 +25,7 @@ const CSV_COLUMNS: CsvColumn<ReferralReportRow>[] = [
   { header: "Name", pick: (r) => r.name },
   { header: "Email", pick: (r) => r.email },
   { header: "Referral Code", pick: (r) => r.code },
+  { header: "Brand", pick: (r) => BRAND_LABEL[r.brand] },
   { header: "Total Referrals", pick: (r) => r.totalReferrals },
   { header: "Total Earned (INR)", pick: (r) => r.totalEarned },
   { header: "Total Paid (INR)", pick: (r) => r.totalPaid },
@@ -54,8 +57,16 @@ export default function ReferralReportPage() {
   const resolveScoped = useCallback(
     async (row: ReferralReportRow, from: string, to: string) => {
       if (!row.email) return null;
-      const res = await getReferralReport({ from, to, q: row.email }, 1, 25);
-      return res.items.find((r) => r.userId === row.userId) ?? null;
+      const res = await getReferralReport(
+        { from, to, q: row.email, brand: row.brand },
+        1,
+        25,
+      );
+      return (
+        res.items.find(
+          (r) => r.userId === row.userId && r.brand === row.brand,
+        ) ?? null
+      );
     },
     [getReferralReport],
   );
@@ -119,6 +130,24 @@ export default function ReferralReportPage() {
         searchInput={t.searchInput}
         onSearchInputChange={t.setSearchInput}
         onClear={t.clearFilters}
+        hasFilters={Boolean(t.brand)}
+        filters={
+          <label className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
+            Brand
+            <select
+              value={t.brand}
+              onChange={(e) => t.setBrand(e.target.value as Brand | "")}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+            >
+              <option value="">All brands</option>
+              {BRANDS.map((b) => (
+                <option key={b} value={b}>
+                  {BRAND_LABEL[b]}
+                </option>
+              ))}
+            </select>
+          </label>
+        }
         actions={
           <ExportCsvMenu
             pageRowCount={t.rows.length}
@@ -147,6 +176,7 @@ export default function ReferralReportPage() {
             <tr className="text-left">
               <th className="px-4 py-3 font-semibold text-black">Referrer</th>
               <th className="px-4 py-3 font-semibold text-black">Code</th>
+              <th className="px-4 py-3 font-semibold text-black">Brand</th>
               <th className="px-4 py-3 text-right font-semibold text-black">
                 Total Referrals
               </th>
@@ -168,20 +198,20 @@ export default function ReferralReportPage() {
           <tbody>
             {t.loading ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center">
+                <td colSpan={9} className="py-12 text-center">
                   <Loader2 className="inline-block size-5 animate-spin text-gray-400" />
                 </td>
               </tr>
             ) : t.rows.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-gray-500">
+                <td colSpan={9} className="py-12 text-center text-gray-500">
                   No referral activity matches this search.
                 </td>
               </tr>
             ) : (
               t.rows.map((r) => (
                 <tr
-                  key={r.userId}
+                  key={`${r.userId}:${r.brand}`}
                   tabIndex={0}
                   role="button"
                   aria-label={`View referral breakdown for ${r.name || r.email}`}
@@ -195,11 +225,14 @@ export default function ReferralReportPage() {
                   className="group cursor-pointer border-b border-gray-100 transition last:border-0 hover:bg-orange-50/50 focus:bg-orange-50/70 focus:outline-none"
                 >
                   <td className="px-4 py-3 text-[#1D2939]">
-                    <p className="font-medium">{r.name || "—"}</p>
+                    <p className="font-medium">{r.name || "-"}</p>
                     <p className="text-xs text-gray-500">{r.email}</p>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-[#344054]">
-                    {r.code || "—"}
+                    {r.code || "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <BrandMark brand={r.brand} />
                   </td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums text-[#1D2939]">
                     {count(r.totalReferrals)}
@@ -211,7 +244,7 @@ export default function ReferralReportPage() {
                     {rupees(r.totalPaid)}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-amber-700">
-                    {r.pendingPayout > 0 ? rupees(r.pendingPayout) : "—"}
+                    {r.pendingPayout > 0 ? rupees(r.pendingPayout) : "-"}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums text-[#475467]">
                     {rupees(r.balance)}
@@ -248,7 +281,15 @@ export default function ReferralReportPage() {
         onClose={d.close}
         title={d.row?.name || d.row?.email || "Referrer"}
         subtitle={
-          d.row?.code ? `${d.row.email} · code ${d.row.code}` : d.row?.email
+          d.row
+            ? [
+                d.row.email,
+                BRAND_LABEL[d.row.brand],
+                d.row.code ? `code ${d.row.code}` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : undefined
         }
         from={d.from}
         to={d.to}
@@ -319,7 +360,7 @@ export default function ReferralReportPage() {
               <Link
                 href={`/admin/users/referral-withdrawals?search=${encodeURIComponent(
                   d.row.email,
-                )}&status=pending`}
+                )}&status=pending&brand=${d.row.brand}`}
                 className="inline-flex items-center gap-1 font-semibold text-[#F77124] hover:underline"
               >
                 View this referrer&apos;s redeem requests

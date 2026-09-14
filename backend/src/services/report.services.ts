@@ -27,6 +27,7 @@ import { InternshipLiveMeetingAttendanceModel } from "../models/liveMeetingAtten
 import { ReferralProfileModel } from "../models/referralProfile.schema";
 import { ReferralSaleModel } from "../models/referralSale.schema";
 import { ReferralWithdrawalModel } from "../models/referralWithdrawal.schema";
+import { asBrand, type Brand } from "../constants/brands";
 
 /** Enrollment statuses that count as "on the roster" — mirrors liveMeeting.services. */
 const ENROLLED_STATUSES = ["enrolled", "completed"] as const;
@@ -769,6 +770,7 @@ export async function getInternshipSuccessPointsReport(
 
 export interface ReferralReportRow {
   userId: string;
+  brand: Brand;
   name: string;
   email: string;
   /** Referral code, when the user has a profile. */
@@ -794,7 +796,9 @@ export interface ReferralReportTotals {
 }
 
 /**
- * Per-referrer commission vs. payout.
+ * Per-referrer commission vs. payout, one row per referrer per brand: each brand
+ * keeps its own code and balance, so adding them up would overstate what either
+ * one can pay out.
  *
  * Row set is the union of referrers with sales and referrers with withdrawals,
  * so someone who has been paid out but whose only sale was later reversed still
@@ -805,18 +809,19 @@ export interface ReferralReportTotals {
  * `createdAt` for rows still awaiting a decision.
  */
 export async function getReferralReport(
-  opts: ReportQuery,
+  opts: ReportQuery & { brand?: Brand },
 ): Promise<ReportPage<ReferralReportRow, ReferralReportTotals>> {
   const range = dateRangeMatch(opts.from, opts.to);
+  const brandMatch = opts.brand ? { brand: opts.brand } : {};
 
-  const saleMatch: Record<string, unknown> = { status: "active" };
+  const saleMatch: Record<string, unknown> = { status: "active", ...brandMatch };
   if (range) saleMatch.createdAt = range;
 
   const pipeline: PipelineStage[] = [
     { $match: saleMatch },
     {
       $group: {
-        _id: "$referrerUserId",
+        _id: { userId: "$referrerUserId", brand: "$brand" },
         totalReferrals: { $sum: 1 },
         totalEarned: { $sum: "$commissionAmount" },
         totalPaid: { $sum: 0 },
@@ -829,7 +834,12 @@ export async function getReferralReport(
         pipeline: [
           // `status` is indexed; the effective-date filter below runs on the
           // (small) surviving set.
-          { $match: { status: { $in: ["pending", "processing", "success"] } } },
+          {
+            $match: {
+              status: { $in: ["pending", "processing", "success"] },
+              ...brandMatch,
+            },
+          },
           {
             $addFields: {
               effectiveDate: { $ifNull: ["$decidedAt", "$createdAt"] },
@@ -840,7 +850,7 @@ export async function getReferralReport(
             : []),
           {
             $group: {
-              _id: "$referrerUserId",
+              _id: { userId: "$referrerUserId", brand: "$brand" },
               totalReferrals: { $sum: 0 },
               totalEarned: { $sum: 0 },
               totalPaid: {
@@ -877,15 +887,27 @@ export async function getReferralReport(
         },
       },
     },
-    ...userJoinStages(opts.q),
-    // Referral code for display / CSV. Profiles are lazy-created, so a referrer
-    // with sales always has one, but keep it optional.
+    ...userJoinStages(opts.q, "_id.userId"),
+    // Referral code for display / CSV, from the profile on the row's brand.
+    // Profiles are lazy-created, so a referrer with sales always has one, but
+    // keep it optional.
     {
       $lookup: {
         from: ReferralProfileModel.collection.name,
-        localField: "_id",
-        foreignField: "userId",
-        pipeline: [{ $project: { code: 1 } }],
+        let: { userId: "$_id.userId", brand: "$_id.brand" },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ["$userId", "$$userId"] },
+                  { $eq: ["$brand", "$$brand"] },
+                ],
+              },
+            },
+          },
+          { $project: { code: 1 } },
+        ],
         as: "profile",
       },
     },
@@ -933,7 +955,8 @@ export async function getReferralReport(
   const total = Number(meta?.users ?? 0);
 
   const items: ReferralReportRow[] = rawRows.map((r) => ({
-    userId: String(r._id),
+    userId: String((r._id as { userId: unknown }).userId),
+    brand: asBrand((r._id as { brand: unknown }).brand),
     name: String(r.name ?? ""),
     email: String(r.email ?? ""),
     code: String(r.code ?? ""),

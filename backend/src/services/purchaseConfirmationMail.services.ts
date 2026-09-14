@@ -8,6 +8,7 @@
  * the team is alerted separately.
  */
 import mongoose from "mongoose";
+import { asBrand } from "../constants/brands";
 import { OrderModel } from "../models/order.schema";
 import { UserModel } from "../models/user.schema";
 import { CourseModel } from "../models/course.schema";
@@ -65,6 +66,7 @@ const releaseSendSlot = async (
 
 type OrderLean = {
   _id: mongoose.Types.ObjectId;
+  brand?: string;
   userId?: mongoose.Types.ObjectId;
   orderKind?: string;
   amount?: number;
@@ -114,7 +116,7 @@ export const sendPurchaseConfirmationEmail = async (
 
     const order = await OrderModel.findById(_id)
       .select(
-        "userId orderKind amount courseId courseName internshipId internshipTitle " +
+        "brand userId orderKind amount courseId courseName internshipId internshipTitle " +
           "internshipSuccessPointsQuantity invoiceNumber invoiceUrl createdAt",
       )
       .lean<OrderLean>();
@@ -209,6 +211,7 @@ export const sendPurchaseConfirmationEmail = async (
       // email never promises a document it does not carry.
       order.invoiceUrl
         ? {
+            brand: asBrand(order.brand),
             attachments: [
               {
                 file: order.invoiceUrl,

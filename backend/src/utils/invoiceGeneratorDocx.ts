@@ -6,7 +6,7 @@ import { replacePlainTextPlaceholders } from "./certificateGeneratorDocx";
 import { ymdIst } from "./ist";
 
 /**
- * Tax-invoice generator built on the `Airkrit - Invoice.docx` template.
+ * Tax-invoice generator built on a brand's invoice template (see lib/invoiceIssuer).
  *
  * Same mechanics as the certificate generator: docxtemplater with `[]`
  * delimiters fills the bracketed tags, then a plain-text pass rewrites the
@@ -26,16 +26,8 @@ import { ymdIst } from "./ist";
  * reduce the taxable value rather than sit on top of the tax.
  */
 
-/** GST rate applied to Airkrit course/internship sales. */
+/** GST rate applied to course and internship sales. */
 export const GST_RATE_PERCENT = 18;
-
-/**
- * Airkrit India Pvt. Ltd. GSTIN, printed on every tax invoice.
- * Fixed company registration data, so it lives in code rather than env: it is
- * identical in every environment and a missing env var would silently ship
- * invoices with a blank GSTIN, which makes them defective.
- */
-export const COMPANY_GSTIN = "29AAZCA7977J1ZE";
 
 export interface InvoiceData {
   /** Sequence part of the invoice number, rendered as "INV-<invoiceNumber>". */
@@ -44,8 +36,8 @@ export interface InvoiceData {
   invoiceDate: Date | string;
   /** Our order identifier (txnId / order _id) shown as "Order ID". */
   orderId: string;
-  /** Seller GSTIN. Defaults to COMPANY_GSTIN; override only for testing. */
-  gstin?: string;
+  /** Seller GSTIN, from the brand's invoice issuer. */
+  gstin: string;
 
   customerName: string;
   customerEmail: string;
@@ -94,8 +86,8 @@ function round2(n: number): number {
 /**
  * Split a gross, tax-inclusive amount into base + GST.
  *
- * Order amounts are what the customer actually paid, and Airkrit prices are
- * displayed inclusive of GST, so the tax is backed out, never added on top.
+ * Order amounts are what the customer actually paid, and prices are displayed
+ * inclusive of GST, so the tax is backed out, never added on top.
  * `gstAmount` is derived by subtraction so `base + gst` always reconciles to
  * the gross to the paisa.
  */
@@ -127,9 +119,9 @@ function formatDateDDMMYYYY(value: Date | string): string {
   return `${d}/${m}/${y}`;
 }
 
-/** Absolute path to the shipped invoice template. */
-export function getInvoiceTemplatePath(): string {
-  return path.join(process.cwd(), "public", "doc", "Airkrit - Invoice.docx");
+/** Absolute path to a shipped invoice template. */
+export function getInvoiceTemplatePath(template: string): string {
+  return path.join(process.cwd(), "public", "doc", template);
 }
 
 /**
@@ -192,7 +184,7 @@ export function generateInvoiceDocx(
   const lineTotal = round2(data.baseAmount + discount);
 
   doc.render({
-    "Your GST Number": data.gstin ?? COMPANY_GSTIN,
+    "Your GST Number": data.gstin,
     // Tag inside the literal "INV-[0001]" prefix.
     "0001": data.invoiceNumber,
     "DD/MM/YYYY": formatDateDDMMYYYY(data.invoiceDate),

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { InvoiceJob } from "../types/invoiceJob";
+import { brandPlugin } from "./plugins/brand.plugin";
 
 const invoiceJobSchema = new mongoose.Schema<InvoiceJob>(
   {
@@ -31,6 +32,11 @@ const invoiceJobSchema = new mongoose.Schema<InvoiceJob>(
 
 // Drives the worker's claim query (oldest pending first).
 invoiceJobSchema.index({ status: 1, createdAt: 1 });
+
+// Stamped from the order at enqueue. Jobs are only ever upserted, which skips
+// validation, so the plugin documents the field rather than enforcing it.
+invoiceJobSchema.plugin(brandPlugin);
+invoiceJobSchema.index({ brand: 1, createdAt: -1 });
 
 // At most one live job per order, so a webhook + status poll + reconcile cron
 // racing on the same payment cannot queue three invoices for it.

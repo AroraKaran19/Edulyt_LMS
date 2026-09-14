@@ -38,4 +38,6 @@ export const reviewPostedMail = defineOptOutMailTemplate<ReviewPostedVariables>(
   "airkrit_community_notification",
   "review-posted",
   EMAIL_PREFERENCE_CATEGORIES.REVIEWS,
+  // The community lives on Airkrit, so this is never Edulyt's mail to send.
+  { brand: "airkrit" },
 );

@@ -1,3 +1,5 @@
+import type { Brand } from "../constants/brands";
+
 export type CertificateJobStatus = "pending" | "processing" | "completed" | "failed";
 export type CertificateJobType = "course" | "internship";
 
@@ -6,6 +8,8 @@ export interface CertificateJob {
   jobId: string;
   enrollmentId: string;
   certificateType: CertificateJobType;
+  /** The enrollment's brand. */
+  brand?: Brand;
   status: CertificateJobStatus;
   certificateId?: string; // Certificate ID once generated
   certificateUrl?: string; // URL to certificate file once generated
@@ -21,6 +25,7 @@ export interface CertificateJob {
 export interface CertificateJobData {
   enrollmentId: string;
   certificateType?: CertificateJobType;
+  brand: Brand;
   studentName: string;
   courseName: string;
   completionDate: Date;

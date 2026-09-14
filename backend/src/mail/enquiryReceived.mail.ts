@@ -1,7 +1,7 @@
 import { defineMailTemplate } from "../utils/mailTemplates";
 
 /**
- * Variables for `edulyt-enquiry-received.html`.
+ * Variables for `enquiry-received.html`.
  *
  * All plain text: the template carries no conditional block, so nothing has to
  * arrive pre-rendered as HTML the way the internship templates do.
@@ -9,7 +9,7 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  * The enquiry's own answers are deliberately absent. This is a bare
  * acknowledgement, so it cannot contradict itself if a detail was mistyped.
  */
-export type EdulytEnquiryReceivedVariables = {
+export type EnquiryReceivedVariables = {
   /** First name alone reads better here than the lead's stored full name. */
   name: string;
   /** A variable, not baked in: changing a link in the template means another
@@ -20,24 +20,23 @@ export type EdulytEnquiryReceivedVariables = {
 };
 
 /**
- * Sent to the enquirer when their details reach us from the Edulyt marketing
- * site, in Edulyt's branding.
+ * Sent to the enquirer when their details reach us, from whichever site they
+ * enquired on.
  *
  * Transactional: it is the receipt for an action the visitor just took, so it
  * uses `defineMailTemplate` and consults no preference.
  *
- * Nothing calls this yet. `POST /leads` is guarded by
- * `requireVerifiedLeadContact`, so a lead cannot be captured from the marketing
- * site until the phone OTP step is wired end to end; the send belongs in
- * `createLead` alongside that work.
+ * Both brands run an enquiry form, so this follows the request's brand. Until
+ * an Airkrit version of the artwork exists in MSG91, both send the Edulyt
+ * template from their own address: add the Airkrit id to `ids` to split them.
  *
  * Subject in the dashboard: `We have your enquiry, {{name}}`.
  */
-const EDULYT_ENQUIRY_RECEIVED_TEMPLATE_ID = "edulyt_enquiry_received";
+const ENQUIRY_RECEIVED_TEMPLATE_ID = "edulyt_enquiry_received";
 
-export const edulytEnquiryReceivedMail =
-  defineMailTemplate<EdulytEnquiryReceivedVariables>(
-    EDULYT_ENQUIRY_RECEIVED_TEMPLATE_ID,
-    "edulyt-enquiry-received",
-    "edulyt",
+export const enquiryReceivedMail =
+  defineMailTemplate<EnquiryReceivedVariables>(
+    ENQUIRY_RECEIVED_TEMPLATE_ID,
+    "enquiry-received",
+    { ids: { edulyt: ENQUIRY_RECEIVED_TEMPLATE_ID } },
   );

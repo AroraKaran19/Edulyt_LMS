@@ -39,8 +39,8 @@ export type ScholarshipCouponVariables = {
 /**
  * Subject in the dashboard: `You won {{discountPercent}}% off`.
  *
- * No brand argument, so it sends as `DEFAULT_BRAND` (airkrit). That is where
- * the code is redeemed, which is what the mail has to look like it belongs to.
+ * Locked to Airkrit: that is where a scholarship code is redeemed, which is
+ * what the mail has to look like it belongs to.
  */
 const SCHOLARSHIP_COUPON_TEMPLATE_ID = "airkrit_scholarship_coupon";
 
@@ -48,4 +48,5 @@ export const scholarshipCouponMail =
   defineMailTemplate<ScholarshipCouponVariables>(
     SCHOLARSHIP_COUPON_TEMPLATE_ID,
     "scholarship-coupon",
+    { brand: "airkrit" },
   );

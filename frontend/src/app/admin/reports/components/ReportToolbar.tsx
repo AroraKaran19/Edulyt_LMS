@@ -9,6 +9,10 @@ interface ReportToolbarProps {
   onSearchInputChange: (value: string) => void;
   onClear: () => void;
   searchPlaceholder?: string;
+  /** Extra filter controls, placed after the search box. */
+  filters?: ReactNode;
+  /** Whether any of `filters` is set, so Clear appears for those too. */
+  hasFilters?: boolean;
   /** The export menu. */
   actions?: ReactNode;
 }
@@ -25,6 +29,8 @@ export default function ReportToolbar({
   onSearchInputChange,
   onClear,
   searchPlaceholder = "Search by name or email",
+  filters,
+  hasFilters = false,
   actions,
 }: ReportToolbarProps) {
   return (
@@ -43,7 +49,9 @@ export default function ReportToolbar({
         </div>
       </label>
 
-      {searchInput ? (
+      {filters}
+
+      {searchInput || hasFilters ? (
         <button
           type="button"
           onClick={onClear}

@@ -13,6 +13,7 @@ import type {
   ReferralWithdrawalRow,
   ReferralWithdrawalStatus,
 } from "@/types/referral";
+import type { Brand } from "@/constants/brands";
 
 interface ApiSuccessBody<T> {
   success: boolean;
@@ -114,6 +115,7 @@ export default function useReferral() {
     async (opts: {
       status?: ReferralWithdrawalStatus;
       q?: string;
+      brand?: Brand;
       page: number;
       limit: number;
     }): Promise<PaginatedReferral<AdminReferralWithdrawalRow>> => {
@@ -123,6 +125,7 @@ export default function useReferral() {
       };
       if (opts.status) params.status = opts.status;
       if (opts.q?.trim()) params.q = opts.q.trim();
+      if (opts.brand) params.brand = opts.brand;
       const res = await apiClient.get<
         ApiSuccessBody<PaginatedReferral<AdminReferralWithdrawalRow>>
       >(ENDPOINTS.referral.adminWithdrawals, { params });

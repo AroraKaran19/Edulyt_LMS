@@ -17,6 +17,7 @@ import {
   reclaimStuckCertificateJobsService,
 } from "../services/certificateJob.services";
 import { readableBrands } from "../lib/brandScope";
+import { asBrand, isBrand } from "../constants/brands";
 
 /**
  * Get all certificates for the authenticated user (supports pagination)
@@ -167,6 +168,7 @@ export const createCertificateJob = asyncHandler(
     // Create job
     const job = await createCertificateJobService({
       enrollmentId: enrollmentId.toString(),
+      brand: asBrand(enrollment.brand),
       studentName: "", // Will be fetched by worker
       courseName: "", // Will be fetched by worker
       completionDate: enrollment.completedAt || new Date(),
@@ -278,6 +280,7 @@ export const getAllCertificateJobs = asyncHandler(
       limit,
       status: status as "pending" | "processing" | "completed" | "failed" | undefined,
       certificateType: certificateType as "course" | "internship" | undefined,
+      brand: isBrand(req.query.brand) ? req.query.brand : undefined,
       search,
     });
 

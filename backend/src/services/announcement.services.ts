@@ -7,6 +7,7 @@ export interface AnnouncementInput {
   title: string;
   message: string;
   audience: AnnouncementAudience;
+  brand: Brand;
 }
 
 /** Create an announcement. `createdBy` is the admin's user id (audit only). */
@@ -18,6 +19,7 @@ export const createAnnouncementService = async (
     title: input.title.trim(),
     message: input.message.trim(),
     audience: input.audience,
+    brand: input.brand,
     createdBy: createdBy ?? undefined,
   });
   return doc.toObject();

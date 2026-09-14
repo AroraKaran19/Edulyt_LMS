@@ -60,6 +60,7 @@ export const requestUserEmailChange = asyncHandler(
         requireUserId(req),
         currentPassword,
         newEmail,
+        req.brand,
       );
       sendSuccessResponse(res, done, EMAIL_CHANGE_MESSAGES.EMAIL_CHANGED, 200);
       return;
@@ -69,6 +70,7 @@ export const requestUserEmailChange = asyncHandler(
       requireUserId(req),
       currentPassword,
       newEmail,
+      req.brand,
     );
     sendSuccessResponse(res, started, EMAIL_CHANGE_MESSAGES.CODE_SENT, 200);
   },
@@ -94,7 +96,7 @@ export const verifyUserEmailChange = asyncHandler(
       );
     }
 
-    const result = await verifyEmailChange(requireUserId(req), otp);
+    const result = await verifyEmailChange(requireUserId(req), otp, req.brand);
     sendSuccessResponse(res, result, EMAIL_CHANGE_MESSAGES.EMAIL_CHANGED, 200);
   },
 );
@@ -109,7 +111,7 @@ export const resendUserEmailChangeOtp = asyncHandler(
       throw new AppError(EMAIL_OTP_DISABLED_MESSAGE, 400);
     }
 
-    const started = await resendEmailChangeOtp(requireUserId(req));
+    const started = await resendEmailChangeOtp(requireUserId(req), req.brand);
     sendSuccessResponse(res, started, EMAIL_CHANGE_MESSAGES.CODE_RESENT, 200);
   },
 );

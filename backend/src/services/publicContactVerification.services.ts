@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { ContactEmailOtpModel, ContactSessionModel, UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
+import type { Brand } from "../constants/brands";
 import { verificationCodeMail } from "../mail";
 import {
   assertPhoneTokenValid,
@@ -118,6 +119,8 @@ export interface EmailOtpRequest {
   purpose: string;
   /** Names the flow in the dev-only console fallback. */
   label?: string;
+  /** The site the code was asked for, which is who it comes from. */
+  brand: Brand;
 }
 
 export const requestEmailOtp = async ({
@@ -125,6 +128,7 @@ export const requestEmailOtp = async ({
   email: rawEmail,
   purpose,
   label = "Verification",
+  brand,
 }: EmailOtpRequest): Promise<{
   sent: true;
   expiryMinutes: number;
@@ -187,6 +191,7 @@ export const requestEmailOtp = async ({
         expiryMinutes: OTP_EXPIRY_MINUTES,
         year: new Date().getFullYear(),
       },
+      { brand },
     );
     // Mailer off or unconfigured: surface the code locally so the flow is
     // testable without a live template. Never in production.

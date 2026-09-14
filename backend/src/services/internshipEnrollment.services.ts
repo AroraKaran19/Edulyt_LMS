@@ -2544,6 +2544,7 @@ export async function adminSetCertificateOverride(
         await createCertificateJobService({
           enrollmentId: String(doc._id),
           certificateType: "internship",
+          brand: "edulyt",
           studentName: "",
           courseName: "",
           completionDate: new Date(),

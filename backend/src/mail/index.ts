@@ -11,7 +11,7 @@ export * from "./courseCertificate.mail";
 export * from "./emailChangeVerification.mail";
 export * from "./entranceExam.mail";
 export * from "./emailChanged.mail";
-export * from "./edulytEnquiryReceived.mail";
+export * from "./enquiryReceived.mail";
 export * from "./internalAlert.mail";
 export * from "./internshipApplicationReceived.mail";
 export * from "./internshipBatchChanged.mail";

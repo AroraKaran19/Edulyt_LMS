@@ -1,11 +1,12 @@
 /**
- * Renders sample tax invoices from the Airkrit invoice template so the layout
- * and figures can be eyeballed without touching the database.
+ * Renders sample tax invoices from a brand's invoice template so the layout and
+ * figures can be eyeballed without touching the database.
  *
  * Run from backend root:
- *   npx ts-node src/scripts/generate-test-invoice.ts
+ *   npx ts-node src/scripts/generate-test-invoice.ts --brand=airkrit
  *
  * Options:
+ *   --brand=<brand> whose issuer to render as (airkrit | edulyt), required
  *   --out=<dir>   output directory (default ./scripts-output/invoices)
  *   --docx-only   skip the LibreOffice PDF conversion
  *   --case=<name> render only one case (plain | points | pointsonly | pack)
@@ -21,6 +22,8 @@ import {
   formatInr,
   InvoiceData,
 } from "../utils/invoiceGeneratorDocx";
+import { isBrand } from "../constants/brands";
+import { invoiceIssuerFor } from "../lib/invoiceIssuer";
 
 function getArg(name: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -28,16 +31,16 @@ function getArg(name: string): string | undefined {
 }
 
 const BUYER = {
-  customerName: "Karan Arora",
-  customerEmail: "karan.arora@example.com",
-  customerPhone: "+91 98765 43210",
+  customerName: "Jane Doe",
+  customerEmail: "jane.doe@example.com",
+  customerPhone: "+91 90000 00000",
 };
 
 /** name → invoice, built from the gross paid + gross discount. */
-function buildCases(): Array<{ name: string; data: InvoiceData }> {
+function buildCases(gstin: string): Array<{ name: string; data: InvoiceData }> {
   const common = {
     invoiceDate: new Date(),
-    // gstin omitted on purpose so samples exercise the real COMPANY_GSTIN.
+    gstin,
     paymentStatus: "Paid" as const,
     ...BUYER,
   };
@@ -125,11 +128,14 @@ async function main() {
   );
   const docxOnly = process.argv.includes("--docx-only");
   const only = getArg("case");
+  const brand = getArg("brand");
+  if (!isBrand(brand)) throw new Error("Pass --brand=airkrit or --brand=edulyt");
+  const issuer = invoiceIssuerFor(brand);
 
-  const templatePath = getInvoiceTemplatePath();
+  const templatePath = getInvoiceTemplatePath(issuer.template);
   console.log(`Template: ${templatePath}\n`);
 
-  const cases = buildCases().filter((c) => !only || c.name === only);
+  const cases = buildCases(issuer.gstin).filter((c) => !only || c.name === only);
   if (cases.length === 0) throw new Error(`No case matched --case=${only}`);
 
   for (const { name, data } of cases) {

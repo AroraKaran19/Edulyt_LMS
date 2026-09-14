@@ -23,7 +23,7 @@ import {
 } from "./certificate.services";
 import { createCertificateJobService } from "./certificateJob.services";
 import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
-import type { Brand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
 import { addBrandMembership } from "./brandMembership.services";
 import { brandOfCourseDoc } from "./productBrand.services";
 
@@ -949,6 +949,7 @@ export const RecalculateEnrollmentProgressService = async (
               try {
                 await createCertificateJobService({
                   enrollmentId: enrollmentId.toString(),
+                  brand: asBrand(updatedEnrollment?.brand),
                   studentName: "", // Will be fetched by worker
                   courseName: "", // Will be fetched by worker
                   completionDate: completedAt,
@@ -1305,6 +1306,7 @@ export const UpdateEnrollmentProgressService = async (
                   try {
                     await createCertificateJobService({
                       enrollmentId: enrollmentId.toString(),
+                      brand: asBrand(enrollmentForCert.brand),
                       studentName: "", // Will be fetched by worker
                       courseName: "", // Will be fetched by worker
                       completionDate: completedAt,

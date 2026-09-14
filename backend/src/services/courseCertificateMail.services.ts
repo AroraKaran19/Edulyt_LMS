@@ -10,6 +10,7 @@
  * job is repaired.
  */
 import mongoose from "mongoose";
+import { asBrand, type Brand } from "../constants/brands";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { CourseModel } from "../models/course.schema";
 import { UserModel } from "../models/user.schema";
@@ -71,6 +72,8 @@ type CourseCertificateContext = {
   name: string;
   courseName: string;
   successPoints: number;
+  /** The enrollment's brand, so the mail comes from the site that sold it. */
+  brand: Brand;
 };
 
 /**
@@ -81,8 +84,12 @@ const loadContext = async (
   enrollmentId: mongoose.Types.ObjectId,
 ): Promise<CourseCertificateContext | null> => {
   const enrollment = await EnrollmentModel.findById(enrollmentId)
-    .select("userId courseId")
-    .lean<{ userId: mongoose.Types.ObjectId; courseId: mongoose.Types.ObjectId }>();
+    .select("userId courseId brand")
+    .lean<{
+      userId: mongoose.Types.ObjectId;
+      courseId: mongoose.Types.ObjectId;
+      brand?: unknown;
+    }>();
   if (!enrollment) return null;
 
   const [user, course] = await Promise.all([
@@ -112,6 +119,7 @@ const loadContext = async (
     // Zero or unset means the course awards none, and the copy then says nothing
     // about points rather than claiming zero were earned.
     successPoints: Number(course?.completionSuccessPoints ?? 0),
+    brand: asBrand(enrollment.brand),
   };
 };
 
@@ -151,12 +159,16 @@ export const sendCourseCertificateEmail = async (
     const to = [{ email: context.email, name: context.name }];
 
     if (payload.kind === "pending") {
-      const pending = await courseCertificatePendingMail.sendNow(to, {
-        name: context.name,
-        reasonLine,
-        courseName: context.courseName,
-        year,
-      });
+      const pending = await courseCertificatePendingMail.sendNow(
+        to,
+        {
+          name: context.name,
+          reasonLine,
+          courseName: context.courseName,
+          year,
+        },
+        { brand: context.brand },
+      );
       if (!pending.ok) {
         await releaseSendSlot(_id, payload.kind);
         console.error(
@@ -183,6 +195,7 @@ export const sendCourseCertificateEmail = async (
       // MSG91 fetches the attachment from this URL at send time. It is a permanent
       // public CDN object, never presigned, so nothing expires.
       {
+        brand: context.brand,
         attachments: [
           {
             file: payload.certificateUrl,

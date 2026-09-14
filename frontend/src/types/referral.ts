@@ -48,6 +48,7 @@ export type ReferralWithdrawalStatus =
 
 export interface ReferralWithdrawalRow {
   _id: string;
+  brand: Brand;
   amount: number;
   upiIdSnapshot: string;
   status: ReferralWithdrawalStatus;

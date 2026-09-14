@@ -1,3 +1,5 @@
+import type { Brand } from "../constants/brands";
+
 export type InvoiceJobStatus = "pending" | "processing" | "completed" | "failed";
 
 /**
@@ -19,6 +21,8 @@ export interface InvoiceJob {
   jobId: string;
   /** Order `_id` as a string. One invoice per paid order. */
   orderId: string;
+  /** The order's brand, which is the invoice's issuer. */
+  brand?: Brand;
   /** Display fields as of queue time. Survives deletion of the order. */
   snapshot?: InvoiceJobSnapshot;
   status: InvoiceJobStatus;

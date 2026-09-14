@@ -13,8 +13,8 @@ import { ymdIst } from "../utils/ist";
  * the normal convention and keeps the counter well inside 5 digits.
  */
 
-/** Counter key per financial year, so each year restarts at 1. */
-const counterId = (fy: string) => `invoice:${fy}`;
+/** Counter key per series and financial year, so each year restarts at 1. */
+const counterId = (series: string, fy: string) => `${series}:${fy}`;
 
 /**
  * Indian financial year for an instant, as ["2026-27", "2627"].
@@ -47,11 +47,12 @@ export function financialYearIst(when: Date | string = new Date()): {
  * same step you allocate it.
  */
 export async function allocateNextInvoiceNumber(
+  series: string,
   when: Date | string = new Date(),
 ): Promise<string> {
   const fy = financialYearIst(when);
   const result = await AppCounterModel.findOneAndUpdate(
-    { _id: counterId(fy.label) },
+    { _id: counterId(series, fy.label) },
     { $inc: { seq: 1 } },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).lean();
@@ -64,11 +65,12 @@ export async function allocateNextInvoiceNumber(
  * Sets the counter to the last number used so the next allocation continues on.
  */
 export async function seedInvoiceNumberCounter(
+  series: string,
   financialYearLabel: string,
   value: number,
 ): Promise<void> {
   await AppCounterModel.findOneAndUpdate(
-    { _id: counterId(financialYearLabel) },
+    { _id: counterId(series, financialYearLabel) },
     { $set: { seq: value } },
     { upsert: true },
   );

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { CertificateJob, CertificateJobStatus } from "../types/certificateJob";
+import { brandPlugin } from "./plugins/brand.plugin";
 
 const certificateJobSchema = new mongoose.Schema<CertificateJob>(
   {
@@ -63,6 +64,11 @@ const certificateJobSchema = new mongoose.Schema<CertificateJob>(
 
 // Index for efficient querying of pending jobs
 certificateJobSchema.index({ status: 1, createdAt: 1 });
+
+// Stamped from the enrollment at enqueue. Jobs are only ever upserted, which
+// skips validation, so the plugin documents the field rather than enforcing it.
+certificateJobSchema.plugin(brandPlugin);
+certificateJobSchema.index({ brand: 1, createdAt: -1 });
 
 // Partial unique index: only one pending/processing job per enrollment (prevents race condition)
 certificateJobSchema.index(

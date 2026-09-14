@@ -25,6 +25,7 @@ import LeadDetailsModal from "./LeadDetailsModal";
 import AssignLeadsModal from "./AssignLeadsModal";
 import LeadContextCell from "./LeadContextCell";
 import BrandBadge from "./BrandBadge";
+import { BRANDS, BRAND_LABEL } from "@/constants/brands";
 import {
   LEAD_SOURCE_LABELS,
   LEAD_SOURCE_OPTIONS,
@@ -54,6 +55,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [brand, setBrand] = useState("");
   const [source, setSource] = useState("");
   const [campaignId, setCampaignId] = useState("");
   const [campaigns, setCampaigns] = useState<LeadCampaignOption[]>([]);
@@ -83,6 +85,7 @@ export default function LeadsPage() {
           limit: PAGE_SIZE,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          brand: brand || undefined,
           source: source || undefined,
           campaignId: campaignId || undefined,
           state: state || undefined,
@@ -99,7 +102,7 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, status, source, campaignId, state, assignedTo]);
+  }, [page, debouncedSearch, status, brand, source, campaignId, state, assignedTo]);
 
   useEffect(() => {
     load();
@@ -209,6 +212,18 @@ export default function LeadsPage() {
             setPage(1);
           }}
           className="w-40"
+        />
+        <Select
+          options={[
+            { value: "", label: "All brands" },
+            ...BRANDS.map((b) => ({ value: b, label: BRAND_LABEL[b] })),
+          ]}
+          value={brand}
+          onChange={(value) => {
+            setBrand(value);
+            setPage(1);
+          }}
+          className="w-36"
         />
         <Select
           options={LEAD_SOURCE_OPTIONS}

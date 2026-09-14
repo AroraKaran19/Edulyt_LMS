@@ -134,6 +134,7 @@ export interface LiveClassRefSummary {
 
 export interface AdminLiveClassListItem {
   _id: string;
+  brand: Brand;
   title: string;
   description: string;
   imageUrl: string;

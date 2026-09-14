@@ -18,9 +18,12 @@ import LiveClassAttendanceModal from "./components/LiveClassAttendanceModal";
 import DeleteLiveClassConfirmModal from "./components/DeleteLiveClassConfirmModal";
 import { formatIstDateTime } from "@/lib/ist";
 import type { LiveClass, LiveClassPhase } from "@/types/live-classes";
+import BrandMark from "@/components/admin/BrandMark";
+import BrandSelect from "@/components/admin/BrandSelect";
+import type { BrandFilter } from "@/constants/brands";
 
 const PAGE_SIZE = 10;
-const COL_SPAN = 5;
+const COL_SPAN = 6;
 
 function phaseChipClasses(phase: LiveClassPhase): string {
   switch (phase) {
@@ -130,6 +133,7 @@ export default function AdminLiveClassesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [courseId, setCourseId] = useState("");
   const [courseTitle, setCourseTitle] = useState("");
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>("all");
   const [viewMode, setViewMode] = useState<"all" | "ongoing">("all");
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -151,7 +155,7 @@ export default function AdminLiveClassesPage() {
   // Filtering and search are server-side, so a change resets to page 1.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, courseId, viewMode]);
+  }, [debouncedSearch, courseId, brandFilter, viewMode]);
 
   const fetchLiveClasses = useCallback(async () => {
     const reqId = ++activeRequest.current;
@@ -166,6 +170,9 @@ export default function AdminLiveClassesPage() {
           page,
           limit: PAGE_SIZE,
           ...(viewMode === "all" && courseId ? { courseId } : {}),
+          ...(viewMode === "all" && brandFilter !== "all"
+            ? { brand: brandFilter }
+            : {}),
           ...(viewMode === "all" && debouncedSearch
             ? { search: debouncedSearch }
             : {}),
@@ -187,7 +194,7 @@ export default function AdminLiveClassesPage() {
     } finally {
       if (reqId === activeRequest.current) setIsLoading(false);
     }
-  }, [viewMode, page, courseId, debouncedSearch]);
+  }, [viewMode, page, courseId, brandFilter, debouncedSearch]);
 
   useEffect(() => {
     void fetchLiveClasses();
@@ -236,17 +243,26 @@ export default function AdminLiveClassesPage() {
         onSearchChange={setSearch}
         showSearchRow={viewMode === "all"}
         filterExtras={
-          <CoursePicker
-            value={courseId}
-            selectedLabel={courseTitle}
-            onChange={(id, titleText) => {
-              setCourseId(id);
-              setCourseTitle(titleText);
-            }}
-            placeholder="All courses"
-            clearLabel="All courses"
-            className="w-full sm:w-72"
-          />
+          <>
+            <CoursePicker
+              value={courseId}
+              selectedLabel={courseTitle}
+              onChange={(id, titleText) => {
+                setCourseId(id);
+                setCourseTitle(titleText);
+              }}
+              placeholder="All courses"
+              clearLabel="All courses"
+              className="w-full sm:w-72"
+            />
+            <BrandSelect
+              label=""
+              includeAll
+              value={brandFilter}
+              onChange={setBrandFilter}
+              className="w-full sm:w-44"
+            />
+          </>
         }
         headerActions={
           <OrangeButton
@@ -299,6 +315,9 @@ export default function AdminLiveClassesPage() {
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700">
                   Course
+                </th>
+                <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700">
+                  Brand
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-left text-xs font-semibold text-gray-700 whitespace-nowrap">
                   Schedule
@@ -376,7 +395,7 @@ export default function AdminLiveClassesPage() {
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-xs text-gray-700 max-w-[200px]">
                       <p className="line-clamp-2">
-                        {lc.course?.title ?? "—"}
+                        {lc.course?.title ?? "-"}
                       </p>
                       {lc.instructor ? (
                         <p className="text-gray-400 mt-1 line-clamp-1">
@@ -384,6 +403,9 @@ export default function AdminLiveClassesPage() {
                             lc.instructor.email}
                         </p>
                       ) : null}
+                    </td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <BrandMark brand={lc.brand} />
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-xs text-gray-600 whitespace-nowrap">
                       <div className="flex items-center gap-1">

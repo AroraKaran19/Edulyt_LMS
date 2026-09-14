@@ -11,6 +11,11 @@ import {
 } from "../services/announcement.services";
 import { AnnouncementAudience } from "../types";
 import { readableBrands } from "../lib/brandScope";
+import {
+  assertAnnouncementBrand,
+  parseBrandInput,
+} from "../services/brandOwnership.services";
+import { isBrand } from "../constants/brands";
 
 const AUDIENCES: AnnouncementAudience[] = ["course", "internship", "partner"];
 
@@ -22,10 +27,11 @@ const parseAudience = (raw: unknown): AnnouncementAudience | null =>
 /** Admin: create an announcement for one dashboard audience. */
 export const createAnnouncement = asyncHandler(
   async (req: Request, res: Response) => {
-    const { title, message, audience } = req.body as {
+    const { title, message, audience, brand } = req.body as {
       title?: string;
       message?: string;
       audience?: string;
+      brand?: string;
     };
     if (!title?.trim()) throw new AppError("Title is required", 400);
     if (!message?.trim()) throw new AppError("Message is required", 400);
@@ -36,8 +42,10 @@ export const createAnnouncement = asyncHandler(
         400,
       );
     }
+    const chosen = parseBrandInput(brand, "announcement");
+    assertAnnouncementBrand(aud, chosen);
     const created = await createAnnouncementService(
-      { title, message, audience: aud },
+      { title, message, audience: aud, brand: chosen },
       req.user?._id,
     );
     sendSuccessResponse(res, created, "Announcement created", 201);
@@ -50,6 +58,7 @@ export const listAnnouncementsAdmin = asyncHandler(
     const audience = parseAudience(req.query.audience);
     const announcements = await listAnnouncementsService(
       audience ?? undefined,
+      isBrand(req.query.brand) ? [req.query.brand] : undefined,
     );
     sendSuccessResponse(
       res,

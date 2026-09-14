@@ -25,7 +25,7 @@ import type {
   StudentLiveClassesPage,
   UpdateLiveClassBody,
 } from "../types/live-classes";
-import type { Brand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
 
 /**
  * Only these enrollments may see / attend a live class, and only these make up
@@ -153,6 +153,7 @@ interface OverrideDoc {
 
 interface LiveClassDoc {
   _id: unknown;
+  brand?: unknown;
   title: string;
   description?: string;
   imageUrl?: string;
@@ -260,6 +261,7 @@ function serializeAdminItem(doc: LiveClassDoc): AdminLiveClassListItem {
   const link2 = linkOf(doc, 2);
   return {
     _id: String(doc._id),
+    brand: asBrand(doc.brand),
     title: doc.title,
     description: doc.description ?? "",
     imageUrl: doc.imageUrl ?? "",
@@ -562,12 +564,14 @@ export const getAllLiveClassesService = async (
   limit: number = 10,
   courseId?: string,
   search?: string,
+  brand?: Brand,
 ): Promise<AdminLiveClassListResponse> => {
   const p = Math.max(1, Math.floor(page));
   const l = Math.min(100, Math.max(1, Math.floor(limit)));
 
   const filter: Record<string, unknown> = {};
   if (courseId) filter.course = requireObjectId(courseId, "courseId");
+  if (brand) filter.brand = brand;
   const term = typeof search === "string" ? search.trim() : "";
   if (term) {
     filter.title = {

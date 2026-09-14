@@ -47,6 +47,9 @@ async function main() {
       "announcements",
       "courseinternshipenrollments",
       "liveclasses",
+      // The admin job lists filter on brand.
+      "certificatejobs",
+      "invoicejobs",
     ]) {
       checks.push({
         label: `${collection} with no brand`,

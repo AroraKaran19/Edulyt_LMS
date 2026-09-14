@@ -12,6 +12,9 @@ import useAnnouncements, {
   type Announcement,
   type AnnouncementAudience,
 } from "@/hooks/useAnnouncements";
+import BrandSelect from "@/components/admin/BrandSelect";
+import BrandMark from "@/components/admin/BrandMark";
+import type { Brand, BrandFilter } from "@/constants/brands";
 
 const AUDIENCE_LABEL: Record<AnnouncementAudience, string> = {
   course: "Courses (Students)",
@@ -30,6 +33,15 @@ const AUDIENCE_OPTIONS = [
   { value: "internship", label: "Internships (Students)" },
   { value: "partner", label: "Partners" },
 ];
+
+/**
+ * Internships are Edulyt's and the partner portal is Airkrit's, so only a course
+ * announcement is the admin's to place.
+ */
+const OWNER_BRAND: Partial<Record<AnnouncementAudience, Brand>> = {
+  internship: "edulyt",
+  partner: "airkrit",
+};
 
 const formatDate = (iso: string) => {
   try {
@@ -53,25 +65,27 @@ export default function AdminAnnouncementsSettingsPage() {
   const [audienceFilter, setAudienceFilter] = useState<
     "all" | AnnouncementAudience
   >("all");
+  const [brandFilter, setBrandFilter] = useState<BrandFilter>("all");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<AnnouncementAudience>("course");
+  const [brand, setBrand] = useState<Brand | "">("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setRows(await listAll());
+      setRows(await listAll(brandFilter));
     } catch {
       setRows([]);
       toast.error("Failed to load announcements");
     } finally {
       setLoading(false);
     }
-  }, [listAll]);
+  }, [listAll, brandFilter]);
 
   useEffect(() => {
     void load();
@@ -86,7 +100,13 @@ export default function AdminAnnouncementsSettingsPage() {
     setTitle("");
     setMessage("");
     setAudience("course");
+    setBrand("");
     setModalOpen(true);
+  };
+
+  const changeAudience = (next: AnnouncementAudience) => {
+    setAudience(next);
+    setBrand(OWNER_BRAND[next] ?? "");
   };
 
   const handleSave = async () => {
@@ -98,12 +118,17 @@ export default function AdminAnnouncementsSettingsPage() {
       toast.error("Message is required");
       return;
     }
+    if (!brand) {
+      toast.error("Choose a brand");
+      return;
+    }
     setSaving(true);
     try {
       await createAnnouncement({
         title: title.trim(),
         message: message.trim(),
         audience,
+        brand,
       });
       toast.success("Announcement published");
       setModalOpen(false);
@@ -136,7 +161,7 @@ export default function AdminAnnouncementsSettingsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
           <p className="text-sm text-gray-600">
             Publish dashboard announcements for course learners, internship
-            learners, and partners. Each dashboard shows only the latest —
+            learners, and partners. Each dashboard shows only the latest, and
             older ones move to its announcements page.
           </p>
         </div>
@@ -146,14 +171,23 @@ export default function AdminAnnouncementsSettingsPage() {
         </OrangeButton>
       </div>
 
-      <div className="w-full md:w-56">
-        <Select
-          options={[{ value: "all", label: "All audiences" }, ...AUDIENCE_OPTIONS]}
-          value={audienceFilter}
-          onChange={(v) =>
-            setAudienceFilter(v as "all" | AnnouncementAudience)
-          }
-          placeholder="Audience"
+      <div className="flex flex-col gap-3 md:flex-row">
+        <div className="w-full md:w-56">
+          <Select
+            options={[{ value: "all", label: "All audiences" }, ...AUDIENCE_OPTIONS]}
+            value={audienceFilter}
+            onChange={(v) =>
+              setAudienceFilter(v as "all" | AnnouncementAudience)
+            }
+            placeholder="Audience"
+          />
+        </div>
+        <BrandSelect
+          label=""
+          includeAll
+          value={brandFilter}
+          onChange={setBrandFilter}
+          className="w-full md:w-48"
         />
       </div>
 
@@ -162,6 +196,9 @@ export default function AdminAnnouncementsSettingsPage() {
           <table className="w-full text-sm">
             <thead className="border-b border-gray-200 bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-700">
+                  Brand
+                </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-700">
                   Audience
                 </th>
@@ -183,7 +220,7 @@ export default function AdminAnnouncementsSettingsPage() {
               {loading && rows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-12 text-center text-gray-500"
                   >
                     Loading…
@@ -192,11 +229,14 @@ export default function AdminAnnouncementsSettingsPage() {
               ) : visibleRows.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-12 text-center text-gray-500"
                   >
                     No announcements
-                    {audienceFilter !== "all" ? " for this audience" : ""}.
+                    {audienceFilter !== "all" || brandFilter !== "all"
+                      ? " for this filter"
+                      : ""}
+                    .
                   </td>
                 </tr>
               ) : (
@@ -205,6 +245,9 @@ export default function AdminAnnouncementsSettingsPage() {
                     key={a._id}
                     className="border-b border-gray-100 hover:bg-gray-50/80"
                   >
+                    <td className="px-4 py-3">
+                      <BrandMark brand={a.brand} />
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${AUDIENCE_BADGE[a.audience]}`}
@@ -287,7 +330,15 @@ export default function AdminAnnouncementsSettingsPage() {
               label="Audience"
               options={AUDIENCE_OPTIONS}
               value={audience}
-              onChange={(v) => setAudience(v as AnnouncementAudience)}
+              onChange={(v) => changeAudience(v as AnnouncementAudience)}
+            />
+
+            <BrandSelect
+              required
+              value={brand}
+              onChange={(v) => setBrand(v as Brand)}
+              placeholder="Choose a brand"
+              disabled={Boolean(OWNER_BRAND[audience])}
             />
 
             <div className="flex justify-end gap-2 pt-2">

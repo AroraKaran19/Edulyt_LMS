@@ -153,6 +153,8 @@ liveClassSchema.pre("save", function (next) {
 liveClassSchema.index({ course: 1, startDateTime: -1 });
 liveClassSchema.index({ instructor: 1, startDateTime: -1 });
 liveClassSchema.index({ startDateTime: -1 });
+// The admin list filters by brand, newest first.
+liveClassSchema.index({ brand: 1, startDateTime: -1 });
 liveClassSchema.index({ startDateTime: 1, endDateTime: 1 });
 liveClassSchema.index({ "link1.token": 1 }, { unique: true, sparse: true });
 liveClassSchema.index({ "link2.token": 1 }, { unique: true, sparse: true });

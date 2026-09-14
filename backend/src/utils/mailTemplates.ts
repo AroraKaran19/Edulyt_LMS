@@ -1,12 +1,14 @@
 import {
   MailRecipient,
   MailSendResult,
+  MailTemplateOptions,
   MailVariables,
   SendTemplateMailOptions,
   defineMailTemplate,
   queueTemplateMail,
   sendTemplateMail,
 } from "./mailer";
+import { DEFAULT_BRAND, type Brand } from "../constants/brands";
 import { EmailPreferenceCategory } from "../constants/emailPreferences";
 import {
   buildUnsubscribeUrl,
@@ -129,7 +131,13 @@ export const defineOptOutMailTemplate = <V extends MailVariables>(
   templateId: string,
   label: string,
   category: EmailPreferenceCategory,
+  templateOptions: MailTemplateOptions = {},
 ): OptOutMailTemplate<V> => {
+  const { brand: lockedBrand, ids } = templateOptions;
+  const brandFor = (caller?: Brand): Brand =>
+    lockedBrand ?? caller ?? DEFAULT_BRAND;
+  const idFor = (brand: Brand): string => ids?.[brand] ?? templateId;
+
   const dispatch = async (
     to: SendTemplateMailOptions["to"],
     variables: V,
@@ -143,9 +151,11 @@ export const defineOptOutMailTemplate = <V extends MailVariables>(
       return { ok: true, outcome: "skipped", reason: "all recipients opted out" };
     }
 
+    const brand = brandFor(options?.brand);
     const payload: SendTemplateMailOptions = {
       ...options,
-      templateId,
+      brand,
+      templateId: idFor(brand),
       to: recipients,
     };
 

@@ -4,6 +4,7 @@ import { CertificateJobModel } from "../models/certificateJob.schema";
 import { CertificateJob, CertificateJobData, CertificateJobStatus, CertificateJobType } from "../types/certificateJob";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
 import { InternshipModel } from "../models/internship.schema";
+import type { Brand } from "../constants/brands";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -58,6 +59,7 @@ export const createCertificateJobService = async (
           jobId,
           enrollmentId: data.enrollmentId,
           certificateType: (data.certificateType ?? "course") as CertificateJobType,
+          brand: data.brand,
           status: "pending" as CertificateJobStatus,
           progress: 0,
           retryCount: 0,
@@ -300,6 +302,7 @@ export const getAllCertificateJobsService = async (
     limit?: number;
     status?: CertificateJobStatus;
     certificateType?: CertificateJobType;
+    brand?: Brand;
     search?: string;
   } = {}
 ): Promise<{
@@ -323,6 +326,9 @@ export const getAllCertificateJobsService = async (
     }
     if (options.certificateType) {
       filter.certificateType = options.certificateType;
+    }
+    if (options.brand) {
+      filter.brand = options.brand;
     }
 
     // When search is provided, use aggregation to search across jobId, enrollmentId, userName, courseName

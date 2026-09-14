@@ -8,6 +8,7 @@ import {
   type CsvColumn,
 } from "../utils/lib/csv";
 import { parseDateRange } from "../utils/lib/dateRange";
+import { isBrand } from "../constants/brands";
 import {
   getInternshipSuccessPointsReport,
   getPlatformSuccessPointsReport,
@@ -169,6 +170,7 @@ const REFERRAL_COLUMNS: CsvColumn<ReferralReportRow>[] = [
   { header: "Name", pick: (r) => r.name },
   { header: "Email", pick: (r) => r.email },
   { header: "Referral Code", pick: (r) => r.code },
+  { header: "Brand", pick: (r) => r.brand },
   { header: "Total Referrals", pick: (r) => r.totalReferrals },
   { header: "Total Earned (INR)", pick: (r) => r.totalEarned },
   { header: "Total Paid (INR)", pick: (r) => r.totalPaid },
@@ -178,8 +180,10 @@ const REFERRAL_COLUMNS: CsvColumn<ReferralReportRow>[] = [
 
 export const getReferralReportController = asyncHandler(
   async (req: Request, res: Response) => {
-    const opts = parseReportQuery(req);
-    const result = await getReferralReport(opts);
+    const result = await getReferralReport({
+      ...parseReportQuery(req),
+      brand: isBrand(req.query.brand) ? req.query.brand : undefined,
+    });
 
     if (wantsCsv(req.query)) {
       sendCsvResponse(

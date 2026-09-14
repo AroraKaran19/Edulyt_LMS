@@ -64,6 +64,7 @@ export const requestEnquiryOtp = asyncHandler(
       email: String(req.body?.email ?? ""),
       purpose: ENQUIRY_OTP_PURPOSE,
       label: "Enquiry",
+      brand: req.brand,
     });
     sendSuccessResponse(res, result, "Code sent");
   },

@@ -3,6 +3,8 @@
  * `backend/src/services/report.services.ts`; keep the two in sync.
  */
 
+import type { Brand } from "@/constants/brands";
+
 export interface ReportPage<TRow, TTotals> {
   items: TRow[];
   total: number;
@@ -100,6 +102,8 @@ export type InternshipPointsReport = ReportPage<
 
 export interface ReferralReportRow {
   userId: string;
+  /** Each brand keeps its own referral balance, so a referrer can have one row per brand. */
+  brand: Brand;
   name: string;
   email: string;
   code: string;
@@ -128,4 +132,6 @@ export interface ReportFilters {
   /** YYYY-MM-DD, inclusive (snapped to end-of-day server-side). */
   to: string;
   q: string;
+  /** Only the referral report reads it. */
+  brand?: Brand;
 }

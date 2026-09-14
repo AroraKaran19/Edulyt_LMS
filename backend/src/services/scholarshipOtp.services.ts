@@ -3,6 +3,7 @@ import {
   ScholarshipTestModel,
 } from "../models";
 import { AppError } from "../middlewares/error.middleware";
+import type { Brand } from "../constants/brands";
 import { todayIst } from "../utils/ist";
 import {
   requestEmailOtp,
@@ -113,6 +114,7 @@ export type ScholarshipGateResult =
 export const requestScholarshipOtp = async (
   slug: string,
   rawEmail: string,
+  brand: Brand,
 ): Promise<ScholarshipGateResult> => {
   const campaign = await loadOpenCampaign(slug);
 
@@ -140,6 +142,7 @@ export const requestScholarshipOtp = async (
     // "scholarship", so building a sentence around it produces duplicates.
     purpose: campaign.title,
     label: "Scholarship",
+    brand,
   });
 
   await bumpDailyStat(campaign._id, "otpRequested");

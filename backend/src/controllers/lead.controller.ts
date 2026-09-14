@@ -24,7 +24,7 @@ import {
 } from "../services/scholarshipLeadEnrichment.services";
 import { Lead, LeadAnswer, LeadStatus } from "../types/lead";
 import { asBrand, BRAND_MAIL } from "../constants/brands";
-import { edulytEnquiryReceivedMail } from "../mail";
+import { enquiryReceivedMail } from "../mail";
 import { isValidPhone } from "../services/phoneVerification.services";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -239,20 +239,19 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     pageQuery: pageQuery ? String(pageQuery).slice(0, 500) : undefined,
   });
 
-  // Queued, not awaited: a mail failure must never fail a captured lead. Only
-  // Edulyt has an acknowledgement template, and it is brand-locked, so an
-  // Airkrit enquiry would otherwise get Edulyt artwork.
-  if (brand === "edulyt") {
-    edulytEnquiryReceivedMail.send(
-      { email: cleanEmail, name: cleanName },
-      {
-        name: cleanName.split(/\s+/)[0] || cleanName,
-        ctaUrl: BRAND_MAIL.edulyt.siteUrl,
-        ctaLabel: "Visit our website",
-        year: new Date().getFullYear(),
-      },
-    );
-  }
+  // Queued, not awaited: a mail failure must never fail a captured lead. Both
+  // brands run an enquiry form, so the acknowledgement follows the request's
+  // brand for its sender and its link.
+  enquiryReceivedMail.send(
+    { email: cleanEmail, name: cleanName },
+    {
+      name: cleanName.split(/\s+/)[0] || cleanName,
+      ctaUrl: BRAND_MAIL[brand].siteUrl,
+      ctaLabel: "Visit our website",
+      year: new Date().getFullYear(),
+    },
+    { brand },
+  );
 
   sendSuccessResponse(res, { id: lead._id }, "Lead captured", 201);
 });
@@ -268,6 +267,7 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   const search = String(req.query.search ?? "").trim();
   const status = String(req.query.status ?? "").trim();
   const source = String(req.query.source ?? "").trim();
+  const brand = String(req.query.brand ?? "").trim();
 
   const campaignId = String(req.query.campaignId ?? "").trim();
   const collegeId = String(req.query.collegeId ?? "").trim();
@@ -280,6 +280,9 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   const filter: mongoose.FilterQuery<Lead> = {};
   if (status) filter.status = status;
   if (source) filter["source.kind"] = source;
+  // Leads from before two brands existed carry no brand, and they are all Airkrit.
+  if (brand === "airkrit") filter["source.brand"] = { $in: ["airkrit", null] };
+  if (brand === "edulyt") filter["source.brand"] = "edulyt";
   if (campaignId && mongoose.isValidObjectId(campaignId)) {
     filter["source.testId"] = new mongoose.Types.ObjectId(campaignId);
   }

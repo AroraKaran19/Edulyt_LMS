@@ -17,6 +17,28 @@ export const parseBrandInput = (value: unknown, what: string): Brand => {
   return value;
 };
 
+/**
+ * An internship feed is Edulyt's and the partner portal is Airkrit's, so only a
+ * course announcement is the admin's to place.
+ */
+export const assertAnnouncementBrand = (
+  audience: "course" | "internship" | "partner",
+  brand: Brand,
+): void => {
+  const owner =
+    audience === "internship"
+      ? "edulyt"
+      : audience === "partner"
+        ? "airkrit"
+        : null;
+  if (owner && brand !== owner) {
+    throw new AppError(
+      `A ${audience} announcement belongs to ${brandName(owner)}`,
+      400,
+    );
+  }
+};
+
 export const assertAudienceOnBrand = (audience: unknown, brand: Brand): void => {
   if (brand === "airkrit" && audience !== "college-students") {
     throw new AppError("Airkrit courses are for college students", 400);

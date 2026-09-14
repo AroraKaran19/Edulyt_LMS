@@ -21,6 +21,8 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Pagination from "@/components/admin/Pagination";
 import apiClient from "@/configs/apiConfig";
 import { toast } from "react-toastify";
+import BrandMark from "@/components/admin/BrandMark";
+import { BRANDS, BRAND_LABEL, type Brand } from "@/constants/brands";
 
 type JobStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -28,6 +30,7 @@ interface InvoiceJob {
   _id?: string;
   jobId: string;
   orderId: string;
+  brand?: Brand;
   status: JobStatus;
   invoiceNumber?: string;
   invoiceUrl?: string;
@@ -108,6 +111,7 @@ const InvoiceJobsPage = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<JobStatus | "">("");
+  const [brandFilter, setBrandFilter] = useState<Brand | "">("");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -133,6 +137,7 @@ const InvoiceJobsPage = () => {
       params.set("page", String(page));
       params.set("limit", String(limit));
       if (statusFilter) params.set("status", statusFilter);
+      if (brandFilter) params.set("brand", brandFilter);
       if (searchQuery) params.set("search", searchQuery);
 
       const response = await apiClient.get<{ data: JobsResponse }>(
@@ -153,7 +158,7 @@ const InvoiceJobsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, statusFilter, searchQuery]);
+  }, [page, limit, statusFilter, brandFilter, searchQuery]);
 
   useEffect(() => {
     loadJobs();
@@ -241,6 +246,24 @@ const InvoiceJobsPage = () => {
               <option value="failed">Failed</option>
             </select>
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-700">Brand</label>
+            <select
+              value={brandFilter}
+              onChange={(e) => {
+                setBrandFilter(e.target.value as Brand | "");
+                setPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px]"
+            >
+              <option value="">All</option>
+              {BRANDS.map((brand) => (
+                <option key={brand} value={brand}>
+                  {BRAND_LABEL[brand]}
+                </option>
+              ))}
+            </select>
+          </div>
           <WhiteButton
             onClick={loadJobs}
             disabled={isLoading}
@@ -288,14 +311,15 @@ const InvoiceJobsPage = () => {
           <p className="text-gray-500 text-sm mb-4">
             {searchQuery
               ? `No jobs match "${searchQuery}". Try a different search.`
-              : statusFilter
-                ? `No jobs with status "${statusFilter}". Try a different filter.`
+              : statusFilter || brandFilter
+                ? "No jobs match these filters. Try a different filter."
                 : "Invoice jobs appear here after a checkout order is paid. Free grants and allotments are not invoiced."}
           </p>
-          {(statusFilter || searchQuery) && (
+          {(statusFilter || brandFilter || searchQuery) && (
             <WhiteButton
               onClick={() => {
                 setStatusFilter("");
+                setBrandFilter("");
                 setSearchInput("");
                 setSearchQuery("");
                 setPage(1);
@@ -316,6 +340,9 @@ const InvoiceJobsPage = () => {
                   </th>
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
                     Invoice No.
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Brand
                   </th>
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
                     Customer
@@ -383,6 +410,9 @@ const InvoiceJobsPage = () => {
                             not allocated
                           </span>
                         )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <BrandMark brand={job.brand} />
                       </td>
                       <td className="py-3 px-4 font-medium text-gray-800 max-w-[150px] truncate">
                         {job.userName || (

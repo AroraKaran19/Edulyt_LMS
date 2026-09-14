@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
+import type { Brand, BrandFilter } from "@/constants/brands";
 
 export type AnnouncementAudience = "course" | "internship" | "partner";
 
@@ -13,6 +14,7 @@ export interface Announcement {
   title: string;
   message: string;
   audience: AnnouncementAudience;
+  brand: Brand;
   createdAt: string;
 }
 
@@ -40,13 +42,17 @@ export default function useAnnouncements() {
     [],
   );
 
-  /** Admin: every announcement, newest first. */
-  const listAll = useCallback(async (): Promise<Announcement[]> => {
-    const res = await apiClient.get<
-      ApiSuccessBody<{ announcements: Announcement[] }>
-    >("/announcements/admin");
-    return res.data.data.announcements;
-  }, []);
+  /** Admin: every announcement, newest first, optionally scoped to one brand. */
+  const listAll = useCallback(
+    async (brand?: BrandFilter): Promise<Announcement[]> => {
+      const qs = brand && brand !== "all" ? `?brand=${brand}` : "";
+      const res = await apiClient.get<
+        ApiSuccessBody<{ announcements: Announcement[] }>
+      >(`/announcements/admin${qs}`);
+      return res.data.data.announcements;
+    },
+    [],
+  );
 
   /** Admin: create an announcement. */
   const createAnnouncement = useCallback(
@@ -54,6 +60,7 @@ export default function useAnnouncements() {
       title: string;
       message: string;
       audience: AnnouncementAudience;
+      brand: Brand;
     }): Promise<Announcement> => {
       const res = await apiClient.post<ApiSuccessBody<Announcement>>(
         "/announcements",

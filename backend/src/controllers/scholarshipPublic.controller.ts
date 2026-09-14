@@ -71,6 +71,7 @@ export const requestOtp = asyncHandler(async (req: Request, res: Response) => {
   const result = await requestScholarshipOtp(
     String(req.params.slug),
     String(req.body?.email ?? ""),
+    req.brand,
   );
   // The gate either sent a code or opened the session outright, and saying the
   // wrong one of those is how a log stops being worth reading.

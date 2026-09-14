@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import type { ReportFilters, ReportPage } from "@/types/report";
+import type { Brand } from "@/constants/brands";
 
 /**
  * Filter / paging / fetch state shared by every report table.
@@ -22,6 +23,7 @@ export default function useReportTable<TRow, TTotals>(
 ) {
   const [searchInput, setSearchInput] = useState("");
   const [q, setQ] = useState("");
+  const [brand, setBrand] = useState<Brand | "">("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [data, setData] = useState<ReportPage<TRow, TTotals> | null>(null);
@@ -37,13 +39,19 @@ export default function useReportTable<TRow, TTotals>(
   }, [searchInput]);
 
   const filters = useMemo<ReportFilters>(
-    () => ({ from: "", to: "", q }),
-    [q],
+    () => ({ from: "", to: "", q, ...(brand ? { brand } : {}) }),
+    [q, brand],
   );
 
   const clearFilters = useCallback(() => {
     setSearchInput("");
     setQ("");
+    setBrand("");
+    setPage(1);
+  }, []);
+
+  const changeBrand = useCallback((next: Brand | "") => {
+    setBrand(next);
     setPage(1);
   }, []);
 
@@ -72,6 +80,8 @@ export default function useReportTable<TRow, TTotals>(
     filters,
     searchInput,
     setSearchInput,
+    brand,
+    setBrand: changeBrand,
     clearFilters,
     page,
     setPage,

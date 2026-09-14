@@ -3,6 +3,7 @@ import { AppError } from "../middlewares/error.middleware";
 import { InvoiceJobModel } from "../models/invoiceJob.schema";
 import { OrderModel } from "../models/order.schema";
 import { InvoiceJob, InvoiceJobSnapshot, InvoiceJobStatus } from "../types/invoiceJob";
+import { asBrand, type Brand } from "../constants/brands";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -58,7 +59,7 @@ export const buildInvoiceJobSnapshotPaths = async (
     if (!mongoose.isValidObjectId(orderId)) return {};
 
     const order = await OrderModel.findById(orderId)
-      .select("userName courseName internshipTitle amount orderKind paymentMethod")
+      .select("brand userName courseName internshipTitle amount orderKind paymentMethod")
       .lean();
     if (!order) return {};
 
@@ -71,11 +72,15 @@ export const buildInvoiceJobSnapshotPaths = async (
       paymentMethod: order.paymentMethod,
     };
 
-    return Object.fromEntries(
-      Object.entries(snapshot)
-        .filter(([, value]) => value !== undefined && value !== null && value !== "")
-        .map(([key, value]) => [`snapshot.${key}`, value]),
-    );
+    return {
+      ...Object.fromEntries(
+        Object.entries(snapshot)
+          .filter(([, value]) => value !== undefined && value !== null && value !== "")
+          .map(([key, value]) => [`snapshot.${key}`, value]),
+      ),
+      // Top level rather than in the snapshot: the admin list filters on it.
+      brand: asBrand(order.brand),
+    };
   } catch (error) {
     console.error(`[Invoice] Could not snapshot order ${orderId} onto its job:`, error);
     return {};
@@ -303,6 +308,7 @@ export const getAllInvoiceJobsService = async (
     page?: number;
     limit?: number;
     status?: InvoiceJobStatus;
+    brand?: Brand;
     search?: string;
   } = {},
 ): Promise<{
@@ -319,6 +325,7 @@ export const getAllInvoiceJobsService = async (
 
     const filter: Record<string, unknown> = {};
     if (options.status) filter.status = options.status;
+    if (options.brand) filter.brand = options.brand;
 
     // `orderId` is stored as a string; orders key on ObjectId.
     const oidConvert = {

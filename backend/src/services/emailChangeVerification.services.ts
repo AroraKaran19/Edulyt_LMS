@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { PendingEmailChangeModel, UserModel } from "../models";
+import type { Brand } from "../constants/brands";
 import { AppError } from "../middlewares/error.middleware";
 import { emailChangeVerificationMail, emailChangedMail } from "../mail";
 import { formatIstDateTime } from "../utils/ist";
@@ -187,6 +188,7 @@ const assertEmailAvailable = async (
 const sendVerificationEmail = async (
   recipient: { email: string; name: string },
   otp: string,
+  brand: Brand,
 ): Promise<void> => {
   const digits = otp.split("");
 
@@ -229,9 +231,10 @@ const sendOrRollback = async (
   userId: string,
   recipient: { email: string; name: string },
   otp: string,
+  brand: Brand,
 ): Promise<void> => {
   try {
-    await sendVerificationEmail(recipient, otp);
+    await sendVerificationEmail(recipient, otp, brand);
   } catch (error) {
     await PendingEmailChangeModel.findOneAndUpdate(
       { user: userId },
@@ -350,6 +353,7 @@ const applyEmailChange = async (
   userId: string,
   user: ChangeCandidate,
   newEmail: string,
+  brand: Brand,
 ): Promise<CompletedEmailChange> => {
   const oldEmail = user.email;
   const name = displayName(user);
@@ -371,7 +375,7 @@ const applyEmailChange = async (
     throw new AppError(EMAIL_CHANGE_MESSAGES.USER_NOT_FOUND, 404);
   }
 
-  notifyOldAddress(oldEmail, name, newEmail, changedAt);
+  notifyOldAddress(oldEmail, name, newEmail, changedAt, brand);
 
   return { email: newEmail, changedAt };
 };
@@ -387,13 +391,14 @@ export const changeEmailWithoutOtp = async (
   userId: string,
   currentPassword: string,
   rawNewEmail: unknown,
+  brand: Brand,
 ): Promise<CompletedEmailChange> => {
   const { newEmail, user } = await assertChangeAllowed(
     userId,
     currentPassword,
     rawNewEmail,
   );
-  return applyEmailChange(userId, user, newEmail);
+  return applyEmailChange(userId, user, newEmail, brand);
 };
 
 /**
@@ -408,6 +413,7 @@ export const requestEmailChange = async (
   userId: string,
   currentPassword: string,
   rawNewEmail: unknown,
+  brand: Brand,
 ): Promise<StartedEmailChange> => {
   const { newEmail, user } = await assertChangeAllowed(
     userId,
@@ -454,7 +460,12 @@ export const requestEmailChange = async (
     throw buildThrottleError(await loadThrottleState(userId));
   }
 
-  await sendOrRollback(userId, { email: newEmail, name: displayName(user) }, otp);
+  await sendOrRollback(
+    userId,
+    { email: newEmail, name: displayName(user) },
+    otp,
+    brand,
+  );
 
   return {
     newEmail,
@@ -467,6 +478,7 @@ export const requestEmailChange = async (
 /** Issues a fresh code for the in-flight change, subject to cooldown and cap. */
 export const resendEmailChangeOtp = async (
   userId: string,
+  brand: Brand,
 ): Promise<StartedEmailChange> => {
   // Loaded before the send is claimed, so a failure here cannot cost a slot.
   const user = await loadUserForChange(userId);
@@ -513,6 +525,7 @@ export const resendEmailChangeOtp = async (
     userId,
     { email: pending.newEmail, name: displayName(user) },
     otp,
+    brand,
   );
 
   return {
@@ -535,6 +548,7 @@ const notifyOldAddress = (
   name: string,
   newEmail: string,
   changedAt: Date,
+  brand: Brand,
 ): void => {
   emailChangedMail.send(
     { email: oldEmail, name },
@@ -557,6 +571,7 @@ const notifyOldAddress = (
 export const verifyEmailChange = async (
   userId: string,
   otp: unknown,
+  brand: Brand,
 ): Promise<CompletedEmailChange> => {
   const pending = await PendingEmailChangeModel.findOne({ user: userId });
   if (!pending) {
@@ -623,5 +638,5 @@ export const verifyEmailChange = async (
     );
   }
 
-  return applyEmailChange(userId, user, newEmail);
+  return applyEmailChange(userId, user, newEmail, brand);
 };

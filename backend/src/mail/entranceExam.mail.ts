@@ -37,6 +37,8 @@ export const entranceExamPassedMail =
   defineMailTemplate<EntranceExamPassedVariables>(
     "airkrit_internship_entrance_passed",
     "entrance-exam-passed",
+    // Internships are Edulyt's, whichever site the learner came from.
+    { brand: "edulyt" },
   );
 
 /**
@@ -58,4 +60,6 @@ export const entranceExamRejectedMail =
   defineMailTemplate<EntranceExamRejectedVariables>(
     "airkrit_internship_entrance_failed",
     "entrance-exam-rejected",
+    // Internships are Edulyt's, whichever site the learner came from.
+    { brand: "edulyt" },
   );

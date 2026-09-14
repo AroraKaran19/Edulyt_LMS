@@ -653,8 +653,22 @@ type TemplateSendOptions = Omit<
   "templateId" | "to" | "variables"
 >;
 
+export interface MailTemplateOptions {
+  /**
+   * Locks the template to one product: the caller's brand is ignored. For mail
+   * that can only ever be about one brand's product, such as an internship.
+   */
+  brand?: Brand;
+  /**
+   * Per-brand template ids, for artwork that differs by brand. A brand with no
+   * id here falls back to `templateId`, so a variant can be switched on the day
+   * its MSG91 template exists without touching any call site.
+   */
+  ids?: Partial<Record<Brand, string>>;
+}
+
 export interface MailTemplate<V extends MailVariables> {
-  /** The MSG91 dashboard template id. */
+  /** The MSG91 dashboard template id, used when a brand has no id of its own. */
   templateId: string;
   /** Short name used in logs, e.g. "signup-verification". */
   label: string;
@@ -692,26 +706,39 @@ export interface MailTemplate<V extends MailVariables> {
 export const defineMailTemplate = <V extends MailVariables>(
   templateId: string,
   label = templateId,
-  brand?: Brand,
-): MailTemplate<V> => ({
-  templateId,
-  label,
-  brand,
+  options: MailTemplateOptions = {},
+): MailTemplate<V> => {
+  const { brand: lockedBrand, ids } = options;
 
-  send: (to, variables, options) => {
-    const { context, ...sendOptions } = options ?? {};
-    queueTemplateMail(
-      { ...sendOptions, ...(brand ? { brand } : {}), templateId, to, variables },
-      context ?? `${label} email`,
-    );
-  },
+  /** A locked template ignores the caller; otherwise the caller decides. */
+  const brandFor = (caller?: Brand): Brand =>
+    lockedBrand ?? caller ?? DEFAULT_BRAND;
 
-  sendNow: (to, variables, options) =>
-    sendTemplateMail({
-      ...options,
-      ...(brand ? { brand } : {}),
-      templateId,
-      to,
-      variables,
-    }),
-});
+  const idFor = (brand: Brand): string => ids?.[brand] ?? templateId;
+
+  return {
+    templateId,
+    label,
+    brand: lockedBrand,
+
+    send: (to, variables, sendOptions) => {
+      const { context, ...rest } = sendOptions ?? {};
+      const brand = brandFor(rest.brand);
+      queueTemplateMail(
+        { ...rest, brand, templateId: idFor(brand), to, variables },
+        context ?? `${label} email`,
+      );
+    },
+
+    sendNow: (to, variables, sendOptions) => {
+      const brand = brandFor(sendOptions?.brand);
+      return sendTemplateMail({
+        ...sendOptions,
+        brand,
+        templateId: idFor(brand),
+        to,
+        variables,
+      });
+    },
+  };
+};

@@ -13,6 +13,7 @@ import {
   type Lead,
   type LeadStatus,
 } from "../../leads/types";
+import BrandBadge from "../../leads/BrandBadge";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleString("en-IN", {
@@ -94,6 +95,7 @@ export default function MyLeadsPage() {
             <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase">
               <tr>
                 <th className="px-5 py-3">Lead</th>
+                <th className="px-5 py-3">Brand</th>
                 <th className="px-5 py-3">College</th>
                 <th className="px-5 py-3">Received</th>
                 <th className="px-5 py-3">Status</th>
@@ -102,13 +104,13 @@ export default function MyLeadsPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center">
+                  <td colSpan={5} className="px-5 py-12 text-center">
                     <Loader2 className="mx-auto size-6 animate-spin text-gray-400" />
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-12 text-center text-gray-500">
+                  <td colSpan={5} className="px-5 py-12 text-center text-gray-500">
                     Nothing assigned to you yet.
                   </td>
                 </tr>
@@ -134,8 +136,11 @@ export default function MyLeadsPage() {
                         {formatStoredPhone(lead.phone)}
                       </a>
                     </td>
+                    <td className="px-5 py-3">
+                      <BrandBadge brand={lead.source?.brand} />
+                    </td>
                     <td className="px-5 py-3 text-gray-700">
-                      {lead.collegeName ?? "—"}
+                      {lead.collegeName ?? "-"}
                       {lead.state ? (
                         <div className="text-xs text-gray-500">{lead.state}</div>
                       ) : null}

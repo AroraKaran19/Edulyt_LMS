@@ -221,6 +221,7 @@ const leadSchema = new mongoose.Schema<Lead>(
 
 leadSchema.index({ createdAt: -1 });
 leadSchema.index({ "source.kind": 1, createdAt: -1 });
+leadSchema.index({ "source.brand": 1, createdAt: -1 });
 // `creator.userId` rather than `creator.code`: renaming a code must not split
 // someone's history in two.
 leadSchema.index({ "creator.userId": 1, createdAt: -1 });

@@ -2,8 +2,8 @@
  * Brands history, once, per environment.
  *
  * Courses go by audience, internships are all Edulyt, access records follow
- * their product, and transactional records keep Airkrit, the brand they were
- * transacted under. Every user gets Airkrit; anyone holding a professional
+ * their product, transactional records keep Airkrit, the brand they were
+ * transacted under, and jobs follow the order or enrollment they were queued for. Every user gets Airkrit; anyone holding a professional
  * course or an internship also gets Edulyt.
  *
  * Re-runs are safe: every filter skips documents already carrying the brand it
@@ -134,7 +134,36 @@ async function main() {
         { brand: { $exists: false } }, { $set: { brand: "airkrit" } });
     }
 
-    // 4. Memberships.
+    // 4. Jobs follow the record they were queued for. Both store that record's
+    //    id as a string.
+    const edulytOrderIds = (
+      await db.collection("orders").distinct("_id", { brand: "edulyt" })
+    ).map(String);
+    for (const ids of chunk(edulytOrderIds)) {
+      await run("invoice jobs on edulyt orders", "invoicejobs",
+        { orderId: { $in: ids }, brand: { $ne: "edulyt" } },
+        { $set: { brand: "edulyt" } });
+    }
+    await run("invoicejobs: the rest to airkrit", "invoicejobs",
+      { brand: { $exists: false } }, { $set: { brand: "airkrit" } });
+
+    await run("certificate jobs: internship to edulyt", "certificatejobs",
+      { certificateType: "internship", brand: { $ne: "edulyt" } },
+      { $set: { brand: "edulyt" } });
+    const edulytEnrollmentIds = (
+      await db.collection("enrollments").distinct("_id", {
+        $or: [{ brand: "edulyt" }, { courseId: bothIdForms(edulytCourseIds) }],
+      })
+    ).map(String);
+    for (const ids of chunk(edulytEnrollmentIds)) {
+      await run("course certificate jobs on edulyt courses", "certificatejobs",
+        { certificateType: { $ne: "internship" }, enrollmentId: { $in: ids }, brand: { $ne: "edulyt" } },
+        { $set: { brand: "edulyt" } });
+    }
+    await run("certificatejobs: the rest to airkrit", "certificatejobs",
+      { brand: { $exists: false } }, { $set: { brand: "airkrit" } });
+
+    // 5. Memberships.
     await run("users: everyone gets airkrit", "users",
       { brands: { $exists: false } }, { $set: { brands: ["airkrit"] } });
     await run("users: empty membership list gets airkrit", "users",
@@ -171,7 +200,7 @@ async function main() {
       }
     }
 
-    // 5. Coupons follow their courses when they all sit on one brand.
+    // 6. Coupons follow their courses when they all sit on one brand.
     const edulytCourseKeys = new Set(edulytCourseIds.map(String));
     const coupons = await db.collection("coupons")
       .find({ brand: { $exists: false } }, { projection: { applicableType: 1, applicableCourses: 1 } })
@@ -190,7 +219,7 @@ async function main() {
     console.log(`\ncoupons: ${coupons.length} branded, ${mixed.length} span both brands`);
     for (const id of mixed) console.log(`  review coupon ${id}`);
 
-    // 6. Saved SEO titles that still say Airkrit on a moved course.
+    // 7. Saved SEO titles that still say Airkrit on a moved course.
     const moved = await db.collection("courses")
       .find({ brand: "edulyt", metaTitle: { $regex: "airkrit", $options: "i" } },
         { projection: { metaTitle: 1 } })

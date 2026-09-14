@@ -78,6 +78,7 @@ export async function evaluateInternshipEnrollment(
     await createCertificateJobService({
       enrollmentId,
       certificateType: "internship",
+      brand: "edulyt",
       studentName: "",
       courseName: "",
       completionDate: new Date(),

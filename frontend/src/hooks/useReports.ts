@@ -36,6 +36,7 @@ function buildParams(
   if (filters.from) params.from = filters.from;
   if (filters.to) params.to = filters.to;
   if (filters.q.trim()) params.q = filters.q.trim();
+  if (filters.brand) params.brand = filters.brand;
   if (page !== undefined) params.page = page;
   if (limit !== undefined) params.limit = limit;
   return params;

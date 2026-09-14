@@ -9,6 +9,7 @@ import {
   reclaimStuckInvoiceJobsService,
 } from "../services/invoiceJob.services";
 import { InvoiceJobStatus } from "../types/invoiceJob";
+import { isBrand } from "../constants/brands";
 
 /**
  * @route GET /api/admin/invoice-jobs
@@ -25,6 +26,7 @@ export const getAllInvoiceJobs = asyncHandler(
       page,
       limit,
       status: status as InvoiceJobStatus | undefined,
+      brand: isBrand(req.query.brand) ? req.query.brand : undefined,
       search,
     });
 

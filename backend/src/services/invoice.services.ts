@@ -3,6 +3,8 @@ import os from "os";
 import path from "path";
 import { OrderModel } from "../models/order.schema";
 import { UserModel } from "../models/user.schema";
+import { asBrand } from "../constants/brands";
+import { invoiceIssuerFor } from "../lib/invoiceIssuer";
 import { AppError } from "../middlewares/error.middleware";
 import { uploadFileToS3 } from "./upload.services";
 import { isInvoiceableOrder } from "../lib/invoiceEligibility";
@@ -124,10 +126,16 @@ function buildPaymentMethod(order: OrderDoc): string {
  * stamp it. The loser discards its allocation (leaving a gap in the sequence)
  * and re-reads the winner's number.
  */
-async function ensureInvoiceNumber(order: OrderDoc): Promise<string> {
+async function ensureInvoiceNumber(
+  order: OrderDoc,
+  series: string,
+): Promise<string> {
   if (order.invoiceNumber) return order.invoiceNumber;
 
-  const candidate = await allocateNextInvoiceNumber(order.createdAt ?? new Date());
+  const candidate = await allocateNextInvoiceNumber(
+    series,
+    order.createdAt ?? new Date(),
+  );
   const claimed = await OrderModel.findOneAndUpdate(
     { _id: order._id, invoiceNumber: { $in: [null, ""] } },
     { $set: { invoiceNumber: candidate } },
@@ -176,6 +184,9 @@ export const generateInvoiceForOrderService = async (
     };
   }
 
+  // The seller is the brand the order was placed on, not the product's.
+  const issuer = invoiceIssuerFor(asBrand(order.brand));
+
   await onProgress?.(20);
 
   const user = (await UserModel.findById(order.userId)
@@ -187,7 +198,7 @@ export const generateInvoiceForOrderService = async (
     order.userName ||
     "Customer";
 
-  const invoiceNumber = await ensureInvoiceNumber(order);
+  const invoiceNumber = await ensureInvoiceNumber(order, issuer.series);
   await onProgress?.(40);
 
   const discount = buildDiscount(order);
@@ -195,6 +206,7 @@ export const generateInvoiceForOrderService = async (
 
   const data: InvoiceData = {
     invoiceNumber,
+    gstin: issuer.gstin,
     // The supply happened when the payment settled, not when this job runs.
     invoiceDate: order.updatedAt ?? order.createdAt ?? new Date(),
     orderId: String(order._id),
@@ -211,7 +223,7 @@ export const generateInvoiceForOrderService = async (
     paymentMethod: buildPaymentMethod(order),
   };
 
-  const templatePath = getInvoiceTemplatePath();
+  const templatePath = getInvoiceTemplatePath(issuer.template);
   const tempDir = path.join(os.tmpdir(), `invoice-${invoiceNumber}-${Date.now()}`);
   fs.mkdirSync(tempDir, { recursive: true });
 
@@ -226,7 +238,7 @@ export const generateInvoiceForOrderService = async (
     await onProgress?.(80);
 
     const pdfBuffer = fs.readFileSync(pdfPath);
-    const fileName = `Airkrit_Invoice_${invoiceNumber}_${sanitizeForFilename(customerName)}.pdf`;
+    const fileName = `${issuer.filePrefix}_${invoiceNumber}_${sanitizeForFilename(customerName)}.pdf`;
 
     const invoiceUrl = await uploadFileToS3(
       pdfBuffer,

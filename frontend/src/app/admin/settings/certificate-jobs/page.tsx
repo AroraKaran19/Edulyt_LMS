@@ -19,6 +19,8 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import Pagination from "@/components/admin/Pagination";
 import apiClient from "@/configs/apiConfig";
 import { toast } from "react-toastify";
+import BrandMark from "@/components/admin/BrandMark";
+import { BRANDS, BRAND_LABEL, type Brand } from "@/constants/brands";
 
 type JobStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -27,6 +29,7 @@ interface CertificateJob {
   jobId: string;
   enrollmentId: string;
   certificateType?: "course" | "internship";
+  brand?: Brand;
   status: JobStatus;
   certificateId?: string;
   certificateUrl?: string;
@@ -79,6 +82,7 @@ const CertificateJobsPage = () => {
   const [limit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<JobStatus | "">("");
   const [typeFilter, setTypeFilter] = useState<"course" | "internship" | "">("");
+  const [brandFilter, setBrandFilter] = useState<Brand | "">("");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -101,6 +105,7 @@ const CertificateJobsPage = () => {
       params.set("limit", String(limit));
       if (statusFilter) params.set("status", statusFilter);
       if (typeFilter) params.set("certificateType", typeFilter);
+      if (brandFilter) params.set("brand", brandFilter);
       if (searchQuery) params.set("search", searchQuery);
 
       const response = await apiClient.get<{ data: JobsResponse }>(
@@ -121,7 +126,7 @@ const CertificateJobsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, statusFilter, typeFilter, searchQuery]);
+  }, [page, limit, statusFilter, typeFilter, brandFilter, searchQuery]);
 
   useEffect(() => {
     loadJobs();
@@ -210,6 +215,26 @@ const CertificateJobsPage = () => {
               <option value="internship">Internship</option>
             </select>
           </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Brand
+            </label>
+            <select
+              value={brandFilter}
+              onChange={(e) => {
+                setBrandFilter(e.target.value as Brand | "");
+                setPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px]"
+            >
+              <option value="">All</option>
+              {BRANDS.map((brand) => (
+                <option key={brand} value={brand}>
+                  {BRAND_LABEL[brand]}
+                </option>
+              ))}
+            </select>
+          </div>
           <WhiteButton
             onClick={loadJobs}
             disabled={isLoading}
@@ -249,15 +274,16 @@ const CertificateJobsPage = () => {
           <p className="text-gray-500 text-sm mb-4">
             {searchQuery
               ? `No jobs match "${searchQuery}". Try a different search.`
-              : statusFilter
-                ? `No jobs with status "${statusFilter}". Try a different filter.`
+              : statusFilter || typeFilter || brandFilter
+                ? "No jobs match these filters. Try a different filter."
                 : "Certificate jobs will appear here when users qualify for course or internship certificates."}
           </p>
-          {(statusFilter || typeFilter || searchQuery) && (
+          {(statusFilter || typeFilter || brandFilter || searchQuery) && (
             <WhiteButton
               onClick={() => {
                 setStatusFilter("");
                 setTypeFilter("");
+                setBrandFilter("");
                 setSearchInput("");
                 setSearchQuery("");
                 setPage(1);
@@ -278,6 +304,9 @@ const CertificateJobsPage = () => {
                   </th>
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
                     User
+                  </th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-700">
+                    Brand
                   </th>
                   <th className="text-left py-4 px-4 font-semibold text-gray-700">
                     Type
@@ -334,8 +363,11 @@ const CertificateJobsPage = () => {
                       </td>
                       <td className="py-3 px-4 font-medium text-gray-800 max-w-[140px] truncate">
                         {job.userName || (
-                          <span className="text-gray-400 italic">—</span>
+                          <span className="text-gray-400 italic">-</span>
                         )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <BrandMark brand={job.brand} />
                       </td>
                       <td className="py-3 px-4">
                         {job.certificateType === "internship" ? (
@@ -353,7 +385,7 @@ const CertificateJobsPage = () => {
                         title={job.courseName}
                       >
                         {job.courseName || (
-                          <span className="text-gray-400 italic">—</span>
+                          <span className="text-gray-400 italic">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4">
@@ -375,7 +407,7 @@ const CertificateJobsPage = () => {
                             />
                           </div>
                           <span className="text-gray-600 tabular-nums min-w-10">
-                            {job.progress != null ? `${job.progress}%` : "—"}
+                            {job.progress != null ? `${job.progress}%` : "-"}
                           </span>
                         </div>
                       </td>
@@ -390,7 +422,7 @@ const CertificateJobsPage = () => {
                                 year: "numeric",
                               },
                             )
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="py-3 px-4 max-w-[180px]">
                         {job.error ? (
@@ -401,7 +433,7 @@ const CertificateJobsPage = () => {
                             {job.error}
                           </span>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-gray-400">-</span>
                         )}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -440,7 +472,7 @@ const CertificateJobsPage = () => {
                           {job.status !== "failed" &&
                             (!job.certificateUrl ||
                               job.status !== "completed") && (
-                              <span className="text-gray-300">—</span>
+                              <span className="text-gray-300">-</span>
                             )}
                         </div>
                       </td>

@@ -1,3 +1,5 @@
+import type { Brand } from "@/constants/brands";
+
 /**
  * Course live classes.
  *
@@ -41,6 +43,7 @@ export interface LiveClassLinkView {
 /** Admin / instructor view — includes the attendance URLs. */
 export interface LiveClass {
   _id: string;
+  brand?: Brand;
   title: string;
   description: string;
   imageUrl: string;

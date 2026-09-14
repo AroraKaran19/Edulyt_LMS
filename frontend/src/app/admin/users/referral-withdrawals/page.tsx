@@ -15,6 +15,8 @@ import type {
   ReferralWithdrawalStatus,
 } from "@/types/referral";
 import { cn } from "@/lib/utils";
+import BrandMark from "@/components/admin/BrandMark";
+import { BRANDS, BRAND_LABEL, isBrand, type Brand } from "@/constants/brands";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50];
 const STATUS_OPTIONS: { value: "" | ReferralWithdrawalStatus; label: string }[] =
@@ -40,7 +42,7 @@ function statusPillClass(s: ReferralWithdrawalStatus): string {
 }
 
 function formatDateTime(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     return new Date(iso).toLocaleString("en-IN", {
       timeZone: "Asia/Kolkata",
@@ -53,6 +55,11 @@ function formatDateTime(iso: string | null): string {
   } catch {
     return iso;
   }
+}
+
+function apiErrorMessage(err: unknown): string | undefined {
+  return (err as { response?: { data?: { error?: { message?: string } } } })
+    ?.response?.data?.error?.message;
 }
 
 function formatRupees(n: number): string {
@@ -87,6 +94,10 @@ export default function AdminReferralWithdrawalsPage() {
   const [status, setStatus] = useState<"" | ReferralWithdrawalStatus>(() =>
     statusFromUrl(searchParams.get("status")),
   );
+  const [brand, setBrand] = useState<"" | Brand>(() => {
+    const raw = searchParams.get("brand");
+    return isBrand(raw) ? raw : "";
+  });
   const [searchInput, setSearchInput] = useState(searchFromUrl);
   const [search, setSearch] = useState(searchFromUrl);
   const [page, setPage] = useState(1);
@@ -113,17 +124,16 @@ export default function AdminReferralWithdrawalsPage() {
         page,
         limit: pageSize,
         status: status || undefined,
+        brand: brand || undefined,
         q: search,
       });
       setData(res);
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.error?.message ?? "Could not load withdrawals.",
-      );
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err) ?? "Could not load withdrawals.");
     } finally {
       setLoading(false);
     }
-  }, [adminListWithdrawals, page, pageSize, status, search]);
+  }, [adminListWithdrawals, page, pageSize, status, brand, search]);
 
   useEffect(() => {
     void fetchPage();
@@ -158,10 +168,8 @@ export default function AdminReferralWithdrawalsPage() {
       toast.success(`Withdrawal moved to "${modal.next}".`);
       setModal(null);
       await fetchPage();
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.error?.message ?? "Could not update withdrawal.",
-      );
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err) ?? "Could not update withdrawal.");
     } finally {
       setSubmitting(false);
     }
@@ -214,6 +222,24 @@ export default function AdminReferralWithdrawalsPage() {
             ))}
           </select>
         </label>
+        <label className="flex flex-col gap-1 text-xs font-medium text-[#344054]">
+          Brand
+          <select
+            value={brand}
+            onChange={(e) => {
+              setBrand(e.target.value as "" | Brand);
+              setPage(1);
+            }}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-[#F77124] focus:ring-2 focus:ring-[#F77124]/20"
+          >
+            <option value="">All brands</option>
+            {BRANDS.map((b) => (
+              <option key={b} value={b}>
+                {BRAND_LABEL[b]}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-[#344054] flex-1 min-w-[220px]">
           Search
           <div className="relative">
@@ -232,6 +258,7 @@ export default function AdminReferralWithdrawalsPage() {
             type="button"
             onClick={() => {
               setStatus("");
+              setBrand("");
               setSearchInput("");
               setSearch("");
               setPage(1);
@@ -245,10 +272,11 @@ export default function AdminReferralWithdrawalsPage() {
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-        <table className="w-full min-w-[820px] text-sm">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr className="text-left">
               <th className="px-4 py-3 font-semibold text-black">User</th>
+              <th className="px-4 py-3 font-semibold text-black">Brand</th>
               <th className="px-4 py-3 font-semibold text-black">UPI</th>
               <th className="px-4 py-3 font-semibold text-black">Amount</th>
               <th className="px-4 py-3 font-semibold text-black">Requested</th>
@@ -259,13 +287,13 @@ export default function AdminReferralWithdrawalsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center">
+                <td colSpan={7} className="py-12 text-center">
                   <Loader2 className="inline-block w-5 h-5 animate-spin text-gray-400" />
                 </td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-gray-500">
+                <td colSpan={7} className="py-12 text-center text-gray-500">
                   No withdrawal requests match these filters.
                 </td>
               </tr>
@@ -278,6 +306,9 @@ export default function AdminReferralWithdrawalsPage() {
                   <td className="px-4 py-3 text-[#1D2939]">
                     <p className="font-medium">{r.user.name}</p>
                     <p className="text-xs text-gray-500">{r.user.email}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <BrandMark brand={r.brand} />
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-[#344054]">
                     {r.upiIdSnapshot}

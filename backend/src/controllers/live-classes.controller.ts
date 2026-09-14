@@ -22,6 +22,7 @@ import {
   updateLiveClassService,
 } from "../services/live-classes.services";
 import { readableBrands } from "../lib/brandScope";
+import { isBrand } from "../constants/brands";
 import type {
   CreateLiveClassBody,
   SetLiveClassAttendanceOverrideBody,
@@ -103,6 +104,7 @@ export const getAllLiveClasses = asyncHandler(
       limit,
       typeof courseId === "string" && courseId ? courseId : undefined,
       typeof search === "string" ? search : undefined,
+      isBrand(req.query.brand) ? req.query.brand : undefined,
     );
 
     sendSuccessResponse(res, result, "Live classes retrieved successfully", 200);
