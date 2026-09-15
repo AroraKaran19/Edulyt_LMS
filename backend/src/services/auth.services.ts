@@ -266,20 +266,32 @@ export const revokeOtherRefreshTokenFamilies = async (
   );
 };
 
+/**
+ * Sent as a 400. The error middleware turns jwt errors into 401, and both sites
+ * answer a 401 by redirecting to login, so a stale link would never explain itself.
+ */
+export const RESET_LINK_INVALID_MESSAGE =
+  "This reset link has expired or is no longer valid. Request a new one.";
+
+type ResetLinkClaims = { userId?: string; email?: string };
+
 export const resetUserPassword = async (token: string, newPassword: string) => {
   if (!process.env.JWT_SECRET) {
     throw new AppError("JWT_SECRET is not set", 500);
   }
 
-  // Verify the token
-  const decoded = jwt.verify(token, process.env.JWT_SECRET) as {
-    userId: string;
-    email: string;
-  };
+  let decoded: ResetLinkClaims;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET) as ResetLinkClaims;
+  } catch {
+    throw new AppError(RESET_LINK_INVALID_MESSAGE, 400);
+  }
 
   if (!decoded.userId || !decoded.email) {
-    throw new AppError("Invalid token", 400);
+    throw new AppError(RESET_LINK_INVALID_MESSAGE, 400);
   }
+
+  validatePassword(newPassword);
 
   const user = await UserModel.findById(decoded.userId).select("+password");
   if (!user) {

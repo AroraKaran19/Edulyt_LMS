@@ -36,9 +36,8 @@ const REFERRAL_USED_TEMPLATE_ID = "airkrit_referral_notification";
 
 export const referralUsedMail =
   defineOptOutMailTemplate<ReferralUsedVariables>(
-    // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
-    // artwork until its id is added as `ids.edulyt`.
     REFERRAL_USED_TEMPLATE_ID,
     "referral-used",
     EMAIL_PREFERENCE_CATEGORIES.REFERRALS,
+    { ids: { edulyt: "edulyt_referral_notification" } },
   );

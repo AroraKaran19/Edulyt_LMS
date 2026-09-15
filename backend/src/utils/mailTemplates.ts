@@ -5,7 +5,6 @@ import {
   MailVariables,
   SendTemplateMailOptions,
   defineMailTemplate,
-  productMailBrand,
   queueTemplateMail,
   sendTemplateMail,
 } from "./mailer";
@@ -136,7 +135,7 @@ export const defineOptOutMailTemplate = <V extends MailVariables>(
 ): OptOutMailTemplate<V> => {
   const { brand: lockedBrand, ids } = templateOptions;
   const brandFor = (caller?: Brand): Brand =>
-    lockedBrand ? productMailBrand(lockedBrand) : caller ?? DEFAULT_BRAND;
+    lockedBrand ?? caller ?? DEFAULT_BRAND;
   const idFor = (brand: Brand): string => ids?.[brand] ?? templateId;
 
   const dispatch = async (

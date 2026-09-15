@@ -34,8 +34,7 @@ const EMAIL_CHANGE_VERIFICATION_TEMPLATE_ID = "new-email-verification";
 
 export const emailChangeVerificationMail =
   defineMailTemplate<EmailChangeVerificationVariables>(
-    // TODO(brand-assets): no Edulyt copy in MSG91 yet; Edulyt sends reuse this
-    // artwork until its id is added as `ids.edulyt`.
     EMAIL_CHANGE_VERIFICATION_TEMPLATE_ID,
     "email-change-verification",
+    { ids: { edulyt: "edulyt_email_change_verification" } },
   );

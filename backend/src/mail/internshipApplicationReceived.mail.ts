@@ -1,7 +1,7 @@
 import { defineMailTemplate } from "../utils/mailTemplates";
 
 /**
- * Variables for `airkrit_internship-application-received.html`.
+ * Variables for `edulyt_internship-application-received.html`.
  *
  * Four of these carry HTML rather than text. MSG91 substitutes values and
  * evaluates nothing, so a block that appears for one registration and not
@@ -50,8 +50,6 @@ export const internshipApplicationReceivedMail =
   defineMailTemplate<InternshipApplicationReceivedVariables>(
     INTERNSHIP_APPLICATION_RECEIVED_TEMPLATE_ID,
     "internship-application-received",
-    // Internships are Edulyt's, whichever site the learner came from. Sends as
-    // Airkrit until cutover (`productMailBrand`).
-    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
+    // Internships are Edulyt's, whichever site the learner came from.
     { brand: "edulyt" },
   );

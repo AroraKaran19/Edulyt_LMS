@@ -10,7 +10,7 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  * asks for documents the learner cannot upload until they are selected.
  */
 
-/** Variables for `airkrit_entrance-exam-passed.html`. */
+/** Variables for `edulyt_entrance-exam-passed.html`. */
 export type EntranceExamPassedVariables = {
   name: string;
   internshipName: string;
@@ -19,7 +19,7 @@ export type EntranceExamPassedVariables = {
   year: number;
 };
 
-/** Variables for `airkrit_entrance-exam-rejected.html`. */
+/** Variables for `edulyt_entrance-exam-rejected.html`. */
 export type EntranceExamRejectedVariables = {
   name: string;
   internshipName: string;
@@ -37,9 +37,7 @@ export const entranceExamPassedMail =
   defineMailTemplate<EntranceExamPassedVariables>(
     "airkrit_internship_entrance_passed",
     "entrance-exam-passed",
-    // Internships are Edulyt's, whichever site the learner came from. Sends as
-    // Airkrit until cutover (`productMailBrand`).
-    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
+    // Internships are Edulyt's, whichever site the learner came from.
     { brand: "edulyt" },
   );
 
@@ -62,8 +60,6 @@ export const entranceExamRejectedMail =
   defineMailTemplate<EntranceExamRejectedVariables>(
     "airkrit_internship_entrance_failed",
     "entrance-exam-rejected",
-    // Internships are Edulyt's, whichever site the learner came from. Sends as
-    // Airkrit until cutover (`productMailBrand`).
-    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
+    // Internships are Edulyt's, whichever site the learner came from.
     { brand: "edulyt" },
   );

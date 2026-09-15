@@ -32,6 +32,7 @@ import {
 } from "../utils/lib/csv";
 import { parseDateRange, rangeEcho } from "../utils/lib/dateRange";
 import { UserModel } from "../models";
+import { readableBrands } from "../lib/brandScope";
 import { normalizePhone } from "../services/phoneVerification.services";
 import {
   PHONE_ERROR_CODES,
@@ -289,7 +290,10 @@ export const getCurrentUserStats = asyncHandler(
     if (!userId) {
       throw new AppError("User ID not found", 400);
     }
-    const stats = await getCurrentUserDashboardCountsService(String(userId));
+    const stats = await getCurrentUserDashboardCountsService(
+      String(userId),
+      readableBrands(req.brand),
+    );
     sendSuccessResponse(res, stats, "User stats fetched", 200);
   }
 );

@@ -10,7 +10,7 @@ import { defineMailTemplate } from "../utils/mailTemplates";
  * derived from the five closure outcomes.
  */
 
-/** Variables for `airkrit_certification-exam-passed.html`. */
+/** Variables for `edulyt_certification-exam-passed.html`. */
 export type InternshipCertificateIssuedVariables = {
   name: string;
   /** Outcome sentence, HTML. Built by `buildReasonLine`. */
@@ -24,7 +24,7 @@ export type InternshipCertificateIssuedVariables = {
 };
 
 /**
- * Variables for `airkrit_internship-certificate-pending.html`.
+ * Variables for `edulyt_internship-certificate-pending.html`.
  *
  * No `certificateUrl` and no `linkedInUrl`: this template is sent precisely when
  * the certificate file does not exist, and there is nothing to verify yet.
@@ -36,7 +36,7 @@ export type InternshipCertificatePendingVariables = {
   year: number;
 };
 
-/** Variables for `airkrit_certification-exam-failed.html`. */
+/** Variables for `edulyt_certification-exam-failed.html`. */
 export type InternshipCertificateWithheldVariables = {
   name: string;
   /** Outcome sentence, HTML. Built by `buildReasonLine`. */
@@ -60,9 +60,7 @@ export const internshipCertificateIssuedMail =
   defineMailTemplate<InternshipCertificateIssuedVariables>(
     "airkrit_internship_passed",
     "internship-certificate-issued",
-    // Internships are Edulyt's, whichever site the learner came from. Sends as
-    // Airkrit until cutover (`productMailBrand`).
-    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
+    // Internships are Edulyt's, whichever site the learner came from.
     { brand: "edulyt" },
   );
 
@@ -77,9 +75,7 @@ export const internshipCertificatePendingMail =
   defineMailTemplate<InternshipCertificatePendingVariables>(
     "airkrit_internship_passed_cert_pending",
     "internship-certificate-pending",
-    // Internships are Edulyt's, whichever site the learner came from. Sends as
-    // Airkrit until cutover (`productMailBrand`).
-    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
+    // Internships are Edulyt's, whichever site the learner came from.
     { brand: "edulyt" },
   );
 
@@ -94,8 +90,6 @@ export const internshipCertificateWithheldMail =
   defineMailTemplate<InternshipCertificateWithheldVariables>(
     "airkrit_internship_failed",
     "internship-certificate-withheld",
-    // Internships are Edulyt's, whichever site the learner came from. Sends as
-    // Airkrit until cutover (`productMailBrand`).
-    // TODO(brand-assets): artwork still has the Airkrit logo; swap before cutover.
+    // Internships are Edulyt's, whichever site the learner came from.
     { brand: "edulyt" },
   );

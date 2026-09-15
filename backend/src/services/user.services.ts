@@ -39,20 +39,26 @@ export interface CurrentUserDashboardCounts {
 
 export const getCurrentUserDashboardCountsService = async (
   userId: string,
+  /** `readableBrands` of the requesting site, so each site counts only what it shows. */
+  brands: Brand[],
 ): Promise<CurrentUserDashboardCounts> => {
+  const brand = { $in: brands };
   const [totalCourses, totalCertificates, totalInternships] = await Promise.all(
     [
       EnrollmentModel.countDocuments({
         userId,
         status: { $nin: ["dropped", "revoked"] },
+        brand,
       }),
       CertificateModel.countDocuments({
         userId,
         isActive: true,
         isLatest: true,
+        brand,
       }),
       InternshipEnrollmentModel.countDocuments({
         user: new mongoose.Types.ObjectId(userId),
+        brand,
       }),
     ],
   );

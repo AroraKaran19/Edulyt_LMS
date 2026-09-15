@@ -241,21 +241,16 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
 
   // Queued, not awaited: a mail failure must never fail a captured lead. The
   // acknowledgement follows the request's brand for its sender and its link.
-  // TODO(brand-assets): MSG91 has only Edulyt's artwork for this template, so
-  // Airkrit enquiries stay unacknowledged, as before the split. Once Airkrit's
-  // exists, add its id to `ids` in mail/enquiryReceived.mail.ts and drop the check.
-  if (brand === "edulyt") {
-    enquiryReceivedMail.send(
-      { email: cleanEmail, name: cleanName },
-      {
-        name: cleanName.split(/\s+/)[0] || cleanName,
-        ctaUrl: BRAND_MAIL[brand].siteUrl,
-        ctaLabel: "Visit our website",
-        year: new Date().getFullYear(),
-      },
-      { brand },
-    );
-  }
+  enquiryReceivedMail.send(
+    { email: cleanEmail, name: cleanName },
+    {
+      name: cleanName.split(/\s+/)[0] || cleanName,
+      ctaUrl: BRAND_MAIL[brand].siteUrl,
+      ctaLabel: "Visit our website",
+      year: new Date().getFullYear(),
+    },
+    { brand },
+  );
 
   sendSuccessResponse(res, { id: lead._id }, "Lead captured", 201);
 });

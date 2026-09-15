@@ -27,7 +27,8 @@ export default function LayoutWrapper({
     !pathname.startsWith("/payment/status") &&
     !pathname.startsWith("/onboarding") &&
     !pathname.startsWith("/enquiry") &&
-    !pathname.startsWith("/forgot-password");
+    !pathname.startsWith("/forgot-password") &&
+    !pathname.startsWith("/reset-password");
 
   useEffect(() => {
     setIsMounted(true);

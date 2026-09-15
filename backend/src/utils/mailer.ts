@@ -693,9 +693,11 @@ export interface MailTemplate<V extends MailVariables> {
 }
 
 /**
- * The brand mail about a product goes out as. Edulyt's products are sold on
- * airkrit.com until cutover, so their mail keeps Airkrit's sender until then,
- * the same rule `verificationBaseUrl` applies to certificate links.
+ * The brand mail about a product goes out as. Edulyt's courses are sold on
+ * airkrit.com until cutover and their certificates verify there, so that mail
+ * keeps Airkrit's sender until then, the same rule `verificationBaseUrl`
+ * applies to certificate links. Internship mail no longer uses this: its
+ * templates carry Edulyt's artwork, so it sends as Edulyt already.
  */
 export const productMailBrand = (brand: Brand): Brand =>
   brand === "edulyt" && !edulytCutover() ? "airkrit" : brand;
@@ -709,8 +711,7 @@ export const productMailBrand = (brand: Brand): Brand =>
  *
  * Declare `brand` only when the artwork belongs to one product, e.g. a template
  * carrying the Edulyt logo. It then wins over any brand the caller passes, so
- * the sender can never contradict the artwork, though an Edulyt lock only takes
- * effect at cutover (`productMailBrand`). Leave it off for neutral
+ * the sender can never contradict the artwork. Leave it off for neutral
  * templates (resets, receipts) and the caller decides, defaulting to Airkrit.
  */
 export const defineMailTemplate = <V extends MailVariables>(
@@ -722,7 +723,7 @@ export const defineMailTemplate = <V extends MailVariables>(
 
   /** A locked template ignores the caller; otherwise the caller decides. */
   const brandFor = (caller?: Brand): Brand =>
-    lockedBrand ? productMailBrand(lockedBrand) : caller ?? DEFAULT_BRAND;
+    lockedBrand ?? caller ?? DEFAULT_BRAND;
 
   const idFor = (brand: Brand): string => ids?.[brand] ?? templateId;
 
