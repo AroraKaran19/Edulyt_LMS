@@ -13,9 +13,11 @@ export interface Coupon {
   applicableCategories?: string[] | Category[];
   minPurchaseAmount?: number;
   maxDiscountAmount?: number;
-  usageLimit?: number;
+  /** `null` or absent means unlimited. */
+  usageLimit?: number | null;
   usageCount?: number;
-  userUsageLimit?: number;
+  /** `null` or absent means unlimited. */
+  userUsageLimit?: number | null;
   validFrom: Date;
   validUntil: Date;
   isActive: boolean;

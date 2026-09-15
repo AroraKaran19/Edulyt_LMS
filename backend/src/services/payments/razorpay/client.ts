@@ -1,24 +1,30 @@
 import axios from "axios";
 import { AppError } from "../../../middlewares/error.middleware";
+import type { Brand } from "../../../constants/brands";
+import { gatewayEnvName, readGatewayEnv } from "../env";
 
 export const RAZORPAY_API_BASE = "https://api.razorpay.com/v1";
 
 /** Read once per call so tests and hot-reloads see env changes. */
-export const razorpayCredentials = (): { keyId: string; keySecret: string } => {
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+export const razorpayCredentials = (brand: Brand): { keyId: string; keySecret: string } => {
+  const keyId = readGatewayEnv("RAZORPAY_KEY_ID", brand);
+  const keySecret = readGatewayEnv("RAZORPAY_KEY_SECRET", brand);
   if (!keyId || !keySecret) {
-    throw new AppError("RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is not set", 500);
+    throw new AppError(
+      `${gatewayEnvName("RAZORPAY_KEY_ID", brand)} or ${gatewayEnvName("RAZORPAY_KEY_SECRET", brand)} is not set`,
+      500,
+    );
   }
   return { keyId, keySecret };
 };
 
 export const razorpayRequest = async <T>(
+  brand: Brand,
   method: "get" | "post",
   path: string,
   body?: unknown,
 ): Promise<T> => {
-  const { keyId, keySecret } = razorpayCredentials();
+  const { keyId, keySecret } = razorpayCredentials(brand);
   const url = `${RAZORPAY_API_BASE}${path}`;
   const config = {
     auth: { username: keyId, password: keySecret },

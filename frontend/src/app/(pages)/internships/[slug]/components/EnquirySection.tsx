@@ -31,6 +31,7 @@ const experienceOptions = [
   "College Student - 2nd Year",
   "College Student - 3rd Year",
   "College Student - 4th Year",
+  "Passed Out & Unemployed",
   "Working Professional - Tech Domain",
   "Working Professional - Non Tech Domain",
 ];

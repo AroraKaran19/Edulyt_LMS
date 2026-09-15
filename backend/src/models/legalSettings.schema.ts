@@ -1,15 +1,16 @@
 import mongoose from "mongoose";
+import { BRANDS } from "../constants/brands";
 
 /**
- * Singleton document holding admin-managed legal documents (Terms &
- * Conditions) shown to learners at course checkout and internship enrollment.
- * Stores the public URL plus the S3 key (when uploaded) so a replacement can
- * clean up the previous object.
+ * Admin-managed legal documents (Terms & Conditions) shown to learners at course
+ * checkout and internship enrollment, one document per brand. Stores the public
+ * URL plus the S3 key (when uploaded) so a replacement can clean up the previous
+ * object.
  */
 const legalSettingsSchema = new mongoose.Schema(
   {
-    /** Fixed id so we only ever have one row */
-    key: { type: String, required: true, unique: true, default: "global" },
+    /** The brand these documents belong to. */
+    key: { type: String, required: true, unique: true, enum: [...BRANDS] },
 
     /** Terms & Conditions document shown at course checkout. */
     courseTermsUrl: { type: String, default: "", trim: true },

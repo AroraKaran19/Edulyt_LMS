@@ -344,6 +344,8 @@ export const validateCouponService = async (
       userId: new mongoose.Types.ObjectId(userId),
       couponCode: coupon.code,
       paymentStatus: "success",
+      // Orders store the code, not the coupon, and a deleted coupon's code can be reused.
+      ...(coupon.createdAt ? { createdAt: { $gte: coupon.createdAt } } : {}),
     });
     if (userUsageCount >= coupon.userUsageLimit) {
       return {

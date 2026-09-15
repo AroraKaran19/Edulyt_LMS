@@ -17,7 +17,11 @@ const InternshipPage = ({ internship }: { internship: Internship }) => {
       <PerksSection perks={internship.perks} />
       <InternshipFeatureSection features={internship.features} />
       <WhyJoinSection whyJoin={internship.whyJoin} />
-      <PreRequisitesSection preRequisites={internship.preRequisites} whoCanJoin={internship.whoCanJoin} />
+      <PreRequisitesSection
+        preRequisites={internship.preRequisites}
+        whoCanJoin={internship.whoCanJoin}
+        image={internship.preRequisitesImage}
+      />
       <MentorSection instructors={internship.mentors as Instructor[]} />
     </div>
   );

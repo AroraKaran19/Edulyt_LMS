@@ -94,6 +94,10 @@ export interface InternshipFormData {
   enquiryImage?: string;
   enquiryImageSource?: "upload" | "url";
   enquiryImageS3Key?: string;
+  /** Optional image beside the pre-requisites section on the detail page. */
+  preRequisitesImage?: string;
+  preRequisitesImageSource?: "upload" | "url";
+  preRequisitesImageS3Key?: string;
   audience: "college-students" | "professionals";
   mode: "online" | "offline" | "hybrid";
   certification: boolean;

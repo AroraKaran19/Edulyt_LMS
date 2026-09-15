@@ -3,6 +3,17 @@ import { Brand } from "../constants/brands";
 
 export type LeadSourceKind = "enquiry" | "scholarship";
 
+export type LeadProgramKind = "course" | "internship";
+
+/** Titled at capture, so the name survives a rename or a deletion. */
+export interface LeadProgram {
+  kind: LeadProgramKind;
+  /** The Course or Internship id. Absent when the slug matched nothing. */
+  refId?: Types.ObjectId;
+  title: string;
+  slug: string;
+}
+
 /** Object rather than a string so a scholarship lead carries its campaign. */
 export interface LeadSource {
   kind: LeadSourceKind;
@@ -17,6 +28,8 @@ export interface LeadSource {
    * which is whoever's `?ref=` code brought this particular person in.
    */
   campaignOwnerName?: string;
+  /** Set when the enquiry came from a course or internship page. */
+  program?: LeadProgram;
 }
 
 /** Frozen at capture. `userId` is nulled if that user is later deleted. */

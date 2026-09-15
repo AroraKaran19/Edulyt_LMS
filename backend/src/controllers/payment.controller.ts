@@ -7,23 +7,29 @@ import {
   reconcileOrder,
   applyPaymentResult,
 } from "../services/payments/orderFlow";
-import { getEnabledGateways, getProvider } from "../services/payments/registry";
+import {
+  getEnabledGateways,
+  getProvider,
+  getWebhookProvider,
+} from "../services/payments/registry";
+import { asBrand } from "../constants/brands";
 
 /** Display names for the checkout picker. Keyed by GatewayName. */
 const GATEWAY_LABELS: Record<string, string> = {
   paytm: "Paytm",
   razorpay: "Razorpay",
+  phonepe: "PhonePe",
 };
 
 /**
  * @route   GET /api/payment/gateways
- * @desc    Gateways that are both enabled and configured, in preference order.
- *          The picker reads this — it must never hardcode the list, or turning a
- *          gateway off in env leaves a dead button that fails at getProvider.
+ * @desc    Gateways that are both enabled and configured for the calling site,
+ *          in preference order. The picker reads this — it must never hardcode
+ *          the list, or turning a gateway off in env leaves a dead button.
  * @access  Public
  */
-export const listGateways = asyncHandler(async (_req: Request, res: Response) => {
-  const gateways = getEnabledGateways().map((name) => ({
+export const listGateways = asyncHandler(async (req: Request, res: Response) => {
+  const gateways = getEnabledGateways(req.brand).map((name) => ({
     name,
     label: GATEWAY_LABELS[name] ?? name,
   }));
@@ -135,7 +141,7 @@ const settleWebhook = async (
   gateway: string | undefined,
   req: Request,
 ): Promise<{ orderId: string; status: string }> => {
-  const result = await getProvider(gateway).verifyWebhook(
+  const result = await getWebhookProvider(gateway).verifyWebhook(
     req.body,
     req.headers as Record<string, string | undefined>,
     (req as Request & { rawBody?: Buffer }).rawBody,
@@ -143,6 +149,9 @@ const settleWebhook = async (
 
   const order = await OrderModel.findById(result.orderId);
   if (!order) throw new AppError("Order not found", 404);
+  if (result.brand && asBrand(order.brand) !== result.brand) {
+    throw new AppError("Webhook credentials do not belong to this order's site", 403);
+  }
 
   await applyPaymentResult(order, result);
 

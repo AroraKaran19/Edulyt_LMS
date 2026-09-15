@@ -14,6 +14,17 @@ const leadAnswerSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const leadProgramSchema = new mongoose.Schema(
+  {
+    kind: { type: String, required: true, enum: ["course", "internship"] },
+    /** Course or Internship id, by `kind`. Absent when the slug matched nothing. */
+    refId: { type: mongoose.Schema.Types.ObjectId, required: false },
+    title: { type: String, default: "" },
+    slug: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 /**
  * Where the lead came in from. An object rather than a string so a scholarship
  * lead can carry its campaign, and so `testId` can be nulled on campaign
@@ -44,6 +55,8 @@ const leadSourceSchema = new mongoose.Schema(
     slug: { type: String, default: "" },
     /** The campaign's author, not the `?ref=` code that brought this person. */
     campaignOwnerName: { type: String, default: "" },
+    /** The course or internship page an enquiry came from. */
+    program: { type: leadProgramSchema, required: false },
   },
   { _id: false }
 );

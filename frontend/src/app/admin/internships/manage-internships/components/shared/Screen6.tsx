@@ -3,6 +3,8 @@ import Container from "@/app/admin/components/ui/Container";
 import Input from "@/components/ui/inputs/Input";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import IconDropdown from "@/components/ui/dropdown/IconDropdown";
+import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
+import { useUpload } from "@/hooks/useUpload";
 import { useFormContext, useFieldArray, Controller } from "react-hook-form";
 import { InternshipFormData } from "@/types/internshipForm";
 import {
@@ -78,8 +80,10 @@ const Screen6 = () => {
   const {
     control,
     formState: { errors },
+    setValue,
     watch,
   } = useFormContext<InternshipFormData>();
+  const { uploadCourseThumbnail, deleteFile, isUploading } = useUpload();
 
   const {
     fields: preReqFields,
@@ -101,6 +105,55 @@ const Screen6 = () => {
 
   const preRequisitesData = watch("preRequisites");
   const whoCanJoinData = watch("whoCanJoin");
+  const titleValue = watch("title");
+  const preRequisitesImageValue = watch("preRequisitesImage");
+  const preRequisitesImageS3Key = watch("preRequisitesImageS3Key");
+  const preRequisitesImageSource = watch("preRequisitesImageSource");
+  const preRequisitesImageFolderName = `internships/${
+    titleValue
+      ? titleValue.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase()
+      : "new_internship"
+  }/pre_requisites_image`;
+
+  const setPreRequisitesImage = (
+    url: string,
+    s3Key: string,
+    source: "upload" | "url",
+  ) => {
+    const options = { shouldDirty: true, shouldTouch: true };
+    setValue("preRequisitesImage", url, options);
+    setValue("preRequisitesImageS3Key", s3Key, options);
+    setValue("preRequisitesImageSource", source, options);
+  };
+
+  const handlePreRequisitesImageUpload = async (
+    file: File,
+    folderName: string,
+  ) => {
+    try {
+      const result = await uploadCourseThumbnail(file, folderName);
+      if (result.success && result.data) {
+        setPreRequisitesImage(result.data.url, result.data.s3Key, "upload");
+        return result.data.url;
+      }
+      throw new Error(result.error || "Upload failed");
+    } catch (error) {
+      console.error("Failed to upload pre-requisites image:", error);
+      setPreRequisitesImage("", "", "url");
+      throw error;
+    }
+  };
+
+  const handlePreRequisitesImageUrlChange = async (url: string) => {
+    if (preRequisitesImageS3Key && preRequisitesImageSource === "upload") {
+      try {
+        await deleteFile(preRequisitesImageS3Key);
+      } catch (error) {
+        console.error("Failed to delete old pre-requisites image from S3:", error);
+      }
+    }
+    setPreRequisitesImage(url, "", "url");
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -347,6 +400,23 @@ const Screen6 = () => {
           <PlusIcon className="size-4" />
           Add Pre-Requisite
         </WhiteButton>
+
+        <UploadMediaContainer
+          title="Pre-Requisites Image (Optional)"
+          description="Shown beside the pre-requisites on the internship detail page. Leave empty to use the default image."
+          type="image"
+          folderName={preRequisitesImageFolderName}
+          mediaUrl={preRequisitesImageValue}
+          mediaSource={preRequisitesImageSource}
+          s3Key={preRequisitesImageS3Key}
+          onFileUpload={handlePreRequisitesImageUpload}
+          onFileRemove={() => setPreRequisitesImage("", "", "url")}
+          onUrlSubmit={handlePreRequisitesImageUrlChange}
+          allowUrlInput
+          maxSize={5}
+          acceptedFormats={[".jpg", ".jpeg", ".png", ".webp"]}
+          isUploading={isUploading}
+        />
       </div>
 
       {/* Who Can Join Section */}

@@ -4,6 +4,7 @@ import { formatIst } from "@/lib/ist";
 import {
   ATTEMPT_STYLES,
   COUPON_STYLES,
+  PROGRAM_KIND_LABELS,
   attemptSummary,
   couponSummary,
   type Lead,
@@ -65,11 +66,26 @@ function EnquiryContext({ lead }: { lead: Lead }) {
   const college =
     lead.collegeName ?? answerForAny(lead, "college", "careerStage");
   const plan = answerForAny(lead, "plan");
+  const program = lead.source?.program;
+  const experience = answerForAny(lead, "experienceLevel");
 
-  if (!college && !plan) return <span className="text-gray-400">—</span>;
+  if (!college && !plan && !program) {
+    return <span className="text-gray-400">—</span>;
+  }
 
   return (
     <div className="space-y-0.5">
+      {program ? (
+        <div className="font-medium text-gray-900">
+          {program.title || program.slug}
+          <span className="ml-1.5 text-[11px] font-normal text-gray-500">
+            {PROGRAM_KIND_LABELS[program.kind]}
+          </span>
+        </div>
+      ) : null}
+      {program && experience ? (
+        <div className="text-gray-700">{experience}</div>
+      ) : null}
       {plan ? <div className="font-medium text-gray-900">{plan}</div> : null}
       {college ? <div className="text-gray-700">{college}</div> : null}
       {lead.state ? (

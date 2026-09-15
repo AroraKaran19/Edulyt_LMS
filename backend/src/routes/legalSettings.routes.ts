@@ -4,8 +4,8 @@ import { getLegalSettingsController } from "../controllers/legalSettings.control
 const router = Router();
 
 /**
- * Public read of the legal-documents singleton (Terms & Conditions URLs).
- * Mounted at `/api/legal-settings` (no auth) — the course cart and internship
+ * Public read of the requesting site's legal documents (Terms & Conditions URLs).
+ * Mounted at `/api/legal-settings` (no auth): the course cart and internship
  * enrollment flow hit this. Admin edit lives under `/api/admin/legal-settings`.
  */
 router.get("/", getLegalSettingsController);

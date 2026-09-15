@@ -41,6 +41,7 @@ import {
   EXPERIENCE_LEVELS,
   FATHER_OCCUPATION_OPTIONS,
   STATE_OPTIONS,
+  COUNTRY_OPTIONS,
   AREA_OF_INTEREST_OPTIONS,
   DOMAIN_OPTIONS,
 } from "@/lib/constants/profileOptions";
@@ -359,6 +360,20 @@ const ProfilePage = () => {
       STATE_OPTIONS.some((o) => o.value === state) ? state : "Other",
     );
   }, [formData.address?.state]);
+
+  // Tracked apart from the stored text, so typing a preset's name under
+  // "Other" does not snap the dropdown back and hide the text field.
+  const [countryIsOther, setCountryIsOther] = useState(false);
+  const storedCountry = formData.address?.country?.trim() || "";
+  const presetCountry = COUNTRY_OPTIONS.find(
+    (o) =>
+      o.value !== "Other" &&
+      o.value.toLowerCase() === storedCountry.toLowerCase(),
+  )?.value;
+  const selectedCountry =
+    countryIsOther || (storedCountry && !presetCountry)
+      ? "Other"
+      : (presetCountry ?? "");
 
   const handleExperienceChange = (
     index: number,
@@ -1728,14 +1743,35 @@ const ProfilePage = () => {
                     />
                   )}
                 </div>
-                <Input
-                  label="Country"
-                  placeholder="Enter your country"
-                  value={formData.address?.country || ""}
-                  onChange={(e) =>
-                    handleAddressChange("country", e.target.value)
-                  }
-                />
+                <div className="flex flex-col gap-2">
+                  <Select
+                    label="Country"
+                    placeholder="Select your country"
+                    options={COUNTRY_OPTIONS}
+                    searchable
+                    searchPlaceholder="Search countries..."
+                    value={selectedCountry}
+                    onChange={(value) => {
+                      setCountryIsOther(value === "Other");
+                      if (value !== "Other") {
+                        handleAddressChange("country", value);
+                      } else if (presetCountry) {
+                        // Only a preset is cleared; free text already typed stays.
+                        handleAddressChange("country", "");
+                      }
+                    }}
+                  />
+                  {selectedCountry === "Other" && (
+                    <Input
+                      label="Specify Country"
+                      placeholder="Enter your country"
+                      value={formData.address?.country || ""}
+                      onChange={(e) =>
+                        handleAddressChange("country", e.target.value)
+                      }
+                    />
+                  )}
+                </div>
                 <Input
                   label="Pincode"
                   placeholder="Enter your pincode"

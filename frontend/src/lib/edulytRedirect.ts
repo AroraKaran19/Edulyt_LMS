@@ -1,4 +1,8 @@
-const MOVED_PREFIXES = ["/internships", "/dashboard/internships"];
+/** Airkrit path prefix, and the prefix it lives under on Edulyt. */
+const MOVED_PREFIXES: readonly [from: string, to: string][] = [
+  ["/internships", "/career"],
+  ["/dashboard/internships", "/dashboard/internships"],
+];
 
 /** Server-only; read per request so the flag flips with a restart, not a rebuild. */
 const edulytOrigin = (): string =>
@@ -12,10 +16,12 @@ export const edulytRedirectUrl = (url: {
   search: string;
 }): string | null => {
   if (!edulytCutover()) return null;
-  const moved = MOVED_PREFIXES.some(
-    (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
-  );
-  return moved ? `${edulytOrigin()}${url.pathname}${url.search}` : null;
+  for (const [from, to] of MOVED_PREFIXES) {
+    if (url.pathname === from || url.pathname.startsWith(`${from}/`)) {
+      return `${edulytOrigin()}${to}${url.pathname.slice(from.length)}${url.search}`;
+    }
+  }
+  return null;
 };
 
 export const movedCourseUrl = (slug: string): string =>

@@ -300,6 +300,8 @@ const toInternship = (doc: Record<string, unknown>): Internship => {
     description: String(doc.description ?? ""),
     thumbnail: String(doc.thumbnail ?? ""),
     enquiryImage: doc.enquiryImage != null ? String(doc.enquiryImage) : "",
+    preRequisitesImage:
+      doc.preRequisitesImage != null ? String(doc.preRequisitesImage) : "",
     certification: Boolean(doc.certification),
     certificationThreshold:
       typeof doc.certificationThreshold === "number" &&

@@ -143,6 +143,12 @@ const internshipSchema = new mongoose.Schema<Internship>(
       default: "",
       trim: true,
     },
+    /** Optional image beside the pre-requisites section on the detail page. Falls back to a shipped default. */
+    preRequisitesImage: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     certification: {
       type: Boolean,
       default: true,

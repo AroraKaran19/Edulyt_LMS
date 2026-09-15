@@ -21,7 +21,7 @@ import {
   reconcileOrder,
   resolveGateway,
 } from "./payments/orderFlow";
-import { getProvider } from "./payments/registry";
+import { getWebhookProvider } from "./payments/registry";
 import { validateCouponService } from "./coupon.services";
 import { applyCouponToCheckout } from "./checkoutCoupon.services";
 import { resolveOfferSelection } from "../lib/courseInternshipOffer";
@@ -29,7 +29,7 @@ import { getPointsSettings } from "./pointsSettings.services";
 import type { CourseDiscount, Discount } from "../types";
 import type { OrderScholarshipSnapshot } from "../types/order";
 import { isApplicationWindowOpenIst } from "../utils/applicationWindow";
-import type { Brand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
 import { assertBrandReadable } from "../lib/brandPurchase";
 import { brandOfCourseDoc } from "./productBrand.services";
 
@@ -462,7 +462,7 @@ export const createOrderService = async (
   courseInternshipMonths?: number,
 ) => {
   // The provider's isConfigured() owns credential validation now.
-  const gatewayName = resolveGateway(gateway);
+  const gatewayName = resolveGateway(brand, gateway);
 
   const [course, user] = await Promise.all([
     CourseModel.findById(courseId),
@@ -693,7 +693,7 @@ export const createInternshipSeatOrderService = async (
 ) => {
   // Every internship is Edulyt's.
   assertBrandReadable("edulyt", brand, "internship");
-  const gatewayName = resolveGateway(gateway);
+  const gatewayName = resolveGateway(brand, gateway);
 
   if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
     throw new AppError("Invalid enrollment id", 400);
@@ -845,7 +845,7 @@ export const createInternshipSuccessPointsOrderService = async (
 ) => {
   // Every internship is Edulyt's.
   assertBrandReadable("edulyt", brand, "internship");
-  const gatewayName = resolveGateway(gateway);
+  const gatewayName = resolveGateway(brand, gateway);
 
   if (!mongoose.Types.ObjectId.isValid(internshipEnrollmentId)) {
     throw new AppError("Invalid enrollment id", 400);
@@ -1013,11 +1013,18 @@ export const verifyPayment = async (token: string) => {
 export const processWebhook = async (webhookData: any) => {
   try {
     const gateway = webhookData.gateway ?? "paytm";
-    const result = await getProvider(gateway).verifyWebhook(webhookData, {});
+    const result = await getWebhookProvider(gateway).verifyWebhook(webhookData, {});
 
     const order = await OrderModel.findById(result.orderId);
     if (!order) {
       return { success: false, message: "Order not found", orderId: result.orderId };
+    }
+    if (result.brand && asBrand(order.brand) !== result.brand) {
+      return {
+        success: false,
+        message: "Webhook credentials do not belong to this order's site",
+        orderId: result.orderId,
+      };
     }
 
     await applyPaymentResult(order, result);

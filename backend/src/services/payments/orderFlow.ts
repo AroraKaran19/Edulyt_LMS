@@ -1,4 +1,7 @@
 import { UserModel, StudentModel } from "../../models";
+import { AppError } from "../../middlewares/error.middleware";
+import { asBrand } from "../../constants/brands";
+import { brandFrontendUrl, brandFrontendUrlEnv } from "../../lib/brandSiteUrl";
 import { isInvoiceableOrder } from "../../lib/invoiceEligibility";
 import { enqueueInvoiceJobSafe } from "../invoiceJob.services";
 import { createEnrollmentAfterPayment } from "./fulfillment";
@@ -132,8 +135,13 @@ export const beginGatewayCheckout = async (
   }
 
   const provider = getProvider(order.paymentMethod);
+  const brand = asBrand(order.brand);
+  const frontendUrl = brandFrontendUrl(brand);
+  if (!frontendUrl) {
+    throw new AppError(`${brandFrontendUrlEnv(brand)} is not set`, 500);
+  }
   const paymentToken = generatePaymentGatewayToken(orderId);
-  const callbackUrl = `${process.env.AIRKRIT_FRONTEND_URL}/payment/status/${orderId}?token=${paymentToken}`;
+  const callbackUrl = `${frontendUrl}/payment/status/${orderId}?token=${paymentToken}`;
 
   const result = await provider.initiatePayment({
     order,

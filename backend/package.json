@@ -11,6 +11,8 @@
     "scripts:migrate-brand-indexes:apply": "ts-node src/scripts/migrate-brand-unique-indexes.ts --apply",
     "scripts:migrate-live-classes": "ts-node src/scripts/migrate-live-classes-to-datetime.ts",
     "scripts:migrate-live-classes:apply": "ts-node src/scripts/migrate-live-classes-to-datetime.ts --apply",
+    "scripts:migrate-legal-settings-brand": "ts-node src/scripts/migrate-legal-settings-brand.ts",
+    "scripts:migrate-legal-settings-brand:apply": "ts-node src/scripts/migrate-legal-settings-brand.ts --apply",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "start:cluster": "npm run build && pm2 start ecosystem.config.cjs",

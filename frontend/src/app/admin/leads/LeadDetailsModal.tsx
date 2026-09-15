@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { formatStoredPhone } from "@/lib/phone";
-import BrandBadge from "./BrandBadge";
+import BrandMark from "@/components/admin/BrandMark";
 import useAuth from "@/hooks/useAuth";
 import { toast } from "react-toastify";
 import Select from "@/components/ui/inputs/Select";
@@ -23,6 +23,7 @@ import {
   COUPON_STYLES,
   LEAD_SOURCE_LABELS,
   LEAD_STATUSES,
+  PROGRAM_KIND_LABELS,
   STATUS_STYLES,
   couponSummary,
   type Lead,
@@ -216,6 +217,7 @@ export default function LeadDetailsModal({
       : null;
 
   const isScholarship = lead?.source?.kind === "scholarship";
+  const program = lead?.source?.program;
   const extraAnswers = (lead?.answers ?? []).filter(
     (answer) => !(isScholarship && answer.key === "campaign")
   );
@@ -235,7 +237,9 @@ export default function LeadDetailsModal({
               <h2 className="truncate text-lg font-bold text-gray-900">
                 {loading ? "Loading lead" : lead?.name}
               </h2>
-              {lead ? <BrandBadge brand={lead.source?.brand} /> : null}
+              {lead ? (
+                <BrandMark brand={lead.source?.brand ?? "airkrit"} />
+              ) : null}
             </div>
             <p className="text-xs text-gray-500">
               {lead
@@ -325,6 +329,24 @@ export default function LeadDetailsModal({
             </div>
 
             {isScholarship ? <ScholarshipPanel lead={lead} /> : null}
+
+            {program ? (
+              <div>
+                <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
+                  Enquired about
+                </h3>
+                <dl className="rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-gray-500">
+                      {PROGRAM_KIND_LABELS[program.kind]}
+                    </dt>
+                    <dd className="text-right font-semibold text-gray-900">
+                      {program.title || program.slug}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            ) : null}
 
             {/* A campaign lead answers no form: its one "answer" is the
                 campaign, which the panel above already names. */}

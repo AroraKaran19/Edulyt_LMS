@@ -45,11 +45,11 @@ const CourseCard = ({
       )}
       style={props.style}
     >
-      <div className="course-image w-full md:w-2/5 rounded-2xl overflow-hidden relative shrink-0">
+      <div className="course-image w-full md:w-2/5 xl:max-w-[246px] rounded-2xl overflow-hidden relative shrink-0">
         <img
           src={course.thumbnail}
           alt={course?.title}
-          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-full opacity-90"
+          className="rounded-2xl w-full h-full object-fill max-h-[150px] md:max-h-full xl:max-h-[246px] opacity-90"
           draggable={false}
           loading="lazy"
         />

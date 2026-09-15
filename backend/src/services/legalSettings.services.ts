@@ -1,6 +1,5 @@
 import { LegalSettingsModel } from "../models/legalSettings.schema";
-
-const GLOBAL_KEY = "global";
+import { BRANDS, type Brand } from "../constants/brands";
 
 export type LegalSettingsPayload = {
   courseTermsUrl: string;
@@ -18,33 +17,48 @@ const STRING_FIELDS: (keyof LegalSettingsPayload)[] = [
 
 const str = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
-export async function getLegalSettings(): Promise<LegalSettingsPayload> {
-  const doc = await LegalSettingsModel.findOne({ key: GLOBAL_KEY }).lean();
-  return {
-    courseTermsUrl: str(doc?.courseTermsUrl),
-    courseTermsS3Key: str(doc?.courseTermsS3Key),
-    internshipTermsUrl: str(doc?.internshipTermsUrl),
-    internshipTermsS3Key: str(doc?.internshipTermsS3Key),
-  };
+const toPayload = (
+  doc: Partial<Record<keyof LegalSettingsPayload, unknown>> | null | undefined,
+): LegalSettingsPayload => ({
+  courseTermsUrl: str(doc?.courseTermsUrl),
+  courseTermsS3Key: str(doc?.courseTermsS3Key),
+  internshipTermsUrl: str(doc?.internshipTermsUrl),
+  internshipTermsS3Key: str(doc?.internshipTermsS3Key),
+});
+
+/** The documents one brand's site shows. A brand without a row has none yet. */
+export async function getLegalSettings(brand: Brand): Promise<LegalSettingsPayload> {
+  const doc = await LegalSettingsModel.findOne({ key: brand }).lean();
+  return toPayload(doc);
 }
 
+export async function getAllLegalSettings(): Promise<Record<Brand, LegalSettingsPayload>> {
+  const docs = await LegalSettingsModel.find({ key: { $in: BRANDS } }).lean();
+  return Object.fromEntries(
+    BRANDS.map((brand) => [brand, toPayload(docs.find((doc) => doc.key === brand))]),
+  ) as Record<Brand, LegalSettingsPayload>;
+}
+
+/** Sets only the fields the body carries, so two admins saving different fields keep both. */
 export async function updateLegalSettings(
+  brand: Brand,
   body: Partial<Record<keyof LegalSettingsPayload, unknown>>,
 ): Promise<LegalSettingsPayload> {
-  const current = await getLegalSettings();
-  const next: LegalSettingsPayload = { ...current };
-
+  const set: Partial<LegalSettingsPayload> = {};
   for (const field of STRING_FIELDS) {
     if (body[field] !== undefined) {
-      next[field] = str(body[field]);
+      set[field] = str(body[field]);
     }
   }
 
-  await LegalSettingsModel.findOneAndUpdate(
-    { key: GLOBAL_KEY },
-    { $set: next, $setOnInsert: { key: GLOBAL_KEY } },
+  const doc = await LegalSettingsModel.findOneAndUpdate(
+    { key: brand },
+    {
+      ...(Object.keys(set).length > 0 ? { $set: set } : {}),
+      $setOnInsert: { key: brand },
+    },
     { upsert: true, new: true, runValidators: true },
-  );
+  ).lean();
 
-  return next;
+  return toPayload(doc);
 }

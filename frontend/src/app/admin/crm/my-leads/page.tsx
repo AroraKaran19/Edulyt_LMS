@@ -13,7 +13,7 @@ import {
   type Lead,
   type LeadStatus,
 } from "../../leads/types";
-import BrandBadge from "../../leads/BrandBadge";
+import BrandMark from "@/components/admin/BrandMark";
 
 const formatDate = (value: string) =>
   new Date(value).toLocaleString("en-IN", {
@@ -137,7 +137,7 @@ export default function MyLeadsPage() {
                       </a>
                     </td>
                     <td className="px-5 py-3">
-                      <BrandBadge brand={lead.source?.brand} />
+                      <BrandMark brand={lead.source?.brand ?? "airkrit"} />
                     </td>
                     <td className="px-5 py-3 text-gray-700">
                       {lead.collegeName ?? "-"}

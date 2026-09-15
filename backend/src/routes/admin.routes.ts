@@ -25,7 +25,7 @@ import {
   patchEnquiryPageSettingsController,
 } from "../controllers/enquiryPageSettings.controller";
 import {
-  getLegalSettingsController,
+  getAdminLegalSettingsController,
   patchLegalSettingsController,
 } from "../controllers/legalSettings.controller";
 import {
@@ -115,9 +115,9 @@ router.get("/enquiry-page-settings", requirePermission("leads.enquiry-page"), ge
 router.get("/enquiry-page-settings/scholarship-options", requirePermission("leads.enquiry-page"), getEnquiryScholarshipOptionsController);
 router.patch("/enquiry-page-settings", requirePermission("leads.enquiry-page"), patchEnquiryPageSettingsController);
 
-// Legal documents singleton (course + internship T&C) — admin editor under
+// Legal documents per brand (course and internship T&C), edited under
 // /admin/settings/terms-and-conditions
-router.get("/legal-settings", requirePermission("settings.terms-and-conditions"), getLegalSettingsController);
+router.get("/legal-settings", requirePermission("settings.terms-and-conditions"), getAdminLegalSettingsController);
 router.patch("/legal-settings", requirePermission("settings.terms-and-conditions"), patchLegalSettingsController);
 
 export default router;

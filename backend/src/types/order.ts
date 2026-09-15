@@ -69,7 +69,7 @@ export interface PaymentOrder {
   /** Set after points are credited so webhooks cannot double-apply. */
   internshipSuccessPointsFulfillmentApplied?: boolean;
   /** The gateway that owns this order. Doubles as the provider discriminator. */
-  paymentMethod: "paytm" | "razorpay";
+  paymentMethod: "paytm" | "razorpay" | "phonepe";
   paymentMode: string;
   txnId: string;
   token: string;

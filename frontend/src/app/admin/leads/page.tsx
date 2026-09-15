@@ -24,7 +24,7 @@ import useCrm from "@/hooks/useCrm";
 import LeadDetailsModal from "./LeadDetailsModal";
 import AssignLeadsModal from "./AssignLeadsModal";
 import LeadContextCell from "./LeadContextCell";
-import BrandBadge from "./BrandBadge";
+import BrandMark from "@/components/admin/BrandMark";
 import { BRANDS, BRAND_LABEL } from "@/constants/brands";
 import {
   LEAD_SOURCE_LABELS,
@@ -385,7 +385,7 @@ export default function LeadsPage() {
                         <span className="font-medium text-gray-900">
                           {lead.name}
                         </span>
-                        <BrandBadge brand={lead.source?.brand} />
+                        <BrandMark brand={lead.source?.brand ?? "airkrit"} />
                       </div>
                       <div className="text-[11px] text-gray-500">{lead.email}</div>
                       <div className="text-[11px] text-gray-500">

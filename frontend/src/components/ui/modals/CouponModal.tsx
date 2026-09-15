@@ -283,8 +283,8 @@ const CouponModal = ({
           ) || [],
         minPurchaseAmount: editingCoupon.minPurchaseAmount || 0,
         maxDiscountAmount: editingCoupon.maxDiscountAmount,
-        usageLimit: editingCoupon.usageLimit,
-        userUsageLimit: editingCoupon.userUsageLimit || 1,
+        usageLimit: editingCoupon.usageLimit ?? null,
+        userUsageLimit: editingCoupon.userUsageLimit ?? null,
         validFrom: utcToIstDatetimeLocalValue(editingCoupon.validFrom),
         validUntil: utcToIstDatetimeLocalValue(editingCoupon.validUntil),
         isActive: editingCoupon.isActive,
@@ -721,26 +721,28 @@ const CouponModal = ({
                 label="Total Usage Limit (Optional)"
                 type="number"
                 placeholder="Unlimited"
-                value={formData.usageLimit || ""}
+                value={formData.usageLimit ?? ""}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
                     usageLimit: e.target.value
                       ? parseInt(e.target.value)
-                      : undefined,
+                      : null,
                   })
                 }
               />
 
               <Input
-                label="Per User Usage Limit"
+                label="Per User Usage Limit (Optional)"
                 type="number"
-                placeholder="1"
-                value={formData.userUsageLimit}
+                placeholder="Unlimited"
+                value={formData.userUsageLimit ?? ""}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    userUsageLimit: parseInt(e.target.value) || 1,
+                    userUsageLimit: e.target.value
+                      ? parseInt(e.target.value)
+                      : null,
                   })
                 }
               />

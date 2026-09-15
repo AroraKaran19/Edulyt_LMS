@@ -299,6 +299,19 @@ const Screen14 = () => {
                 />
               </div>
             )}
+
+            {formData.preRequisitesImage && (
+              <div>
+                <label className="text-sm text-gray-600">
+                  Pre-requisites image
+                </label>
+                <img
+                  src={formData.preRequisitesImage}
+                  alt="Pre-requisites"
+                  className="mt-2 w-full max-w-md h-48 object-cover rounded-lg"
+                />
+              </div>
+            )}
           </div>
         </div>
 

@@ -36,13 +36,16 @@ const toLegacyOrderResponse = (result: CheckoutSession) => {
       token: result.token,
     };
   }
+  const extra = result.extra as { keyId?: string; redirectUrl?: string } | undefined;
   return {
     _id: result.orderId,
     gateway: result.gateway,
     token: result.clientToken,
     // Razorpay's checkout needs both of these; Paytm's ignores them.
     gatewayOrderId: result.gatewayOrderId,
-    keyId: (result.extra as { keyId?: string } | undefined)?.keyId,
+    keyId: extra?.keyId,
+    // PhonePe's hosted payment page.
+    redirectUrl: extra?.redirectUrl,
     amount: result.amount,
     currency: result.currency,
   };

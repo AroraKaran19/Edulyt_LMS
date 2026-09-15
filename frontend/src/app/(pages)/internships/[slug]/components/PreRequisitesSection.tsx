@@ -5,9 +5,11 @@ import Image from "next/image";
 const PreRequisitesSection = ({
   preRequisites,
   whoCanJoin,
+  image,
 }: {
   preRequisites: Internship["preRequisites"];
   whoCanJoin: Internship["whoCanJoin"];
+  image?: string;
 }) => {
   const keyBenefits: string[] = [
     "Mentor-Led Live Sessions",
@@ -92,7 +94,7 @@ const PreRequisitesSection = ({
           </div>
           <div className="col-span-2">
             <Image
-              src="/internship/pre_requisites.jpg"
+              src={image || "/internship/pre_requisites.jpg"}
               alt="Pre-Requisites Image"
               width={500}
               height={500}

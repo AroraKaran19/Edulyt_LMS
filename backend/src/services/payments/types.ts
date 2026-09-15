@@ -1,10 +1,11 @@
 import type { PaymentOrder } from "../../types/order";
+import type { Brand } from "../../constants/brands";
 import type { HydratedDocument } from "mongoose";
 
 /** A hydrated Order document, as loaded by OrderModel. */
 export type OrderDoc = HydratedDocument<PaymentOrder>;
 
-export type GatewayName = "paytm" | "razorpay";
+export type GatewayName = "paytm" | "razorpay" | "phonepe";
 
 export type NormalizedStatus = "success" | "failed" | "pending";
 
@@ -20,13 +21,13 @@ export interface InitiatePaymentInput {
 
 export interface InitiatePaymentResult {
   gateway: GatewayName;
-  /** paytm: our order _id | razorpay: "order_XXX" */
+  /** paytm: our order _id | razorpay: "order_XXX" | phonepe: PhonePe's own order id */
   gatewayOrderId: string;
-  /** paytm: txnToken | razorpay: unused */
+  /** paytm: txnToken | razorpay, phonepe: unused */
   clientToken?: string;
   amount: number;
   currency: string;
-  /** paytm: { mid } | razorpay: { keyId } */
+  /** paytm: { mid } | razorpay: { keyId } | phonepe: { redirectUrl } */
   extra?: Record<string, unknown>;
 }
 
@@ -42,6 +43,8 @@ export interface GatewayPaymentResult {
 export interface WebhookVerifyResult extends GatewayPaymentResult {
   /** OUR order _id, resolved by the provider from its payload. */
   orderId: string;
+  /** Set when the credentials that verified it belong to one brand. Must match the order's. */
+  brand?: Brand;
 }
 
 /** Returned by beginGatewayCheckout when the order settled for free (< ₹1). */
@@ -64,8 +67,8 @@ export type CheckoutSession =
 
 export interface PaymentProvider {
   readonly name: GatewayName;
-  /** True when this gateway's env credentials are all present. */
-  isConfigured(): boolean;
+  /** True when this gateway's env credentials for the brand are all present. */
+  isConfigured(brand: Brand): boolean;
   initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentResult>;
   fetchPaymentStatus(order: OrderDoc): Promise<GatewayPaymentResult>;
   /**

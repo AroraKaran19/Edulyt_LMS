@@ -8,6 +8,8 @@ import {
 import { LeadModel } from "../models/lead.schema";
 import { UserModel } from "../models/user.schema";
 import { CollegeModel } from "../models/college.schema";
+import { CourseModel } from "../models/course.schema";
+import { InternshipModel } from "../models/internship.schema";
 import { resolveCrmCode } from "../services/crmProfile.services";
 import { buildAttribution, LeadAttribution } from "../lib/leadAttribution";
 import {
@@ -22,7 +24,13 @@ import {
   buildScholarshipViews,
   scholarshipViewFor,
 } from "../services/scholarshipLeadEnrichment.services";
-import { Lead, LeadAnswer, LeadStatus } from "../types/lead";
+import {
+  Lead,
+  LeadAnswer,
+  LeadProgram,
+  LeadProgramKind,
+  LeadStatus,
+} from "../types/lead";
 import { asBrand, BRAND_MAIL } from "../constants/brands";
 import { enquiryReceivedMail } from "../mail";
 import { isValidPhone } from "../services/phoneVerification.services";
@@ -102,6 +110,34 @@ async function resolveEmailsOnPlatform(leads: Lead[]): Promise<void> {
   }
 }
 
+const PROGRAM_KINDS: readonly LeadProgramKind[] = ["course", "internship"];
+
+// Titled from the catalogue, never the browser. Both slugs are uniquely indexed.
+const findProgramTitle = (kind: LeadProgramKind, slug: string) =>
+  kind === "course"
+    ? CourseModel.findOne({ slug }, { title: 1 }).lean()
+    : InternshipModel.findOne({ slug }, { title: 1 }).lean();
+
+// An unmatched slug or a failed lookup still keeps the slug: neither may cost the lead.
+const resolveProgram = async (raw: unknown): Promise<LeadProgram | undefined> => {
+  const input = (raw ?? {}) as { kind?: unknown; slug?: unknown };
+  const kind = PROGRAM_KINDS.find((k) => k === input.kind);
+  const slug = String(input.slug ?? "").trim().slice(0, 200);
+  if (!kind || !slug) return undefined;
+
+  const program: LeadProgram = { kind, title: "", slug };
+  try {
+    const doc = await findProgramTitle(kind, slug);
+    if (doc) {
+      program.refId = doc._id as mongoose.Types.ObjectId;
+      program.title = String(doc.title ?? "");
+    }
+  } catch (error) {
+    console.error("[leads] program lookup failed:", error);
+  }
+  return program;
+};
+
 /**
  * @desc  Capture a lead from the enquiry form
  * @route POST /api/leads
@@ -119,6 +155,7 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     ref,
     collegeId,
     brand: rawBrand,
+    program: rawProgram,
   } = req.body ?? {};
 
   // Which site the enquiry came from. Absent on the LMS form, which is what
@@ -220,9 +257,11 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
+  const program = await resolveProgram(rawProgram);
+
   const lead = await LeadModel.create({
-    // The endpoint decides the kind; the caller only says which site it is.
-    source: { kind: "enquiry", brand },
+    // The endpoint decides the kind; the caller says which site, and which program if any.
+    source: { kind: "enquiry", brand, ...(program ? { program } : {}) },
     ...attribution,
     ...college,
     name: cleanName,
@@ -239,18 +278,21 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     pageQuery: pageQuery ? String(pageQuery).slice(0, 500) : undefined,
   });
 
-  // Queued, not awaited: a mail failure must never fail a captured lead. The
-  // acknowledgement follows the request's brand for its sender and its link.
-  enquiryReceivedMail.send(
-    { email: cleanEmail, name: cleanName },
-    {
-      name: cleanName.split(/\s+/)[0] || cleanName,
-      ctaUrl: BRAND_MAIL[brand].siteUrl,
-      ctaLabel: "Visit our website",
-      year: new Date().getFullYear(),
-    },
-    { brand },
-  );
+  // Course and internship enquiries are not acknowledged. Queued, not awaited:
+  // a mail failure must never fail a captured lead. The acknowledgement follows
+  // the request's brand for its sender and its link.
+  if (!program) {
+    enquiryReceivedMail.send(
+      { email: cleanEmail, name: cleanName },
+      {
+        name: cleanName.split(/\s+/)[0] || cleanName,
+        ctaUrl: BRAND_MAIL[brand].siteUrl,
+        ctaLabel: "Visit our website",
+        year: new Date().getFullYear(),
+      },
+      { brand },
+    );
+  }
 
   sendSuccessResponse(res, { id: lead._id }, "Lead captured", 201);
 });

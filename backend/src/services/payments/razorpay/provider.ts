@@ -1,4 +1,6 @@
 import { AppError } from "../../../middlewares/error.middleware";
+import { BRANDS, asBrand, type Brand } from "../../../constants/brands";
+import { gatewayEnvName, readGatewayEnv } from "../env";
 import { razorpayCredentials, razorpayRequest } from "./client";
 import { paymentSignatureIsValid, webhookSignatureIsValid } from "./signature";
 import type {
@@ -55,21 +57,23 @@ interface RazorpayPayment {
 export class RazorpayProvider implements PaymentProvider {
   readonly name = "razorpay" as const;
 
-  isConfigured(): boolean {
+  isConfigured(brand: Brand): boolean {
     return Boolean(
-      process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET,
+      readGatewayEnv("RAZORPAY_KEY_ID", brand) &&
+        readGatewayEnv("RAZORPAY_KEY_SECRET", brand),
     );
   }
 
   async initiatePayment(
     input: InitiatePaymentInput,
   ): Promise<InitiatePaymentResult> {
-    const { keyId } = razorpayCredentials();
+    const brand = asBrand(input.order.brand);
+    const { keyId } = razorpayCredentials(brand);
     const orderId = input.order._id.toString();
 
     // Our id goes in BOTH fields on purpose: payment.* webhooks expose `notes`,
     // order.* webhooks expose `receipt`. Writing one strands half the events.
-    const created = await razorpayRequest<{ id?: string }>("post", "/orders", {
+    const created = await razorpayRequest<{ id?: string }>(brand, "post", "/orders", {
       amount: toPaise(input.amount),
       currency: "INR",
       receipt: orderId,
@@ -96,6 +100,7 @@ export class RazorpayProvider implements PaymentProvider {
 
     try {
       const res = await razorpayRequest<{ items?: RazorpayPayment[] }>(
+        asBrand(order.brand),
         "get",
         `/orders/${order.gatewayOrderId}/payments`,
       );
@@ -128,10 +133,14 @@ export class RazorpayProvider implements PaymentProvider {
     headers: Record<string, string | undefined>,
     rawBodyBuffer?: Buffer,
   ): Promise<WebhookVerifyResult> {
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    if (!secret) {
+    const secrets = BRANDS.flatMap((brand) => {
+      const secret = readGatewayEnv("RAZORPAY_WEBHOOK_SECRET", brand);
+      return secret ? [{ brand, secret }] : [];
+    });
+    if (secrets.length === 0) {
       // Unlike Paytm's soft-warn path, an unverified Razorpay webhook is never processed.
-      throw new AppError("RAZORPAY_WEBHOOK_SECRET is not set", 500);
+      const names = BRANDS.map((b) => gatewayEnvName("RAZORPAY_WEBHOOK_SECRET", b));
+      throw new AppError(`No Razorpay webhook secret is set (${names.join(", ")})`, 500);
     }
 
     const signature = headers["x-razorpay-signature"];
@@ -141,7 +150,10 @@ export class RazorpayProvider implements PaymentProvider {
     if (!rawBodyBuffer) {
       throw new AppError("Razorpay webhook raw body was not captured", 500);
     }
-    if (!webhookSignatureIsValid(rawBodyBuffer, signature, secret)) {
+    const brand = secrets.find(({ secret }) =>
+      webhookSignatureIsValid(rawBodyBuffer, signature, secret),
+    )?.brand;
+    if (!brand) {
       console.error("Razorpay webhook signature verification failed");
       throw new AppError("Invalid Razorpay webhook signature", 403);
     }
@@ -165,6 +177,7 @@ export class RazorpayProvider implements PaymentProvider {
     if (event === "payment.captured" || event === "order.paid") {
       return {
         orderId,
+        brand,
         status: "success",
         txnId: paymentEntity?.id,
         paymentMode: paymentEntity?.method,
@@ -172,14 +185,14 @@ export class RazorpayProvider implements PaymentProvider {
     }
 
     // payment.failed included: the learner can still retry inside this order.
-    return { orderId, status: "pending" };
+    return { orderId, brand, status: "pending" };
   }
 
   async verifySignature(
     order: OrderDoc,
     payload: unknown,
   ): Promise<GatewayPaymentResult> {
-    const { keySecret } = razorpayCredentials();
+    const { keySecret } = razorpayCredentials(asBrand(order.brand));
     const {
       razorpay_order_id: rzpOrderId,
       razorpay_payment_id: rzpPaymentId,

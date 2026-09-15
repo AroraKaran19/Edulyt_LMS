@@ -12,9 +12,11 @@ export interface Coupon {
   applicableCategories?: string[] | Category[];
   minPurchaseAmount?: number;
   maxDiscountAmount?: number;
-  usageLimit?: number;
+  /** `null` means unlimited. */
+  usageLimit?: number | null;
   usageCount?: number;
-  userUsageLimit?: number;
+  /** `null` means unlimited. */
+  userUsageLimit?: number | null;
   validFrom: Date | string;
   validUntil: Date | string;
   isActive: boolean;
@@ -40,8 +42,9 @@ export interface CreateCouponData {
   applicableCategories?: string[];
   minPurchaseAmount?: number;
   maxDiscountAmount?: number;
-  usageLimit?: number;
-  userUsageLimit?: number;
+  /** Sent as `null` to clear a limit; an omitted key leaves it unchanged on update. */
+  usageLimit?: number | null;
+  userUsageLimit?: number | null;
   validFrom: string;
   validUntil: string;
   isActive: boolean;

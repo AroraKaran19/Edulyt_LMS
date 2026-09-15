@@ -64,6 +64,13 @@ export interface LeadScholarship {
   discountPercent: number | null;
 }
 
+export type LeadProgramKind = "course" | "internship";
+
+export const PROGRAM_KIND_LABELS: Record<LeadProgramKind, string> = {
+  course: "Course",
+  internship: "Internship",
+};
+
 export interface LeadCampaignOption {
   testId: string;
   title: string;
@@ -74,13 +81,20 @@ export interface Lead {
   _id: string;
   source: {
     kind: "enquiry" | "scholarship";
-    /** Which site it came from. Absent on rows predating two brands. */
+    /** Which site it came from. Absent on rows predating two brands, which are all Airkrit. */
     brand?: "airkrit" | "edulyt";
     testId?: string | null;
     title?: string;
     slug?: string;
     /** The campaign's author, not the `?ref=` code that brought them in. */
     campaignOwnerName?: string;
+    /** The course or internship page an enquiry came from. */
+    program?: {
+      kind: LeadProgramKind;
+      refId?: string;
+      title: string;
+      slug: string;
+    };
   };
   scholarship?: LeadScholarship | null;
   creator?: { userId: string | null; code: string; name: string; role: string };

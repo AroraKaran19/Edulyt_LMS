@@ -8,6 +8,8 @@
  * source of truth.
  */
 
+import { COUNTRY_CODES } from "@/constants/countryCodes";
+
 export interface ProfileOption {
   value: string;
   label: string;
@@ -109,6 +111,7 @@ export const EXPERIENCE_LEVELS: ProfileOption[] = [
   { value: "College Student - 2nd Year", label: "College Student - 2nd Year" },
   { value: "College Student - 3rd Year", label: "College Student - 3rd Year" },
   { value: "College Student - 4th Year", label: "College Student - 4th Year" },
+  { value: "Passed Out & Unemployed", label: "Passed Out & Unemployed" },
   {
     value: "Working Professional - Tech Domain",
     label: "Working Professional - Tech Domain",
@@ -186,6 +189,13 @@ export const STATE_OPTIONS: ProfileOption[] = [
   { value: "Ladakh", label: "Ladakh" },
   { value: "Lakshadweep", label: "Lakshadweep" },
   { value: "Puducherry", label: "Puducherry" },
+  { value: "Other", label: "Other" },
+];
+
+/** Every country from the phone dial-code list, alphabetical. Ends with
+ *  "Other" → free-text fallback. */
+export const COUNTRY_OPTIONS: ProfileOption[] = [
+  ...COUNTRY_CODES.map(({ name }) => ({ value: name, label: name })),
   { value: "Other", label: "Other" },
 ];
 

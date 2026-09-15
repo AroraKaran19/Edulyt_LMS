@@ -1,20 +1,9 @@
 import PaytmChecksum from "paytmchecksum";
 
-export const generatePaytmChecksum = async (body: any) => {
-  if (!process.env.PAYTM_KEY) {
-    throw new Error("PAYTM_KEY is not set");
-  }
+export const generatePaytmChecksum = async (body: any, key: string) => {
+  const checksum = await PaytmChecksum.generateSignature(JSON.stringify(body), key);
 
-  const checksum = await PaytmChecksum.generateSignature(
-    JSON.stringify(body),
-    process.env.PAYTM_KEY
-  );
-
-  const verifyChecksum = PaytmChecksum.verifySignature(
-    JSON.stringify(body),
-    process.env.PAYTM_KEY,
-    checksum
-  );
+  const verifyChecksum = PaytmChecksum.verifySignature(JSON.stringify(body), key, checksum);
 
   if (!verifyChecksum) {
     console.error("Checksum verification failed");

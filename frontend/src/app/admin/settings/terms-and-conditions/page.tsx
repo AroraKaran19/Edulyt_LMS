@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import { FileText, Loader2, Save } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { BRANDS, BRAND_LABEL, type Brand } from "@/constants/brands";
 import { useUpload } from "@/hooks/useUpload";
 import UploadMediaContainer from "@/components/ui/container/UploadMediaContainer";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
@@ -16,7 +17,25 @@ type DocState = {
   source: "upload" | "url";
 };
 
+type BrandLegalSettings = {
+  courseTermsUrl?: string;
+  courseTermsS3Key?: string;
+};
+
 const EMPTY_DOC: DocState = { url: "", s3Key: "", source: "upload" };
+
+const toDocState = (settings?: BrandLegalSettings): DocState => ({
+  url: String(settings?.courseTermsUrl ?? ""),
+  s3Key: String(settings?.courseTermsS3Key ?? ""),
+  source: settings?.courseTermsS3Key ? "upload" : "url",
+});
+
+const docsFrom = (
+  data?: Partial<Record<Brand, BrandLegalSettings>>,
+): Record<Brand, DocState> =>
+  Object.fromEntries(
+    BRANDS.map((brand) => [brand, toDocState(data?.[brand])]),
+  ) as Record<Brand, DocState>;
 
 /** A single T&C document slot: upload a PDF or paste a URL. */
 function TermsUploader({
@@ -110,19 +129,14 @@ function TermsUploader({
 
 export default function AdminTermsAndConditionsPage() {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [course, setCourse] = useState<DocState>(EMPTY_DOC);
+  const [savingBrand, setSavingBrand] = useState<Brand | null>(null);
+  const [docs, setDocs] = useState<Record<Brand, DocState>>(() => docsFrom());
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await apiClient.get(ENDPOINTS.admin.legalSettings);
-      const d = res.data?.data ?? {};
-      setCourse({
-        url: String(d.courseTermsUrl ?? ""),
-        s3Key: String(d.courseTermsS3Key ?? ""),
-        source: d.courseTermsS3Key ? "upload" : "url",
-      });
+      setDocs(docsFrom(res.data?.data));
     } catch {
       toast.error("Could not load Terms & Conditions settings");
     } finally {
@@ -134,22 +148,24 @@ export default function AdminTermsAndConditionsPage() {
     void load();
   }, [load]);
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handleSave = async (brand: Brand) => {
+    setSavingBrand(brand);
     try {
-      await apiClient.patch(ENDPOINTS.admin.legalSettings, {
-        courseTermsUrl: course.url,
-        courseTermsS3Key: course.s3Key,
+      const res = await apiClient.patch(ENDPOINTS.admin.legalSettings, {
+        brand,
+        courseTermsUrl: docs[brand].url,
+        courseTermsS3Key: docs[brand].s3Key,
       });
-      toast.success("Terms & Conditions saved");
-      void load();
+      // Only this brand: reloading both would drop unsaved changes on the other card.
+      setDocs((prev) => ({ ...prev, [brand]: toDocState(res.data?.data) }));
+      toast.success(`${BRAND_LABEL[brand]} Terms & Conditions saved`);
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { error?: { message?: string } } } })
           ?.response?.data?.error?.message ?? "Save failed";
       toast.error(msg);
     } finally {
-      setSaving(false);
+      setSavingBrand(null);
     }
   };
 
@@ -164,38 +180,41 @@ export default function AdminTermsAndConditionsPage() {
 
   return (
     <div className="w-full min-h-full bg-stone-50/90 p-4 sm:p-6 lg:p-8 space-y-6">
-      <Container
-        icon={FileText}
-        title="Terms & Conditions"
-        description="Upload the Terms & Conditions document (PDF) shown to learners at course checkout. Replacing it updates the document everywhere immediately after saving."
-        className="w-full h-fit border-stone-200 shadow-sm"
-        classNameBody="flex flex-col gap-6"
-      >
-        <TermsUploader
-          label="Course Terms & Conditions"
-          description="Shown at course checkout. Upload a PDF or paste a direct link."
-          folderName="legal-documents/course-terms"
-          value={course}
-          onChange={setCourse}
-        />
+      {BRANDS.map((brand) => (
+        <Container
+          key={brand}
+          icon={FileText}
+          title={`${BRAND_LABEL[brand]} Terms & Conditions`}
+          description={`The Terms & Conditions document (PDF) shown to learners at course checkout on ${BRAND_LABEL[brand]}. Replacing it updates that site immediately after saving.`}
+          className="w-full h-fit border-stone-200 shadow-sm"
+          classNameBody="flex flex-col gap-6"
+        >
+          <TermsUploader
+            label="Course Terms & Conditions"
+            description="Upload a PDF or paste a direct link. With no document, checkout skips the Terms & Conditions step."
+            folderName={`legal-documents/course-terms/${brand}`}
+            value={docs[brand]}
+            onChange={(next) => setDocs((prev) => ({ ...prev, [brand]: next }))}
+          />
 
-        <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center gap-3 pt-2 border-t border-stone-100">
-          <OrangeButton
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            glow={false}
-            className="w-full sm:w-auto min-w-[140px]"
-          >
-            {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-            ) : (
-              <Save className="h-4 w-4 shrink-0" />
-            )}
-            Save
-          </OrangeButton>
-        </div>
-      </Container>
+          <div className="flex flex-col sm:flex-row sm:justify-end sm:items-center gap-3 pt-2 border-t border-stone-100">
+            <OrangeButton
+              type="button"
+              onClick={() => void handleSave(brand)}
+              disabled={savingBrand !== null}
+              glow={false}
+              className="w-full sm:w-auto min-w-[140px]"
+            >
+              {savingBrand === brand ? (
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+              ) : (
+                <Save className="h-4 w-4 shrink-0" />
+              )}
+              Save
+            </OrangeButton>
+          </div>
+        </Container>
+      ))}
     </div>
   );
 }

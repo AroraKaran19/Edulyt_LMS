@@ -2,7 +2,8 @@ import jwt from "jsonwebtoken";
 import { AppError } from "../../middlewares/error.middleware";
 
 export const generatePaymentGatewayToken = (orderId: string): string => {
-  return jwt.sign({ orderId }, process.env.JWT_SECRET!, { expiresIn: "5m" });
+  // Rides through the gateway's hosted page, so it must outlive PhonePe's 20 minute window.
+  return jwt.sign({ orderId }, process.env.JWT_SECRET!, { expiresIn: "1h" });
 };
 
 export const verifyPaymentGatewayToken = (
