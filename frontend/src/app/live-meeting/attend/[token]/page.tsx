@@ -142,11 +142,11 @@ export default function LiveMeetingAttendPage() {
   return (
     <div className="max-w-xl mx-auto py-10 px-4">
       <Link
-        href="/dashboard/internships"
+        href="/dashboard"
         className="inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition mb-6"
       >
         <ChevronLeft className="w-4 h-4" />
-        My internships
+        My dashboard
       </Link>
 
       {view === "missing" ? (
@@ -258,10 +258,10 @@ function MarkedBlock({
       </p>
 
       <Link
-        href="/dashboard/internships"
+        href="/dashboard"
         className="mt-8 inline-flex items-center gap-2 rounded-xl bg-stone-900 text-amber-100 hover:bg-stone-700 transition px-5 py-2.5 text-sm font-semibold"
       >
-        Back to my internships
+        Back to my dashboard
         <ArrowRight className="w-4 h-4" />
       </Link>
     </div>
@@ -332,7 +332,7 @@ function ErrorBlock({
           </button>
         ) : null}
         <Link
-          href="/dashboard/internships"
+          href="/dashboard"
           className={
             showRetry
               ? "inline-flex items-center gap-1.5 text-sm font-semibold text-stone-600 hover:text-stone-900 transition"
@@ -340,10 +340,10 @@ function ErrorBlock({
           }
         >
           {showRetry ? (
-            "Back to my internships"
+            "Back to my dashboard"
           ) : (
             <>
-              Back to my internships <ArrowRight className="w-4 h-4" />
+              Back to my dashboard <ArrowRight className="w-4 h-4" />
             </>
           )}
         </Link>

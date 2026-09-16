@@ -5,15 +5,11 @@ import type { Lead } from "../types/lead";
 import type {
   ScholarshipAttemptStatus,
   ScholarshipCouponEntitlement,
+  ScholarshipCouponState,
 } from "../types/scholarship";
 
 
-/** Precedence order, worst-to-best news, is encoded in `couponStateOf`. */
-export type ScholarshipCouponState =
-  | "revoked"
-  | "redeemed"
-  | "expired"
-  | "issued";
+export type { ScholarshipCouponState };
 
 export interface LeadAttemptView {
   status: ScholarshipAttemptStatus;

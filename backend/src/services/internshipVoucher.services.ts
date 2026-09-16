@@ -10,8 +10,8 @@ import { CourseModel } from "../models/course.schema";
 import { UserModel } from "../models/user.schema";
 import { internshipVoucherAwardedMail } from "../mail";
 import {
-  frontendBaseUrl,
   internshipListingUrl,
+  voucherClaimUrl,
 } from "../lib/internshipSeatUrl";
 import { AppError } from "../middlewares/error.middleware";
 import { isVoucherRedemptionWindowOpen } from "../utils/applicationWindow";
@@ -112,8 +112,7 @@ const notifyVoucherAwarded = async (
       name,
       courseName: course?.title?.trim() || "your course",
       voucherCode,
-      // Opens the claim modal straight onto this voucher.
-      ctaUrl: `${frontendBaseUrl()}/vouchers?claim=${encodeURIComponent(voucherCode)}`,
+      ctaUrl: voucherClaimUrl(voucherCode),
       browseUrl: internshipListingUrl(),
       year: new Date().getFullYear(),
     });

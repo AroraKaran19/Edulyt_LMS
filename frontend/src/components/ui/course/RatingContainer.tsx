@@ -8,7 +8,6 @@ const RatingContainer = ({
   totalRating,
   className,
   courseSlug,
-  internshipSlug,
   reviewCountText,
 }: {
   reviewCount: number;
@@ -16,18 +15,12 @@ const RatingContainer = ({
   className?: string;
   /** When set, links to `/programs/{slug}#ratings` */
   courseSlug?: string;
-  /** When set (and `courseSlug` is not), links to `/internships/{slug}#ratings` */
-  internshipSlug?: string;
   reviewCountText?: string;
 }) => {
   const router = useRouter();
 
   const ratingsHref =
-    courseSlug != null && courseSlug !== ""
-      ? `/programs/${courseSlug}#ratings`
-      : internshipSlug != null && internshipSlug !== ""
-        ? `/internships/${internshipSlug}#ratings`
-        : null;
+    courseSlug != null && courseSlug !== "" ? `/programs/${courseSlug}#ratings` : null;
 
   const handleRatingClick = (e: React.MouseEvent) => {
     e.stopPropagation();

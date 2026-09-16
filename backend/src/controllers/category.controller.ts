@@ -56,9 +56,9 @@ export const getAllCategories = asyncHandler(
 );
 
 /**
- * The admin list. Separate from the public one because the admin panel always
- * sits on Airkrit: it names the brand it wants, and every admin role sees the
- * full view rather than only `userType === "admin"`.
+ * The admin list. Separate from the public one because the admin panel runs on
+ * both sites, so the request's brand says nothing: it names the brand it wants,
+ * and every admin role sees the full view rather than only `userType === "admin"`.
  */
 export const getAdminCategories = asyncHandler(
   async (req: Request, res: Response) => {

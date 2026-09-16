@@ -4,25 +4,19 @@ import React, { useMemo } from "react";
 import MentorSidebar from "./MentorSidebar";
 import MentorAboutSection, { type MentorStat } from "./MentorAboutSection";
 import MentorCoursesSection from "./MentorCoursesSection";
-import MentorInternshipsSection from "./MentorInternshipsSection";
 import { Course, Instructor } from "@/types";
-import type { InternshipPublicListing } from "@/types/internship";
 
 const MentorPage = ({
   slug,
   instructor,
   initialCourses,
-  initialInternships,
   totalCourses,
-  totalInternships,
   totalStudents,
 }: {
   slug: string;
   instructor: Instructor;
   initialCourses: Course[];
-  initialInternships: InternshipPublicListing[];
   totalCourses: number;
-  totalInternships: number;
   totalStudents: number;
 }) => {
   const mentorName = [instructor.firstName, instructor.lastName]
@@ -78,18 +72,12 @@ const MentorPage = ({
   }, [instructor.previousExperience]);
 
   const safeTotalCourses = typeof totalCourses === "number" ? totalCourses : 0;
-  const safeTotalInternships =
-    typeof totalInternships === "number" ? totalInternships : 0;
   const safeTotalStudents = typeof totalStudents === "number" ? totalStudents : 0;
 
-  // Courses / Internships badges only appear when the mentor has any;
-  // Students and Rating always show.
+  // The courses badge only appears when the mentor has any; students and rating always show.
   const aboutStats: MentorStat[] = [
     ...(safeTotalCourses > 0
       ? [{ value: `${safeTotalCourses}`, label: "Courses" }]
-      : []),
-    ...(safeTotalInternships > 0
-      ? [{ value: `${safeTotalInternships}`, label: "Internships" }]
       : []),
     { value: `${safeTotalStudents}+`, label: "Students" },
     { value: `${instructor.rating || 0}`, label: "Rating" },
@@ -132,9 +120,6 @@ const MentorPage = ({
               totalCourses={safeTotalCourses}
             />
 
-            <MentorInternshipsSection
-              internships={initialInternships || []}
-            />
           </div>
         </div>
       </div>

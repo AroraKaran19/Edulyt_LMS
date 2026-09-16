@@ -306,9 +306,9 @@ export default function LeadDetailsModal({
               <div className="text-sm">
                 <p className="font-semibold">
                   {lead.emailOnPlatform === true
-                    ? "Already has an Airkrit account"
+                    ? "Already has an account"
                     : lead.emailOnPlatform === false
-                      ? "No Airkrit account with this email"
+                      ? "No account with this email"
                       : "Account check pending"}
                 </p>
                 {platformUser ? (

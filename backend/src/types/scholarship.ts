@@ -85,6 +85,13 @@ export interface ScholarshipCampaignSnapshot {
   ownerName: string;
 }
 
+/** Worst-to-best precedence; `couponStateOf` encodes the order. */
+export type ScholarshipCouponState =
+  | "revoked"
+  | "redeemed"
+  | "expired"
+  | "issued";
+
 export interface ScholarshipCouponEntitlement {
   _id?: string;
   /** Nulled when the coupon is deleted; `couponCode` carries the record. */

@@ -10,22 +10,9 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
 import { Course } from "@/types/course";
 import { Enrollment } from "@/types/enrollment";
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
 import { AMBASSADOR_KIND_TAB_LABELS } from "@/hooks/useCrm";
-
-/**
- * Routes that need a minimal "focus mode" header — no nav tabs, no search,
- * no stats. Matches /dashboard/internships/exam/[id] and
- * /dashboard/internships/[slug]/[taskId].
- */
-function isFocusRoute(pathname: string): boolean {
-  const parts = pathname.split("/").filter(Boolean);
-  // e.g. ["dashboard","internships","exam","abc123"]  → depth 4
-  return (
-    parts.length >= 4 && parts[0] === "dashboard" && parts[1] === "internships"
-  );
-}
 
 const SEARCH_DEBOUNCE_MS = 400;
 const DROPDOWN_LIMIT = 5;
@@ -159,11 +146,6 @@ const DashboardNavbar = () => {
       count: stats.totalCourses,
     },
     {
-      label: "My Internships",
-      href: "/dashboard/internships",
-      count: stats.totalInternships,
-    },
-    {
       label: "Course Internships",
       href: "/dashboard/course-internships",
     },
@@ -176,51 +158,6 @@ const DashboardNavbar = () => {
       ? [{ label: internLabel, href: "/ambassador", isNew: true }]
       : []),
   ];
-
-  // ── Focus mode (exam / task taking) ──────────────────────────────────────
-  if (isFocusRoute(pathname)) {
-    const parts = pathname.split("/").filter(Boolean);
-    const isExamRoute = parts[2] === "exam";
-    const backHref = isExamRoute
-      ? "/dashboard/internships"
-      : `/dashboard/internships/${encodeURIComponent(parts[2] ?? "")}`;
-    const backLabel = isExamRoute ? "My Internships" : "Back to program";
-
-    return (
-      <div className="focus-navbar w-full fixed top-0 left-0 z-9999 bg-primary/40 backdrop-blur-sm border-b border-primary/20">
-        <div className="w-full h-14 px-4 lg:px-10 flex items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="flex shrink-0 items-center overflow-visible"
-          >
-            <ImageComponent
-              src="/logo.svg"
-              alt="Logo"
-              width={100}
-              height={100}
-              loading="eager"
-              className="h-8 w-auto max-w-none shrink-0 object-contain object-left"
-              draggable={false}
-            />
-          </Link>
-
-          {/* Centre label */}
-          <p className="hidden sm:block text-xs font-semibold uppercase tracking-widest text-amber-400/80">
-            {isExamRoute ? "Entrance Exam" : "Task"}
-          </p>
-
-          {/* Exit */}
-          <Link
-            href={backHref}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary px-3 py-1.5 text-xs font-semibold text-white"
-          >
-            <X className="h-3.5 w-3.5" />
-            {backLabel}
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="dashboard-navbar w-full fixed top-0 left-0 z-9999 bg-white">

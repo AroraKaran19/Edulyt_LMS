@@ -2,6 +2,8 @@ import crypto from "crypto";
 import mongoose from "mongoose";
 import { UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
+import { brandPageBaseUrl } from "../lib/brandSiteUrl";
+import type { Brand } from "../constants/brands";
 import {
   ALL_EMAIL_PREFERENCE_CATEGORIES,
   EMAIL_PREFERENCE_MESSAGES,
@@ -67,8 +69,9 @@ export const verifyUnsubscribeToken = (
 export const buildUnsubscribeUrl = (
   userId: string,
   category: EmailPreferenceCategory,
+  brand: Brand,
 ): string => {
-  const base = (process.env.AIRKRIT_FRONTEND_URL || "").replace(/\/+$/, "");
+  const base = brandPageBaseUrl(brand);
   const params = new URLSearchParams({
     uid: String(userId),
     cat: category,

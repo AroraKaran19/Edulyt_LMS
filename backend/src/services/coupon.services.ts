@@ -1,10 +1,19 @@
 import { AppError } from "../middlewares/error.middleware";
-import { CouponModel, CourseModel, OrderModel } from "../models";
+import {
+  CouponModel,
+  CourseModel,
+  OrderModel,
+  ScholarshipCouponEntitlementModel,
+  ScholarshipTestModel,
+} from "../models";
 import {
   Coupon,
+  CouponListItem,
+  CouponScholarshipView,
   ValidateCouponRequest,
   ValidateCouponResponse,
 } from "../types";
+import { couponStateOf } from "./scholarshipLeadEnrichment.services";
 import mongoose from "mongoose";
 import { couponUsableOnBrand } from "../lib/brandPurchase";
 import type { Brand } from "../constants/brands";
@@ -12,6 +21,98 @@ import {
   validateCouponBrandForCreate,
   validateCouponBrandForUpdate,
 } from "./brandOwnership.services";
+
+/**
+ * The campaign a scholarship coupon belongs to, and who holds it.
+ *
+ * Read once per page rather than per row: one query on the campaigns by id, one
+ * on the entitlements by code. The code is what the entitlements index, and it
+ * outlives the coupon document, which `couponId` does not.
+ */
+const attachScholarshipViews = async (
+  coupons: Coupon[],
+): Promise<CouponListItem[]> => {
+  const owned = coupons.filter((coupon) => coupon.sourceScholarshipTestId);
+  if (owned.length === 0) return coupons;
+
+  const [campaigns, entitlements] = await Promise.all([
+    ScholarshipTestModel.find(
+      {
+        _id: {
+          $in: [
+            ...new Set(owned.map((c) => String(c.sourceScholarshipTestId))),
+          ],
+        },
+      },
+      { title: 1, slug: 1 },
+    ).lean(),
+    ScholarshipCouponEntitlementModel.find(
+      { couponCode: { $in: owned.map((c) => c.code) } },
+      {
+        couponCode: 1,
+        email: 1,
+        awardedPercent: 1,
+        issuedAt: 1,
+        expiresAt: 1,
+        redeemedAt: 1,
+        revokedAt: 1,
+        campaignSnapshot: 1,
+      },
+    ).lean(),
+  ]);
+
+  const campaignById = new Map(campaigns.map((c) => [String(c._id), c]));
+  const byCode = new Map<string, typeof entitlements>();
+  for (const row of entitlements) {
+    const code = String(row.couponCode);
+    const held = byCode.get(code);
+    if (held) held.push(row);
+    else byCode.set(code, [row]);
+  }
+
+  const now = new Date();
+  return coupons.map((coupon) => {
+    if (!coupon.sourceScholarshipTestId) return coupon;
+
+    const holders = byCode.get(coupon.code) ?? [];
+    const campaign = campaignById.get(String(coupon.sourceScholarshipTestId));
+    // A campaign is hard-deleted, so a winner's frozen snapshot is all that still names it.
+    const snapshot = holders.find((h) => h.campaignSnapshot)?.campaignSnapshot;
+    const only = holders.length === 1 ? holders[0] : undefined;
+
+    const scholarship: CouponScholarshipView = {
+      campaign: campaign
+        ? {
+            id: String(campaign._id),
+            title: campaign.title,
+            slug: campaign.slug,
+            deleted: false,
+          }
+        : snapshot
+          ? {
+              id: null,
+              title: snapshot.title,
+              slug: snapshot.slug,
+              deleted: true,
+            }
+          : null,
+      holders: holders.length,
+      redeemed: holders.filter((h) => h.redeemedAt).length,
+      holder: only
+        ? {
+            email: only.email,
+            awardedPercent: only.awardedPercent,
+            issuedAt: only.issuedAt,
+            expiresAt: only.expiresAt,
+            redeemedAt: only.redeemedAt ?? null,
+            state: couponStateOf(only, now),
+          }
+        : null,
+    };
+
+    return { ...coupon, scholarship };
+  });
+};
 
 export const getAllCouponsService = async (
   page: number,
@@ -21,7 +122,7 @@ export const getAllCouponsService = async (
   source?: "regular" | "scholarship",
   brand?: Brand
 ): Promise<{
-  coupons: Coupon[];
+  coupons: CouponListItem[];
   total: number;
   page: number;
   totalPages: number;
@@ -65,7 +166,7 @@ export const getAllCouponsService = async (
     .lean();
 
   return {
-    coupons: coupons as Coupon[],
+    coupons: await attachScholarshipViews(coupons as Coupon[]),
     total,
     page,
     totalPages: Math.ceil(total / limit),

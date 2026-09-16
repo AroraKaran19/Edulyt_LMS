@@ -15,13 +15,17 @@ import {
   Clock,
   Sparkles,
   Lock,
+  GraduationCap,
+  Percent,
+  Users,
 } from "lucide-react";
 import { useCoupon } from "@/hooks/useCoupon";
-import { Coupon } from "@/types/coupon";
+import { Coupon, CouponScholarshipView } from "@/types/coupon";
+import { COUPON_LABELS, COUPON_STYLES } from "../leads/types";
 import CouponModal from "@/components/ui/modals/CouponModal";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import Pagination from "@/components/admin/Pagination";
-import BrandChip from "@/components/admin/BrandChip";
+import BrandMark from "@/components/admin/BrandMark";
 import BrandSelect from "@/components/admin/BrandSelect";
 import type { BrandFilter } from "@/constants/brands";
 import { toast } from "react-toastify";
@@ -160,6 +164,16 @@ const CouponsPage = () => {
 
   const isCampaignOwned = (coupon: Coupon) =>
     Boolean(coupon.sourceScholarshipTestId);
+
+  /**
+   * A campaign mints one coupon per winner, so a code with no entitlement is one
+   * nobody has won yet, and several mean a legacy campaign that shared one code.
+   */
+  const holderSummary = (view: CouponScholarshipView) => {
+    if (view.holder) return view.holder.email;
+    if (view.holders === 0) return "No winner yet";
+    return `${view.holders} winners, ${view.redeemed} redeemed`;
+  };
 
   const getDiscountDisplay = (coupon: Coupon) => {
     if (coupon.discountType === "percentage") {
@@ -416,16 +430,20 @@ const CouponsPage = () => {
                           {coupon.code}
                         </span>
                       </div>
-                      <BrandChip brand={coupon.brand} />
+                      <BrandMark brand={coupon.brand} />
                       <div className="px-3 py-1.5 bg-linear-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
                         <span className="text-green-800 text-sm font-bold">
                           {getDiscountDisplay(coupon)}
                         </span>
                       </div>
                       {isCampaignOwned(coupon) ? (
-                        <span className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg border border-purple-200 flex items-center gap-1">
+                        <span
+                          className="px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-semibold rounded-lg border border-purple-200 flex items-center gap-1"
+                          title={CAMPAIGN_LOCK_HINT}
+                        >
                           <Lock className="w-3.5 h-3.5" />
-                          Scholarship campaign
+                          {coupon.scholarship?.campaign?.title ??
+                            "Scholarship campaign"}
                         </span>
                       ) : null}
                       {isExpired(coupon.validUntil) ? (
@@ -451,6 +469,80 @@ const CouponsPage = () => {
                         {coupon.description}
                       </p>
                     )}
+
+                    {coupon.scholarship ? (
+                      <div className="mb-4 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <GraduationCap className="w-4 h-4 text-purple-600" />
+                          <span className="text-sm font-semibold text-purple-900">
+                            {coupon.scholarship.campaign?.title ??
+                              "Campaign no longer on record"}
+                          </span>
+                          {coupon.scholarship.campaign?.slug ? (
+                            <span className="text-xs text-purple-700">
+                              /{coupon.scholarship.campaign.slug}
+                            </span>
+                          ) : null}
+                          {coupon.scholarship.campaign?.deleted ? (
+                            <span className="text-xs text-purple-700">
+                              (campaign deleted, named from the winner record)
+                            </span>
+                          ) : null}
+                          {coupon.scholarship.holder ? (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ring-1 ring-inset ${COUPON_STYLES[coupon.scholarship.holder.state]}`}
+                            >
+                              {COUPON_LABELS[coupon.scholarship.holder.state]}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                          <div>
+                            <p className="text-xs text-purple-700 font-medium mb-0.5">
+                              Won by
+                            </p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {holderSummary(coupon.scholarship)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-purple-700 font-medium mb-0.5">
+                              Reward rolled
+                            </p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {coupon.scholarship.holder
+                                ? `${coupon.scholarship.holder.awardedPercent}% off`
+                                : "Varies by winner"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-purple-700 font-medium mb-0.5">
+                              Issued
+                            </p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {coupon.scholarship.holder
+                                ? formatDate(coupon.scholarship.holder.issuedAt)
+                                : "-"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-purple-700 font-medium mb-0.5">
+                              {coupon.scholarship.holder?.redeemedAt
+                                ? "Redeemed on"
+                                : "Redeem by"}
+                            </p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {coupon.scholarship.holder
+                                ? formatDate(
+                                    coupon.scholarship.holder.redeemedAt ??
+                                      coupon.scholarship.holder.expiresAt,
+                                  )
+                                : "-"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
 
                     {/* Info Grid */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -503,6 +595,32 @@ const CouponsPage = () => {
                         </div>
                         <p className="font-semibold text-gray-900 text-sm">
                           ₹{coupon.minPurchaseAmount || 0}
+                        </p>
+                      </div>
+
+                      {coupon.maxDiscountAmount ? (
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Percent className="w-4 h-4 text-gray-500" />
+                            <span className="text-xs text-gray-600 font-medium">
+                              Max Discount
+                            </span>
+                          </div>
+                          <p className="font-semibold text-gray-900 text-sm">
+                            ₹{coupon.maxDiscountAmount}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Users className="w-4 h-4 text-gray-500" />
+                          <span className="text-xs text-gray-600 font-medium">
+                            Per User
+                          </span>
+                        </div>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {coupon.userUsageLimit ?? "∞"}
                         </p>
                       </div>
                     </div>

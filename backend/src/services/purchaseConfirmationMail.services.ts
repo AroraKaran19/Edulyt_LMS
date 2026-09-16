@@ -8,14 +8,15 @@
  * the team is alerted separately.
  */
 import mongoose from "mongoose";
-import { asBrand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
 import { OrderModel } from "../models/order.schema";
 import { UserModel } from "../models/user.schema";
 import { CourseModel } from "../models/course.schema";
 import { InternshipModel } from "../models/internship.schema";
 import { purchaseConfirmationMail } from "../mail";
 import { formatIstDate } from "../utils/ist";
-import { frontendBaseUrl } from "../lib/internshipSeatUrl";
+import { dashboardInternshipsUrl } from "../lib/internshipSeatUrl";
+import { brandPageBaseUrl } from "../lib/brandSiteUrl";
 import {
   buildHeading,
   buildIntroLine,
@@ -80,21 +81,24 @@ type OrderLean = {
   createdAt?: Date;
 };
 
-/** Where the CTA should land, per order kind. */
+/** Where the CTA should land, per order kind. Internships are Edulyt's; a course is its own brand's. */
 const callToAction = (
   kind: OrderKind,
+  brand: Brand,
 ): { ctaUrl: string; ctaLabel: string } => {
-  const base = frontendBaseUrl();
   switch (kind) {
     case "internship_seat":
     case "internship_success_points":
       return {
-        ctaUrl: `${base}/dashboard/internships`,
+        ctaUrl: dashboardInternshipsUrl(),
         ctaLabel: "Go to my internships",
       };
     case "course":
     default:
-      return { ctaUrl: `${base}/dashboard`, ctaLabel: "Start learning" };
+      return {
+        ctaUrl: `${brandPageBaseUrl(brand)}/dashboard`,
+        ctaLabel: "Start learning",
+      };
   }
 };
 
@@ -165,7 +169,7 @@ export const sendPurchaseConfirmationEmail = async (
     if (!(await claimSendSlot(_id))) return false;
     claimed = true;
 
-    const { ctaUrl, ctaLabel } = callToAction(kind);
+    const { ctaUrl, ctaLabel } = callToAction(kind, asBrand(order.brand));
 
     const result = await purchaseConfirmationMail.sendNow(
       [

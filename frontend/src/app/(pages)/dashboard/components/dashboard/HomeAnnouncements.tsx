@@ -3,17 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Megaphone, ArrowRight } from "lucide-react";
-import useAnnouncements, {
-  type Announcement,
-  type LearnerFeedAudience,
-} from "@/hooks/useAnnouncements";
+import useAnnouncements, { type Announcement } from "@/hooks/useAnnouncements";
 import { cn } from "@/lib/utils";
 
 const NEW_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Minimal per-audience accents — same colour language as the bold banners. */
+/** Minimal accents, in the same colour language as the bold banners. Internship announcements are Edulyt's. */
 const CARD_THEME: Record<
-  LearnerFeedAudience,
+  "course",
   {
     label: string;
     href: string;
@@ -31,21 +28,13 @@ const CARD_THEME: Record<
     dot: "bg-[#E25C12]",
     hoverBorder: "hover:border-orange-200",
   },
-  internship: {
-    label: "Internships",
-    href: "/dashboard/internships/announcements",
-    chip: "bg-indigo-50 text-[#4338CA]",
-    accent: "text-[#4338CA]",
-    dot: "bg-[#4338CA]",
-    hoverBorder: "hover:border-indigo-200",
-  },
 };
 
 function AnnouncementMiniCard({
   audience,
   items,
 }: {
-  audience: LearnerFeedAudience;
+  audience: "course";
   items: Announcement[];
 }) {
   const theme = CARD_THEME[audience];
@@ -127,39 +116,23 @@ function AnnouncementMiniCard({
 const HomeAnnouncements = () => {
   const { getFeed } = useAnnouncements();
   const [course, setCourse] = useState<Announcement[]>([]);
-  const [internship, setInternship] = useState<Announcement[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [c, i] = await Promise.allSettled([
-        getFeed("course"),
-        getFeed("internship"),
-      ]);
-      if (cancelled) return;
-      if (c.status === "fulfilled") setCourse(c.value);
-      if (i.status === "fulfilled") setInternship(i.value);
+      const c = await getFeed("course").catch(() => []);
+      if (!cancelled) setCourse(c);
     })();
     return () => {
       cancelled = true;
     };
   }, [getFeed]);
 
-  const hasCourse = course.length > 0;
-  const hasInternship = internship.length > 0;
-  if (!hasCourse && !hasInternship) return null;
-
-  const both = hasCourse && hasInternship;
+  if (course.length === 0) return null;
 
   return (
-    <section
-      aria-label="Announcements"
-      className={cn("grid grid-cols-1 gap-3 sm:gap-4", both && "md:grid-cols-2")}
-    >
-      {hasCourse && <AnnouncementMiniCard audience="course" items={course} />}
-      {hasInternship && (
-        <AnnouncementMiniCard audience="internship" items={internship} />
-      )}
+    <section aria-label="Announcements" className="grid grid-cols-1 gap-3 sm:gap-4">
+      <AnnouncementMiniCard audience="course" items={course} />
     </section>
   );
 };
