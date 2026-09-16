@@ -27,9 +27,41 @@ export interface Coupon {
    * of them: the API refuses, and the row is locked to match.
    */
   sourceScholarshipTestId?: string | null;
+  /** Present on a campaign-owned coupon: the campaign it rewards and its winner. */
+  scholarship?: CouponScholarshipView;
   brand?: Brand;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+}
+
+/** Worst-to-best precedence, the order the backend's `couponStateOf` encodes. */
+export type CouponScholarshipState =
+  | "revoked"
+  | "redeemed"
+  | "expired"
+  | "issued";
+
+/** Which campaign a scholarship coupon belongs to and who holds it. Read-only, from the list API. */
+export interface CouponScholarshipView {
+  campaign: {
+    /** Null when only a deleted campaign's frozen snapshot names it. */
+    id: string | null;
+    title: string;
+    slug: string;
+    deleted: boolean;
+  } | null;
+  /** One per winner, or several when a legacy campaign shared one code. */
+  holders: number;
+  redeemed: number;
+  /** The winner, when the code belongs to exactly one. */
+  holder: {
+    email: string;
+    awardedPercent: number;
+    issuedAt: string;
+    expiresAt: string;
+    redeemedAt: string | null;
+    state: CouponScholarshipState;
+  } | null;
 }
 
 export interface CreateCouponData {

@@ -117,7 +117,8 @@ const Screen10 = () => {
       const cleanTitle = (title || "Internship")
         .replace(/\s*\(Copy\)\s*$/i, "")
         .trim();
-      const metaTitle = `${cleanTitle} - Internship Program | Airkrit`;
+      // Internships are Edulyt's, and Edulyt's role page uses this as its title.
+      const metaTitle = `${cleanTitle} - Internship Program | Edulyt`;
 
       // Strip HTML tags from description
       const stripHtml = (html: string) => {
@@ -319,7 +320,7 @@ const Screen10 = () => {
               )}
 
             <div className="flex justify-between items-center text-xs text-gray-500">
-              <span>URL: https://airkrit.com/internships/</span>
+              <span>URL: https://edulyt.com/career/</span>
               <span
                 className={`font-mono ${
                   slugValidation.isAvailable === true
@@ -485,7 +486,7 @@ const Screen10 = () => {
                 {metaTitle || "Your internship title will appear here"}
               </div>
               <div className="text-green-600 text-sm">
-                https://airkrit.com/internships/
+                https://edulyt.com/career/
                 {slug || "your-internship-slug"}
               </div>
               <div className="text-gray-600 text-sm">

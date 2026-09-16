@@ -10,6 +10,7 @@ import {
   isProgramWindowOver,
   resolveProgramEndDate,
 } from "../lib/internshipProgramWindow";
+import { internshipAttendanceUrl } from "../lib/attendanceUrl";
 import type {
   AdminLiveMeetingAttendanceResponse,
   AdminLiveMeetingAttendanceRow,
@@ -24,19 +25,8 @@ const ENROLLED_STATUSES = ["enrolled", "completed"] as const;
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-function frontendBase(): string {
-  return (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(
-    /\/+$/,
-    "",
-  );
-}
-
 function generateToken(): string {
   return crypto.randomBytes(32).toString("base64url");
-}
-
-function attendanceUrl(token: string): string {
-  return `${frontendBase()}/live-meeting/attend/${token}`;
 }
 
 function parseNonNegInt(value: unknown, field: string): number {
@@ -215,7 +205,7 @@ function serializeListItem(doc: {
       clickedCount: Array.isArray(doc.link1.clickedBy)
         ? doc.link1.clickedBy.length
         : 0,
-      url: attendanceUrl(doc.link1.token),
+      url: internshipAttendanceUrl(doc.link1.token),
     },
     link2: {
       expiryMins: doc.link2.expiryMins,
@@ -225,7 +215,7 @@ function serializeListItem(doc: {
       clickedCount: Array.isArray(doc.link2.clickedBy)
         ? doc.link2.clickedBy.length
         : 0,
-      url: attendanceUrl(doc.link2.token),
+      url: internshipAttendanceUrl(doc.link2.token),
     },
     phase: computePhase(doc),
     finalizedAt: doc.finalizedAt ? new Date(doc.finalizedAt).toISOString() : null,

@@ -120,20 +120,6 @@ const DashboardBanner = () => {
               />
             }
           />
-          <Card
-            title="Internships"
-            className="shrink-0"
-            count={stats.totalInternships}
-            icon={
-              <Image
-                src="/dashboard/CourseBannerIcon.svg"
-                width={24}
-                height={24}
-                alt="internships"
-                draggable={false}
-              />
-            }
-          />
         </div>
         <button
           type="button"

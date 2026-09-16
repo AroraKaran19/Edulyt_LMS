@@ -76,7 +76,5 @@ export const config = {
     "/cart/:path*",
     "/login",
     "/register",
-    "/internships",
-    "/internships/:path*",
   ],
 };

@@ -18,16 +18,27 @@
  * logs in and lands back on their registration rather than on the login page.
  */
 
+import { edulytSiteUrl } from "./brandSiteUrl";
+
+/** Airkrit's site. Community and course links still live there. */
 export const frontendBaseUrl = (): string =>
   (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
 
+/**
+ * Internship pages are Edulyt's, and Airkrit no longer has copies of them, so these ignore the
+ * cutover flag: there is nowhere else left for them to point.
+ */
+
 /** The learner's programme list. */
 export const dashboardInternshipsUrl = (): string =>
-  `${frontendBaseUrl()}/dashboard/internships`;
+  `${edulytSiteUrl()}/dashboard/internships`;
 
-/** Public internship listing, the fallback when a cohort cannot be named. */
-export const internshipListingUrl = (): string =>
-  `${frontendBaseUrl()}/internships`;
+/** Public internship listing, the fallback when a cohort cannot be named. Edulyt calls it Career. */
+export const internshipListingUrl = (): string => `${edulytSiteUrl()}/career`;
+
+/** Opens the claim modal straight onto one voucher. Every voucher is an internship seat. */
+export const voucherClaimUrl = (voucherCode: string): string =>
+  `${edulytSiteUrl()}/vouchers?claim=${encodeURIComponent(voucherCode)}`;
 
 /**
  * Where an email's "confirm your seat" CTA points.

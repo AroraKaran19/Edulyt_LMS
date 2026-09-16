@@ -18,7 +18,7 @@ import { toast } from "react-toastify";
 import EnrollmentDetailsModal from "./EnrollmentDetailsModal";
 import RevokeConfirmationModal from "./RevokeConfirmationModal";
 import Pagination from "@/components/admin/Pagination";
-import BrandChip from "@/components/admin/BrandChip";
+import BrandMark from "@/components/admin/BrandMark";
 import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
 
 interface EnrollmentUser {
@@ -416,7 +416,7 @@ const EnrollmentsPage = () => {
                     <td className="px-4 sm:px-6 py-4 text-sm whitespace-nowrap min-w-[80px]">
                       <div className="flex items-center gap-2">
                         {renderTypeBadge(item)}
-                        <BrandChip brand={item.brand} />
+                        <BrandMark brand={item.brand} />
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-sm text-gray-600 capitalize whitespace-nowrap">

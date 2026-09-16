@@ -11,7 +11,6 @@ import {
   Settings,
   Sparkles,
   Star,
-  Ticket,
   User,
 } from "lucide-react";
 import Link from "next/link";
@@ -72,13 +71,6 @@ const UserMenu = () => {
       label: "Profile",
       icon: User,
       href: "/profile",
-    },
-    // Learner-only: the dashboard banner is dismissible and there is no other
-    // route to a voucher, so this is the durable way back to one.
-    {
-      label: "My Vouchers",
-      icon: Ticket,
-      href: "/vouchers",
     },
     {
       label: "Settings",

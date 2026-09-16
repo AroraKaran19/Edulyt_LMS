@@ -26,6 +26,7 @@ import type {
   UpdateLiveClassBody,
 } from "../types/live-classes";
 import { asBrand, type Brand } from "../constants/brands";
+import { liveClassAttendanceUrl } from "../lib/attendanceUrl";
 
 /**
  * Only these enrollments may see / attend a live class, and only these make up
@@ -40,19 +41,8 @@ const INSTRUCTOR_REF_FIELDS = "firstName lastName email profilePicture";
 
 // ───────── helpers ─────────
 
-function frontendBase(): string {
-  return (process.env.AIRKRIT_FRONTEND_URL || "http://localhost:3000").replace(
-    /\/+$/,
-    "",
-  );
-}
-
 function generateToken(): string {
   return crypto.randomBytes(32).toString("base64url");
-}
-
-function attendanceUrl(token: string): string {
-  return `${frontendBase()}/live-class/attend/${token}`;
 }
 
 function parsePositiveInt(value: unknown, field: string): number {
@@ -279,7 +269,9 @@ function serializeAdminItem(doc: LiveClassDoc): AdminLiveClassListItem {
         ? new Date(link1.activatedAt).toISOString()
         : null,
       clickedCount: Array.isArray(link1.clickedBy) ? link1.clickedBy.length : 0,
-      url: link1.token ? attendanceUrl(link1.token) : "",
+      url: link1.token
+        ? liveClassAttendanceUrl(asBrand(doc.brand), link1.token)
+        : "",
     },
     link2: {
       expiryMins: link2.expiryMins,
@@ -287,7 +279,9 @@ function serializeAdminItem(doc: LiveClassDoc): AdminLiveClassListItem {
         ? new Date(link2.activatedAt).toISOString()
         : null,
       clickedCount: Array.isArray(link2.clickedBy) ? link2.clickedBy.length : 0,
-      url: link2.token ? attendanceUrl(link2.token) : "",
+      url: link2.token
+        ? liveClassAttendanceUrl(asBrand(doc.brand), link2.token)
+        : "",
     },
     phase: computePhase(doc),
     finalizedAt: doc.finalizedAt

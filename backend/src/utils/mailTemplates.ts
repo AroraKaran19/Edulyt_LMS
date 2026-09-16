@@ -9,6 +9,7 @@ import {
   sendTemplateMail,
 } from "./mailer";
 import { DEFAULT_BRAND, type Brand } from "../constants/brands";
+import { brandPageBaseUrl } from "../lib/brandSiteUrl";
 import { EmailPreferenceCategory } from "../constants/emailPreferences";
 import {
   buildUnsubscribeUrl,
@@ -88,6 +89,7 @@ const applyPreferences = async <V extends MailVariables>(
   to: SendTemplateMailOptions["to"],
   variables: V,
   category: EmailPreferenceCategory,
+  brand: Brand,
 ): Promise<Array<MailRecipient>> => {
   const entries = (Array.isArray(to) ? to : [to]).map((entry) =>
     typeof entry === "string" ? { email: entry } : entry,
@@ -111,8 +113,8 @@ const applyPreferences = async <V extends MailVariables>(
         // No account behind the address means no preference to manage; the
         // link resolves to a page that says the link is not valid.
         unsubscribeUrl: preference
-          ? buildUnsubscribeUrl(preference.userId, category)
-          : `${(process.env.AIRKRIT_FRONTEND_URL || "").replace(/\/+$/, "")}/unsubscribe`,
+          ? buildUnsubscribeUrl(preference.userId, category, brand)
+          : `${brandPageBaseUrl(brand)}/unsubscribe`,
       } as WithUnsubscribe<V>,
     });
   }
@@ -145,13 +147,13 @@ export const defineOptOutMailTemplate = <V extends MailVariables>(
       | undefined,
     immediate: boolean,
   ): Promise<MailSendResult> => {
-    const recipients = await applyPreferences(to, variables, category);
+    const brand = brandFor(options?.brand);
+    const recipients = await applyPreferences(to, variables, category, brand);
 
     if (!recipients.length) {
       return { ok: true, outcome: "skipped", reason: "all recipients opted out" };
     }
 
-    const brand = brandFor(options?.brand);
     const payload: SendTemplateMailOptions = {
       ...options,
       brand,

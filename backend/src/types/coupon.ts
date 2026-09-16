@@ -1,5 +1,6 @@
 import { User, Course, Category } from "./index";
 import type { Brand } from "../constants/brands";
+import type { ScholarshipCouponState } from "./scholarship";
 
 export interface Coupon {
   brand?: Brand;
@@ -27,6 +28,32 @@ export interface Coupon {
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+/** Which campaign a scholarship coupon belongs to, and who holds it. */
+export interface CouponScholarshipView {
+  /** Null once the campaign is deleted and no entitlement kept a snapshot of it. */
+  campaign: {
+    /** Null when only a deleted campaign's snapshot names it. */
+    id: string | null;
+    title: string;
+    slug: string;
+    deleted: boolean;
+  } | null;
+  /** Entitlements minted against this code: one per winner, or many for a legacy shared code. */
+  holders: number;
+  redeemed: number;
+  /** The winner, when the code belongs to exactly one. */
+  holder: {
+    email: string;
+    awardedPercent: number;
+    issuedAt: Date;
+    expiresAt: Date;
+    redeemedAt: Date | null;
+    state: ScholarshipCouponState;
+  } | null;
+}
+
+export type CouponListItem = Coupon & { scholarship?: CouponScholarshipView };
 
 export interface CouponUsage {
   _id?: string;

@@ -113,10 +113,14 @@ async function resolveEmailsOnPlatform(leads: Lead[]): Promise<void> {
 const PROGRAM_KINDS: readonly LeadProgramKind[] = ["course", "internship"];
 
 // Titled from the catalogue, never the browser. Both slugs are uniquely indexed.
-const findProgramTitle = (kind: LeadProgramKind, slug: string) =>
+// `Internship` types `_id` as a string, but lean returns an ObjectId.
+const findProgramTitle = async (
+  kind: LeadProgramKind,
+  slug: string,
+): Promise<{ _id: unknown; title?: unknown } | null> =>
   kind === "course"
-    ? CourseModel.findOne({ slug }, { title: 1 }).lean()
-    : InternshipModel.findOne({ slug }, { title: 1 }).lean();
+    ? await CourseModel.findOne({ slug }, { title: 1 }).lean()
+    : await InternshipModel.findOne({ slug }, { title: 1 }).lean();
 
 // An unmatched slug or a failed lookup still keeps the slug: neither may cost the lead.
 const resolveProgram = async (raw: unknown): Promise<LeadProgram | undefined> => {

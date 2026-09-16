@@ -1,7 +1,5 @@
 /** Airkrit path prefix, and the prefix it lives under on Edulyt. */
 const MOVED_PREFIXES: readonly [from: string, to: string][] = [
-  ["/internships", "/career"],
-  ["/dashboard/internships", "/dashboard/internships"],
 ];
 
 /** Server-only; read per request so the flag flips with a restart, not a rebuild. */
