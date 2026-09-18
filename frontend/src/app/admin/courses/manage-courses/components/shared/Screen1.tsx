@@ -14,6 +14,13 @@ import { CourseFormData } from "@/types/courseForm";
 import dynamic from "next/dynamic";
 import { ChangeEvent, useRef, useEffect, useState } from "react";
 import { getTextFromHtml, getCategoryIds } from "@/lib/courseFormUtils";
+import {
+  AUDIENCE_BY_BRAND,
+  AUDIENCE_LABEL,
+  BRAND_LABEL,
+  audienceMatchesBrand,
+  isBrand,
+} from "@/constants/brands";
 
 const RichTextEditor = dynamic(
   () => import("@/components/shared/Editor/Editor"),
@@ -49,13 +56,16 @@ const Screen1 = () => {
   const brochureSource = watch("brochureSource");
   const titleValue = watch("title");
   const brandValue = watch("brand");
+  const audienceValue = watch("audience");
+  const isActiveValue = watch("isActive");
 
-  // Airkrit sells college courses only, so its audience is not a choice.
-  useEffect(() => {
-    if (brandValue === "airkrit" && getValues("audience") !== "college-students") {
-      setValue("audience", "college-students", { shouldValidate: true });
-    }
-  }, [brandValue, getValues, setValue]);
+  // A mismatched pair is allowed as a draft, so only an active course warns.
+  const liveAudienceWarning =
+    isBrand(brandValue) && !audienceMatchesBrand(audienceValue, brandValue)
+      ? `A live ${BRAND_LABEL[brandValue]} course must target ${
+          AUDIENCE_LABEL[AUDIENCE_BY_BRAND[brandValue]]
+        }. Change the audience or leave the course inactive.`
+      : null;
 
   const [curriculumFolderName, setCurriculumFolderName] = useState(
     "courses/new_course/curriculum"
@@ -275,6 +285,15 @@ const Screen1 = () => {
           )}
         />
       </Container>
+      {liveAudienceWarning && (
+        <p
+          className={`text-sm px-6 ${
+            isActiveValue ? "text-red-500" : "text-amber-600"
+          }`}
+        >
+          {liveAudienceWarning}
+        </p>
+      )}
       <Container
         description="Define the core details of your course"
         className="w-full shadow-none border-none pt-0"
@@ -373,11 +392,7 @@ const Screen1 = () => {
                 onChange={(e: ChangeEvent<HTMLSelectElement>) =>
                   field.onChange(e.target.value)
                 }
-                options={
-                  brandValue === "airkrit"
-                    ? ["college-students"]
-                    : ["college-students", "professionals"]
-                }
+                options={["college-students", "professionals"]}
                 optionLabels={{
                   "college-students": "College Students",
                   professionals: "Working Professionals",

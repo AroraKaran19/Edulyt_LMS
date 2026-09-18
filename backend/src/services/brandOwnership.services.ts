@@ -39,9 +39,35 @@ export const assertAnnouncementBrand = (
   }
 };
 
-export const assertAudienceOnBrand = (audience: unknown, brand: Brand): void => {
-  if (brand === "airkrit" && audience !== "college-students") {
-    throw new AppError("Airkrit courses are for college students", 400);
+/** The one audience each brand sells to. Only going live is held to it. */
+export const AUDIENCE_BY_BRAND: Record<Brand, string> = {
+  airkrit: "college-students",
+  edulyt: "professionals",
+};
+
+const AUDIENCE_LABEL: Record<string, string> = {
+  "college-students": "college students",
+  professionals: "working professionals",
+};
+
+export const audienceMatchesBrand = (audience: unknown, brand: Brand): boolean =>
+  audience === AUDIENCE_BY_BRAND[brand];
+
+/**
+ * A course may sit on either brand with either audience while it is inactive,
+ * so a copy can be made across brands and fixed up. Going live is the gate.
+ */
+export const assertLiveAudienceOnBrand = (
+  audience: unknown,
+  brand: Brand,
+): void => {
+  if (!audienceMatchesBrand(audience, brand)) {
+    throw new AppError(
+      `A live ${brandName(brand)} course must target ${
+        AUDIENCE_LABEL[AUDIENCE_BY_BRAND[brand]]
+      }. Change the audience or keep the course inactive.`,
+      400,
+    );
   }
 };
 
@@ -101,7 +127,10 @@ export const validateCourseBrandForCreate = async (
   courseData: Record<string, unknown>,
 ): Promise<Brand> => {
   const brand = parseBrandInput(courseData.brand, "course");
-  assertAudienceOnBrand(courseData.audience, brand);
+  // The schema defaults `isActive` to true, so a write that names none is live.
+  if (courseData.isActive !== false) {
+    assertLiveAudienceOnBrand(courseData.audience, brand);
+  }
   await assertAllOnBrand("categories", courseData.category, brand);
   return brand;
 };
@@ -110,7 +139,9 @@ export const validateCourseBrandForUpdate = async (
   courseId: string,
   courseData: Record<string, unknown>,
 ): Promise<void> => {
-  const touches = ["brand", "audience", "category"].some((key) => key in courseData);
+  const touches = ["brand", "audience", "category", "isActive"].some(
+    (key) => key in courseData,
+  );
   if (!touches) return;
 
   if ("brand" in courseData) {
@@ -121,8 +152,13 @@ export const validateCourseBrandForUpdate = async (
   }
 
   const existing = await CourseModel.findById(courseId)
-    .select("brand audience category")
-    .lean<{ brand?: unknown; audience?: unknown; category?: unknown } | null>();
+    .select("brand audience category isActive")
+    .lean<{
+      brand?: unknown;
+      audience?: unknown;
+      category?: unknown;
+      isActive?: unknown;
+    } | null>();
   if (!existing) {
     throw new AppError("Course not found", 404);
   }
@@ -131,7 +167,19 @@ export const validateCourseBrandForUpdate = async (
   const next = isBrand(courseData.brand) ? courseData.brand : current;
 
   await assertCourseBrandChangeAllowed(courseId, current, next);
-  assertAudienceOnBrand(courseData.audience ?? existing.audience, next);
+
+  const live =
+    typeof courseData.isActive === "boolean"
+      ? courseData.isActive
+      : existing.isActive !== false;
+  // A course that is already live on the wrong audience predates this rule and
+  // stays editable; only a course newly put into that state is refused.
+  const alreadyLiveMismatch =
+    existing.isActive !== false && !audienceMatchesBrand(existing.audience, current);
+  if (live && !alreadyLiveMismatch) {
+    assertLiveAudienceOnBrand(courseData.audience ?? existing.audience, next);
+  }
+
   await assertAllOnBrand("categories", courseData.category ?? existing.category, next);
 };
 
@@ -190,9 +238,9 @@ export const validateCouponBrandForUpdate = async (
  * which is what every existing duplicate does.
  */
 export const resolveDuplicateTarget = async (
-  source: { brand?: unknown; audience?: unknown },
+  source: { brand?: unknown },
   target?: { brand?: unknown; category?: unknown },
-): Promise<{ brand: Brand; category: unknown[] } | null> => {
+): Promise<{ brand: Brand; category: unknown[]; audience: string } | null> => {
   if (target?.brand === undefined || target.brand === asBrand(source.brand)) {
     return null;
   }
@@ -205,9 +253,10 @@ export const resolveDuplicateTarget = async (
       400,
     );
   }
-  assertAudienceOnBrand(source.audience, brand);
   await assertAllOnBrand("categories", category, brand);
-  return { brand, category };
+  // Any course may be copied to the other brand; the copy takes that brand's
+  // audience so it is ready to go live there.
+  return { brand, category, audience: AUDIENCE_BY_BRAND[brand] };
 };
 
 /** The schema's own defaults name Airkrit, so an Edulyt course needs its own. */

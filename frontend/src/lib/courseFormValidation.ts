@@ -5,6 +5,13 @@ import {
   SCREEN_CONFIG,
 } from "@/types/courseForm";
 import { getTextFromHtml, getCategoryIds } from "./courseFormUtils";
+import {
+  AUDIENCE_BY_BRAND,
+  AUDIENCE_LABEL,
+  BRAND_LABEL,
+  audienceMatchesBrand,
+  isBrand,
+} from "@/constants/brands";
 
 // ===================
 // Field Validation Functions
@@ -395,6 +402,18 @@ export const validateScreen1 = (
   ) {
     errors.push(
       "Target audience must be either 'college-students' or 'professionals'"
+    );
+    missingFields.push("audience");
+  } else if (
+    data.isActive &&
+    isBrand(data.brand) &&
+    !audienceMatchesBrand(data.audience, data.brand)
+  ) {
+    // A mismatched pair may be saved as a draft, never as a live course.
+    errors.push(
+      `A live ${BRAND_LABEL[data.brand]} course must target ${
+        AUDIENCE_LABEL[AUDIENCE_BY_BRAND[data.brand]]
+      }. Change the audience or uncheck "Course Active".`
     );
     missingFields.push("audience");
   }

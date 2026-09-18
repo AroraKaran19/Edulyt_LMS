@@ -29,6 +29,8 @@ import BrandMark from "@/components/admin/BrandMark";
 import BrandSelect from "@/components/admin/BrandSelect";
 import CategoryInputWithManagement from "@/components/ui/inputs/CategoryInputWithManagement";
 import {
+  AUDIENCE_BY_BRAND,
+  AUDIENCE_LABEL,
   BRAND,
   BRANDS,
   BRAND_LABEL,
@@ -309,7 +311,11 @@ const ManageCoursesPage = () => {
       }
     } catch (error) {
       console.error("Failed to update course status:", error);
-      toast.error("Failed to update course status");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update course status",
+      );
     } finally {
       setIsUpdating(null);
     }
@@ -1005,14 +1011,22 @@ const ManageCoursesPage = () => {
                 }}
               />
               {duplicateTarget && (
-                <CategoryInputWithManagement
-                  label={`${BRAND_LABEL[duplicateTarget.brand]} categories`}
-                  name="duplicateCategories"
-                  value={duplicateCategories}
-                  setChange={setDuplicateCategories}
-                  brand={duplicateTarget.brand}
-                  required
-                />
+                <>
+                  <CategoryInputWithManagement
+                    label={`${BRAND_LABEL[duplicateTarget.brand]} categories`}
+                    name="duplicateCategories"
+                    value={duplicateCategories}
+                    setChange={setDuplicateCategories}
+                    brand={duplicateTarget.brand}
+                    required
+                  />
+                  <p className="text-sm text-gray-600">
+                    The copy is created inactive and set to target{" "}
+                    {AUDIENCE_LABEL[AUDIENCE_BY_BRAND[duplicateTarget.brand]]},
+                    the only audience a live{" "}
+                    {BRAND_LABEL[duplicateTarget.brand]} course can have.
+                  </p>
+                </>
               )}
             </div>
 

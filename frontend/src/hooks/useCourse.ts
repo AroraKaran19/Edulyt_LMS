@@ -467,16 +467,23 @@ export const useCourse = () => {
     [handleRequest]
   );
 
+  // Not routed through `handleRequest`: activation can be refused for a reason
+  // the admin has to read (brand and audience), and that swallows it.
   const updateCourseStatus = useCallback(
-    async (id: string, isActive: boolean): Promise<Course | null> => {
-      return handleRequest(async () => {
+    async (id: string, isActive: boolean): Promise<Course> => {
+      try {
         const response = await apiClient.put(`/courses/${id}/status`, {
           status: isActive,
         });
         return response.data.data;
-      }, "Failed to update course status");
+      } catch (err) {
+        const reason = (
+          err as { response?: { data?: { error?: { message?: string } } } }
+        )?.response?.data?.error?.message;
+        throw new Error(reason || "Failed to update course status");
+      }
     },
-    [handleRequest]
+    []
   );
 
   const deleteCourse = useCallback(

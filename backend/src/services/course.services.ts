@@ -26,8 +26,9 @@ import {
   deleteFilesFromS3,
   extractS3KeyFromUrl,
 } from "./upload.services";
-import type { Brand } from "../constants/brands";
+import { asBrand, type Brand } from "../constants/brands";
 import {
+  assertLiveAudienceOnBrand,
   defaultCourseMeta,
   resolveDuplicateTarget,
   validateCourseBrandForCreate,
@@ -1379,7 +1380,8 @@ export const DuplicateCourseMetadataService = async (
   metadataOnly.isCertified = false;
   metadataOnly.scholarship = false;
   if (target) {
-    Object.assign(metadataOnly, target);
+    // Meta is excluded above, so the schema default (Airkrit) would stand in.
+    Object.assign(metadataOnly, defaultCourseMeta(target.brand), target);
   }
 
   // Reset analytics to default values
@@ -1485,7 +1487,8 @@ export const DuplicateCourseWithModulesService = async (
   cleanedCourseData.isCertified = false;
   cleanedCourseData.scholarship = false;
   if (target) {
-    Object.assign(cleanedCourseData, target);
+    // Meta is deleted above, so the schema default (Airkrit) would stand in.
+    Object.assign(cleanedCourseData, defaultCourseMeta(target.brand), target);
   }
 
   // Reset analytics
@@ -1570,6 +1573,16 @@ export const UpdateCourseStatusService = async (
   courseId: string,
   status: boolean
 ): Promise<Course | null> => {
+  if (status) {
+    const course = await CourseModel.findById(courseId)
+      .select("brand audience")
+      .lean<{ brand?: unknown; audience?: unknown } | null>();
+    if (!course) {
+      throw new AppError("Course not found", 404);
+    }
+    assertLiveAudienceOnBrand(course.audience, asBrand(course.brand));
+  }
+
   const updatedCourse = await CourseModel.findOneAndUpdate(
     { _id: courseId },
     { isActive: status, updatedAt: new Date() },
