@@ -21,6 +21,7 @@ import {
   normalizeInternshipOffer,
   planMirrorSync,
 } from "../lib/courseInternshipOffer";
+import { rebrandMetaTitle } from "../lib/brandRules";
 import { CourseInternshipModel } from "../models/courseInternship.schema";
 import {
   deleteFilesFromS3,
@@ -1283,6 +1284,11 @@ export const DuplicateCourseService = async (
   cleanedCourseData.isActive = false;
   cleanedCourseData.isFeatured = false;
   cleanedCourseData.createdBy = undefined;
+  // Meta is deleted above, and the schema default names Airkrit.
+  Object.assign(
+    cleanedCourseData,
+    defaultCourseMeta(asBrand((cleanedCourseData as { brand?: unknown }).brand))
+  );
 
   // Generate unique slug and save with retry loop to handle race conditions
   const baseSlug = generateSlugFromTitle(cleanedCourseData.title);
@@ -1379,10 +1385,13 @@ export const DuplicateCourseMetadataService = async (
   metadataOnly.isFeatured = false;
   metadataOnly.isCertified = false;
   metadataOnly.scholarship = false;
-  if (target) {
-    // Meta is excluded above, so the schema default (Airkrit) would stand in.
-    Object.assign(metadataOnly, defaultCourseMeta(target.brand), target);
-  }
+  // Meta is excluded above, and the schema default names Airkrit whichever
+  // brand the copy lands on, so the copy is given its own brand's defaults.
+  Object.assign(
+    metadataOnly,
+    defaultCourseMeta(target?.brand ?? asBrand(courseData.brand)),
+    target ?? {}
+  );
 
   // Reset analytics to default values
   metadataOnly.analytics = {
@@ -1486,10 +1495,13 @@ export const DuplicateCourseWithModulesService = async (
   cleanedCourseData.isFeatured = false;
   cleanedCourseData.isCertified = false;
   cleanedCourseData.scholarship = false;
-  if (target) {
-    // Meta is deleted above, so the schema default (Airkrit) would stand in.
-    Object.assign(cleanedCourseData, defaultCourseMeta(target.brand), target);
-  }
+  // Meta is deleted above, and the schema default names Airkrit whichever
+  // brand the copy lands on, so the copy is given its own brand's defaults.
+  Object.assign(
+    cleanedCourseData,
+    defaultCourseMeta(target?.brand ?? asBrand(courseData.brand)),
+    target ?? {}
+  );
 
   // Reset analytics
   cleanedCourseData.analytics = {
@@ -1684,6 +1696,15 @@ export const UpdateCourseMetadataService = async (
       cleanedData[key] = courseData[key];
     }
   });
+
+  // The SEO title the admin saved carries a brand suffix, so a course that
+  // moves brands would keep advertising the site it left.
+  if (cleanedData.brand && typeof cleanedData.metaTitle === "string") {
+    cleanedData.metaTitle = rebrandMetaTitle(
+      cleanedData.metaTitle,
+      asBrand(cleanedData.brand)
+    );
+  }
 
   // The internship offer is set or cleared explicitly, so that clearing it
   // survives the null-stripping above.

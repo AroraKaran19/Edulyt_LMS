@@ -156,7 +156,8 @@ interface Props {
    * "mine" is the salesperson's view of a lead assigned to them: the same
    * record, read and written through the endpoints scoped to their own
    * assignments, and without the attribution block, which is the org chart
-   * behind the lead rather than anything they need on a call.
+   * behind the lead rather than anything they need on a call. The status
+   * history is admin-only too, and those endpoints do not return it.
    */
   scope?: "admin" | "mine";
 }
@@ -465,7 +466,9 @@ export default function LeadDetailsModal({
               </div>
             ) : null}
 
-            {lead.statusHistory && lead.statusHistory.length > 0 ? (
+            {scope === "admin" &&
+            lead.statusHistory &&
+            lead.statusHistory.length > 0 ? (
               <div>
                 <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
                   Status history

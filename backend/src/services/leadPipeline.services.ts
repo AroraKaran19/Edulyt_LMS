@@ -105,6 +105,8 @@ export const transitionLeadStatus = async (
    * Reading the owner first and updating second leaves that gap open.
    */
   scope: mongoose.FilterQuery<Lead> = {},
+  /** Fields the caller may not read back, such as the histories sales never sees. */
+  projection?: Record<string, 0 | 1>,
 ): Promise<Lead> => {
   if (!mongoose.isValidObjectId(leadId)) {
     throw new AppError("Invalid lead id", 400);
@@ -126,7 +128,7 @@ export const transitionLeadStatus = async (
       note,
       conversionPair(pipeline),
     ),
-    { new: true },
+    { new: true, ...(projection ? { projection } : {}) },
   );
   if (updated) return updated as unknown as Lead;
 

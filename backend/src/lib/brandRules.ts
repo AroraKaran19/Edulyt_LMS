@@ -1,4 +1,4 @@
-import { DEFAULT_BRAND, type Brand } from "../constants/brands";
+import { BRAND_MAIL, DEFAULT_BRAND, type Brand } from "../constants/brands";
 
 /**
  * The one-time mapping used to brand existing courses and categories, and the
@@ -11,17 +11,21 @@ export const brandFromAudience = (audience: unknown): Brand =>
 
 /**
  * The admin SEO screen bakes a brand suffix into the saved meta title, and the
- * public course page renders it. A course moving to Edulyt has to lose the
- * Airkrit suffix or it shows up on edulyt.com.
+ * public course page renders it. A course moving brands has to lose the old
+ * suffix or it advertises the site it just left.
  */
 export const rebrandMetaTitle = (
   metaTitle: string | undefined,
   brand: Brand,
 ): string | undefined => {
-  if (!metaTitle || brand !== "edulyt") {
+  if (!metaTitle) {
     return metaTitle;
   }
-  return metaTitle.replace(/\|\s*Airkrit(\s+India)?\s*$/i, "| Edulyt");
+  const left = BRAND_MAIL[brand === "edulyt" ? "airkrit" : "edulyt"].fromName;
+  return metaTitle.replace(
+    new RegExp(`\\|\\s*${left}(\\s+India)?\\s*$`, "i"),
+    `| ${BRAND_MAIL[brand].fromName}`,
+  );
 };
 
 /**

@@ -636,6 +636,16 @@ export const listAssigneesController = asyncHandler(
 );
 
 /**
+ * Sales works a lead from where it stands now. Who moved it through the
+ * pipeline before them, and who owned it, are the admin's record: kept off the
+ * response rather than hidden in the UI.
+ */
+const SALES_HIDDEN_FIELDS = {
+  statusHistory: 0,
+  assignmentHistory: 0,
+} as const;
+
+/**
  * @desc  One of the caller's own leads, in full
  * @route GET /api/leads/mine/:id
  * @access Sales
@@ -658,10 +668,12 @@ export const getMyAssignedLead = asyncHandler(
     const lead = await LeadModel.findOne({
       _id: id,
       "assignedTo.userId": new mongoose.Types.ObjectId(String(req.user._id)),
-    }).populate(
-      "platformUserId",
-      "firstName lastName email phone userType createdAt"
-    );
+    })
+      .select(SALES_HIDDEN_FIELDS)
+      .populate(
+        "platformUserId",
+        "firstName lastName email phone userType createdAt"
+      );
     if (!lead) {
       throw new AppError("Lead not found", 404);
     }
@@ -709,6 +721,7 @@ export const listMyAssignedLeads = asyncHandler(
 
     const [leads, total] = await Promise.all([
       LeadModel.find(filter)
+        .select(SALES_HIDDEN_FIELDS)
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
@@ -774,7 +787,8 @@ export const updateMyAssignedLead = asyncHandler(
         pair.subStatus,
         actor,
         String(note ?? ""),
-        owned
+        owned,
+        SALES_HIDDEN_FIELDS
       );
     }
 
@@ -782,7 +796,7 @@ export const updateMyAssignedLead = asyncHandler(
       lead = (await LeadModel.findOneAndUpdate(
         { _id: id, ...owned },
         { note: String(note).slice(0, 2000) },
-        { new: true }
+        { new: true, projection: SALES_HIDDEN_FIELDS }
       )) as unknown as Lead | null;
       if (!lead) throw new AppError("Lead not found", 404);
     }
