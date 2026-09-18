@@ -1,5 +1,11 @@
 import mongoose from "mongoose";
 import { Lead } from "../types/lead";
+import {
+  DEFAULT_LEAD_STAGE,
+  DEFAULT_LEAD_SUB_STATUS,
+  LEAD_STAGES,
+  LEAD_SUB_STATUS_VALUES,
+} from "../constants/leadPipeline";
 
 // ===================
 // Lead Schema
@@ -108,13 +114,6 @@ const leadParentSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const LEAD_STATUSES = [
-  "new",
-  "contacted",
-  "qualified",
-  "converted",
-  "lost",
-] as const;
 
 const actorSnapshotSchema = new mongoose.Schema(
   {
@@ -131,9 +130,17 @@ const actorSnapshotSchema = new mongoose.Schema(
 /** Append-only: conversion is flipped by hand, so the trail is the only audit. */
 const statusHistorySchema = new mongoose.Schema(
   {
-    /** Null on the first entry for a lead that predates this field. */
-    from: { type: String, enum: [...LEAD_STATUSES, null], default: null },
-    to: { type: String, enum: LEAD_STATUSES, required: true },
+    /**
+     * Unconstrained on purpose: entries written before the stage/sub-status
+     * split carry the old five-value vocabulary ("contacted", "qualified"),
+     * and an enum here would make saving any lead that has such an entry fail.
+     * What may be written is checked in `leadPipeline.services`, which is the
+     * only writer and updates by aggregation pipeline, where enums never run.
+     */
+    from: { type: String, default: null },
+    fromSubStatus: { type: String, default: null },
+    to: { type: String, required: true },
+    toSubStatus: { type: String, default: null },
     changedByUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -219,11 +226,23 @@ const leadSchema = new mongoose.Schema<Lead>(
     /** Snapshot of `College.state`, so filtering never joins. */
     state: { type: String, required: false, trim: true },
 
+    /** Stage, the first dropdown. The pair with `subStatus` is what has meaning. */
     status: {
       type: String,
       required: true,
-      enum: ["new", "contacted", "qualified", "converted", "lost"],
-      default: "new",
+      enum: LEAD_STAGES,
+      default: DEFAULT_LEAD_STAGE,
+    },
+    /**
+     * The second dropdown, scoped to `status`. Flat enum because a stage-aware
+     * one is not expressible here; the pair is validated in
+     * `leadPipeline.services`.
+     */
+    subStatus: {
+      type: String,
+      required: true,
+      enum: LEAD_SUB_STATUS_VALUES,
+      default: DEFAULT_LEAD_SUB_STATUS,
     },
     note: { type: String, required: false, trim: true },
 
@@ -242,6 +261,10 @@ leadSchema.index({ "parent.userId": 1, createdAt: -1 });
 leadSchema.index({ collegeId: 1, createdAt: -1 });
 leadSchema.index({ state: 1, createdAt: -1 });
 leadSchema.index({ "assignedTo.userId": 1, status: 1, createdAt: -1 });
+// Kept beside the status-only pairs: with `subStatus` unbounded, a stage-only
+// query cannot walk these in `createdAt` order and would sort in memory.
+leadSchema.index({ "assignedTo.userId": 1, status: 1, subStatus: 1, createdAt: -1 });
+leadSchema.index({ status: 1, subStatus: 1, createdAt: -1 });
 // Conversion reporting is by the date of the flip, not the date of capture.
 leadSchema.index({ "convertedBy.userId": 1, convertedAt: -1 });
 // Reversed pair for the leaderboards, which scan a date range and group by

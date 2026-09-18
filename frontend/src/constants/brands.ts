@@ -19,3 +19,6 @@ export const isBrand = (value: unknown): value is Brand =>
 
 /** Error code the API returns when a correct password meets a missing membership. */
 export const BRAND_NOT_JOINED = "BRAND_NOT_JOINED";
+
+/** This site is Airkrit. */
+export const BRAND = "airkrit" as const;

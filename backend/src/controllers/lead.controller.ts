@@ -13,6 +13,7 @@ import { InternshipModel } from "../models/internship.schema";
 import { resolveCrmCode } from "../services/crmProfile.services";
 import { buildAttribution, LeadAttribution } from "../lib/leadAttribution";
 import {
+  assertLeadPipelinePair,
   assignLeads,
   countDuplicates,
   listAssignableSales,
@@ -29,21 +30,12 @@ import {
   LeadAnswer,
   LeadProgram,
   LeadProgramKind,
-  LeadStatus,
 } from "../types/lead";
 import { asBrand, BRAND_MAIL } from "../constants/brands";
 import { enquiryReceivedMail } from "../mail";
 import { isValidPhone } from "../services/phoneVerification.services";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-
-const LEAD_STATUSES: LeadStatus[] = [
-  "new",
-  "contacted",
-  "qualified",
-  "converted",
-  "lost",
-];
 
 /**
  * A verdict written at capture time goes stale: a lead with no account on
@@ -311,6 +303,7 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 20)));
   const search = String(req.query.search ?? "").trim();
   const status = String(req.query.status ?? "").trim();
+  const subStatus = String(req.query.subStatus ?? "").trim();
   const source = String(req.query.source ?? "").trim();
   const brand = String(req.query.brand ?? "").trim();
 
@@ -324,6 +317,8 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
 
   const filter: mongoose.FilterQuery<Lead> = {};
   if (status) filter.status = status;
+  // Only alongside a stage: the same sub-status value lives under two of them.
+  if (status && subStatus) filter.subStatus = subStatus;
   if (source) filter["source.kind"] = source;
   // Leads from before two brands existed carry no brand, and they are all Airkrit.
   if (brand === "airkrit") filter["source.brand"] = { $in: ["airkrit", null] };
@@ -458,7 +453,7 @@ export const listLeadCampaignsController = asyncHandler(
  */
 export const updateLead = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { status, note } = req.body ?? {};
+  const { status, subStatus, note } = req.body ?? {};
 
   if (!mongoose.isValidObjectId(id)) {
     throw new AppError("Invalid lead id", 400);
@@ -476,10 +471,14 @@ export const updateLead = asyncHandler(async (req: Request, res: Response) => {
   let lead: Lead | null = null;
 
   if (status !== undefined) {
-    if (!LEAD_STATUSES.includes(String(status) as LeadStatus)) {
-      throw new AppError("Invalid status", 400);
-    }
-    lead = await transitionLeadStatus(id, status, actor, String(note ?? ""));
+    const pair = assertLeadPipelinePair(status, subStatus);
+    lead = await transitionLeadStatus(
+      id,
+      pair.stage,
+      pair.subStatus,
+      actor,
+      String(note ?? ""),
+    );
   }
 
   if (note !== undefined) {
@@ -605,11 +604,13 @@ export const listMyAssignedLeads = asyncHandler(
     const page = Math.max(1, Number(req.query.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 20)));
     const status = String(req.query.status ?? "").trim();
+    const subStatus = String(req.query.subStatus ?? "").trim();
 
     const filter: mongoose.FilterQuery<Lead> = {
       "assignedTo.userId": new mongoose.Types.ObjectId(String(req.user._id)),
     };
     if (status) filter.status = status;
+    if (status && subStatus) filter.subStatus = subStatus;
 
     const [leads, total] = await Promise.all([
       LeadModel.find(filter)
@@ -650,7 +651,7 @@ export const updateMyAssignedLead = asyncHandler(
     }
 
     const { id } = req.params;
-    const { status, note } = req.body ?? {};
+    const { status, subStatus, note } = req.body ?? {};
 
     if (!mongoose.isValidObjectId(id)) {
       throw new AppError("Invalid lead id", 400);
@@ -671,12 +672,11 @@ export const updateMyAssignedLead = asyncHandler(
     let lead: Lead | null = null;
 
     if (status !== undefined) {
-      if (!LEAD_STATUSES.includes(String(status) as LeadStatus)) {
-        throw new AppError("Invalid status", 400);
-      }
+      const pair = assertLeadPipelinePair(status, subStatus);
       lead = await transitionLeadStatus(
         id,
-        status,
+        pair.stage,
+        pair.subStatus,
         actor,
         String(note ?? ""),
         owned

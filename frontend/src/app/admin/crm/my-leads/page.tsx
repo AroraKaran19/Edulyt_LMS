@@ -8,11 +8,13 @@ import { formatStoredPhone } from "@/lib/phone";
 import Select from "@/components/ui/inputs/Select";
 import Pagination from "@/components/admin/Pagination";
 import useCrm from "@/hooks/useCrm";
+import { type Lead } from "../../leads/types";
 import {
-  LEAD_STATUSES,
-  type Lead,
-  type LeadStatus,
-} from "../../leads/types";
+  LEAD_STAGES,
+  leadPipelineLabel,
+  subStatusesFor,
+  type LeadStage,
+} from "@/constants/leadPipeline";
 import BrandMark from "@/components/admin/BrandMark";
 
 const formatDate = (value: string) =>
@@ -25,41 +27,56 @@ export default function MyLeadsPage() {
   const { listMyAssignedLeads } = useCrm();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [status, setStatus] = useState("");
+  const [subStatus, setSubStatus] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  // Rows whose stage has been picked but whose sub-status has not. Nothing is
+  // written until both halves are chosen.
+  const [pendingStage, setPendingStage] = useState<Record<string, LeadStage>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
-    const data = await listMyAssignedLeads(page, 20, status);
+    const data = await listMyAssignedLeads(page, 20, status, subStatus);
     setLeads(data.leads ?? []);
     setTotalPages(data.totalPages ?? 1);
     setTotal(data.total ?? 0);
     setLoading(false);
-  }, [listMyAssignedLeads, page, status]);
+  }, [listMyAssignedLeads, page, status, subStatus]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const changeStatus = async (lead: Lead, next: LeadStatus) => {
+  const changeStatus = async (
+    lead: Lead,
+    nextStage: LeadStage,
+    nextSubStatus: string,
+  ) => {
     setSavingId(lead._id);
     try {
       // Not the admin route: sales sits outside `adminGuard`, so posting there
       // was a guaranteed 403.
       const res = await apiClient.patch(`/leads/mine/${lead._id}`, {
-        status: next,
+        status: nextStage,
+        subStatus: nextSubStatus,
       });
       const updated: Lead = res.data?.data?.lead;
       setLeads((prev) =>
         prev.map((l) => (l._id === lead._id ? { ...l, ...updated } : l)),
       );
-      toast.success(`Marked ${next}`);
+      toast.success(`Marked ${leadPipelineLabel(nextStage, nextSubStatus)}`);
     } catch (e) {
-      const err = e as { response?: { data?: { message?: string } } };
-      toast.error(err?.response?.data?.message ?? "Could not update this lead");
+      const err = e as {
+        response?: { data?: { message?: string; error?: { message?: string } } };
+      };
+      toast.error(
+        err?.response?.data?.error?.message ??
+          err?.response?.data?.message ??
+          "Could not update this lead",
+      );
     } finally {
       setSavingId(null);
     }
@@ -79,15 +96,34 @@ export default function MyLeadsPage() {
         </span>
       </div>
 
-      <Select
-        options={[{ value: "", label: "All statuses" }, ...LEAD_STATUSES]}
-        value={status}
-        onChange={(v) => {
-          setStatus(v);
-          setPage(1);
-        }}
-        className="w-44"
-      />
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Select
+          options={[{ value: "", label: "All stages" }, ...LEAD_STAGES]}
+          value={status}
+          onChange={(v) => {
+            setStatus(v);
+            // Two stages share sub-status values, so the old one would filter
+            // for something that now means something else.
+            setSubStatus("");
+            setPage(1);
+          }}
+          className="w-44"
+        />
+        {status && (
+          <Select
+            options={[
+              { value: "", label: "All sub-statuses" },
+              ...subStatusesFor(status),
+            ]}
+            value={subStatus}
+            onChange={(v) => {
+              setSubStatus(v);
+              setPage(1);
+            }}
+            className="w-52"
+          />
+        )}
+      </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
         <div className="overflow-x-auto">
@@ -149,14 +185,56 @@ export default function MyLeadsPage() {
                       {formatDate(lead.createdAt)}
                     </td>
                     <td className="px-5 py-3">
-                      <Select
-                        dropdownPortal
-                        options={LEAD_STATUSES}
-                        value={lead.status}
-                        disabled={savingId === lead._id}
-                        onChange={(v) => changeStatus(lead, v as LeadStatus)}
-                        className="w-40"
-                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select
+                          dropdownPortal
+                          options={LEAD_STAGES}
+                          value={pendingStage[lead._id] ?? lead.status}
+                          disabled={savingId === lead._id}
+                          onChange={(v) => {
+                            const next = v as LeadStage;
+                            const only = subStatusesFor(next);
+                            // A stage with one sub-status has nothing to ask.
+                            if (only.length === 1) {
+                              setPendingStage((prev) => {
+                                const rest = { ...prev };
+                                delete rest[lead._id];
+                                return rest;
+                              });
+                              void changeStatus(lead, next, only[0].value);
+                              return;
+                            }
+                            setPendingStage((prev) => ({
+                              ...prev,
+                              [lead._id]: next,
+                            }));
+                          }}
+                          className="w-40"
+                        />
+                        <Select
+                          dropdownPortal
+                          options={subStatusesFor(
+                            pendingStage[lead._id] ?? lead.status,
+                          )}
+                          // Blank while a new stage is pending: the stored
+                          // sub-status belongs to the stage it was set under.
+                          value={
+                            pendingStage[lead._id] ? "" : (lead.subStatus ?? "")
+                          }
+                          placeholder="Choose..."
+                          disabled={savingId === lead._id}
+                          onChange={(v) => {
+                            const stage = pendingStage[lead._id] ?? lead.status;
+                            setPendingStage((prev) => {
+                              const rest = { ...prev };
+                              delete rest[lead._id];
+                              return rest;
+                            });
+                            void changeStatus(lead, stage, v);
+                          }}
+                          className="w-48"
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))

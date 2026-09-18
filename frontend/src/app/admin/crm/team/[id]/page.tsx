@@ -8,7 +8,11 @@ import apiClient from "@/configs/apiConfig";
 import { formatStoredPhone } from "@/lib/phone";
 import Pagination from "@/components/admin/Pagination";
 import LeadDetailsModal from "../../../leads/LeadDetailsModal";
-import { LEAD_STATUSES, STATUS_STYLES, type Lead } from "../../../leads/types";
+import { STATUS_STYLES, type Lead } from "../../../leads/types";
+import {
+  LEAD_STAGE_LABEL,
+  leadSubStatusLabel,
+} from "@/constants/leadPipeline";
 
 type Scope = "generated" | "team" | "assigned" | "converted";
 type Tab = "leads" | "ambassadors";
@@ -339,11 +343,11 @@ export default function CrmPersonPage() {
                           <span
                             className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
                           >
-                            {
-                              LEAD_STATUSES.find((s) => s.value === lead.status)
-                                ?.label
-                            }
+                            {LEAD_STAGE_LABEL[lead.status]}
                           </span>
+                          <div className="mt-0.5 text-[11px] text-gray-600">
+                            {leadSubStatusLabel(lead.status, lead.subStatus)}
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 sm:px-4">
                           {formatDate(lead.createdAt)}

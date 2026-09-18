@@ -1,5 +1,6 @@
 import { Document, Types } from "mongoose";
 import { Brand } from "../constants/brands";
+import type { LeadStage } from "../constants/leadPipeline";
 
 export type LeadSourceKind = "enquiry" | "scholarship";
 
@@ -56,8 +57,11 @@ export interface LeadActor {
 }
 
 export interface LeadStatusChange {
-  from: LeadStatus | null;
-  to: LeadStatus;
+  /** Entries predating the stage split carry the old flat vocabulary. */
+  from: string | null;
+  fromSubStatus: string | null;
+  to: string;
+  toSubStatus: string | null;
   changedByUserId: Types.ObjectId | null;
   changedByName: string;
   changedAt: Date;
@@ -72,12 +76,7 @@ export interface LeadAssignmentChange {
   at: Date;
 }
 
-export type LeadStatus =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "converted"
-  | "lost";
+export type { LeadStage } from "../constants/leadPipeline";
 
 /** Flat so a source can ask anything without a migration. */
 export interface LeadAnswer {
@@ -117,7 +116,8 @@ export interface Lead extends Document {
   convertedAt?: Date | null;
   convertedBy?: LeadActor | null;
 
-  status: LeadStatus;
+  status: LeadStage;
+  subStatus: string;
   note?: string;
 
   /** Landing page query string, so campaign params survive. */

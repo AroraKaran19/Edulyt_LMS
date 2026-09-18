@@ -29,11 +29,16 @@ import { BRANDS, BRAND_LABEL } from "@/constants/brands";
 import {
   LEAD_SOURCE_LABELS,
   LEAD_SOURCE_OPTIONS,
-  LEAD_STATUSES,
   STATUS_STYLES,
   type Lead,
   type LeadCampaignOption,
 } from "./types";
+import {
+  LEAD_STAGES,
+  LEAD_STAGE_LABEL,
+  leadSubStatusLabel,
+  subStatusesFor,
+} from "@/constants/leadPipeline";
 
 const PAGE_SIZE = 20;
 
@@ -55,6 +60,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [subStatus, setSubStatus] = useState("");
   const [brand, setBrand] = useState("");
   const [source, setSource] = useState("");
   const [campaignId, setCampaignId] = useState("");
@@ -85,6 +91,7 @@ export default function LeadsPage() {
           limit: PAGE_SIZE,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          subStatus: subStatus || undefined,
           brand: brand || undefined,
           source: source || undefined,
           campaignId: campaignId || undefined,
@@ -102,7 +109,17 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, debouncedSearch, status, brand, source, campaignId, state, assignedTo]);
+  }, [
+    page,
+    debouncedSearch,
+    status,
+    subStatus,
+    brand,
+    source,
+    campaignId,
+    state,
+    assignedTo,
+  ]);
 
   useEffect(() => {
     load();
@@ -205,14 +222,31 @@ export default function LeadsPage() {
           />
         </div>
         <Select
-          options={[{ value: "", label: "All statuses" }, ...LEAD_STATUSES]}
+          options={[{ value: "", label: "All stages" }, ...LEAD_STAGES]}
           value={status}
           onChange={(value) => {
             setStatus(value);
+            // The old sub-status belongs to the old stage, and two stages share
+            // some values, so keeping it would silently filter for the wrong one.
+            setSubStatus("");
             setPage(1);
           }}
-          className="w-40"
+          className="w-44"
         />
+        {status && (
+          <Select
+            options={[
+              { value: "", label: "All sub-statuses" },
+              ...subStatusesFor(status),
+            ]}
+            value={subStatus}
+            onChange={(value) => {
+              setSubStatus(value);
+              setPage(1);
+            }}
+            className="w-52"
+          />
+        )}
         <Select
           options={[
             { value: "", label: "All brands" },
@@ -461,11 +495,11 @@ export default function LeadsPage() {
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
                       >
-                        {
-                          LEAD_STATUSES.find((s) => s.value === lead.status)
-                            ?.label
-                        }
+                        {LEAD_STAGE_LABEL[lead.status]}
                       </span>
+                      <div className="mt-0.5 text-[11px] text-gray-600">
+                        {leadSubStatusLabel(lead.status, lead.subStatus)}
+                      </div>
                       <div className="mt-0.5 text-[11px] text-gray-400">
                         {LEAD_SOURCE_LABELS[lead.source?.kind] ?? lead.source?.kind}
                       </div>

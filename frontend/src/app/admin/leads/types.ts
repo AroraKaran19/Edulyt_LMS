@@ -1,3 +1,5 @@
+import type { LeadStage } from "@/constants/leadPipeline";
+
 export interface LeadAnswer {
   key: string;
   label: string;
@@ -14,12 +16,7 @@ export interface LeadPlatformUser {
   createdAt?: string;
 }
 
-export type LeadStatus =
-  | "new"
-  | "contacted"
-  | "qualified"
-  | "converted"
-  | "lost";
+export type { LeadStage } from "@/constants/leadPipeline";
 
 export interface LeadActor {
   userId: string | null;
@@ -27,8 +24,11 @@ export interface LeadActor {
 }
 
 export interface LeadStatusChange {
-  from: LeadStatus | null;
-  to: LeadStatus;
+  /** Entries predating the stage split carry the old flat vocabulary. */
+  from: string | null;
+  fromSubStatus?: string | null;
+  to: string;
+  toSubStatus?: string | null;
   changedByName: string;
   changedAt: string;
   note?: string;
@@ -117,20 +117,14 @@ export interface Lead {
   emailCheckedAt?: string;
   platformUserId?: LeadPlatformUser | string | null;
   submittedByUserId?: string | null;
-  status: LeadStatus;
+  status: LeadStage;
+  subStatus: string;
   note?: string;
   pageQuery?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export const LEAD_STATUSES: { value: LeadStatus; label: string }[] = [
-  { value: "new", label: "New" },
-  { value: "contacted", label: "Contacted" },
-  { value: "qualified", label: "Qualified" },
-  { value: "converted", label: "Converted" },
-  { value: "lost", label: "Lost" },
-];
 
 export const LEAD_SOURCE_LABELS: Record<string, string> = {
   enquiry: "Enquiry form",
@@ -188,10 +182,4 @@ export const couponSummary = (scholarship: LeadScholarship): string => {
     : `Coupon ${label}`;
 };
 
-export const STATUS_STYLES: Record<LeadStatus, string> = {
-  new: "bg-blue-50 text-blue-700 ring-blue-600/20",
-  contacted: "bg-amber-50 text-amber-700 ring-amber-600/20",
-  qualified: "bg-purple-50 text-purple-700 ring-purple-600/20",
-  converted: "bg-green-50 text-green-700 ring-green-600/20",
-  lost: "bg-gray-100 text-gray-600 ring-gray-500/20",
-};
+export { STAGE_STYLES as STATUS_STYLES } from "@/constants/leadPipeline";

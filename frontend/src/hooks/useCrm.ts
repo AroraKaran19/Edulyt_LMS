@@ -251,10 +251,15 @@ const useCrm = () => {
   );
 
   const listMyAssignedLeads = useCallback(
-    async (page = 1, limit = 20, status?: string) => {
+    async (page = 1, limit = 20, status?: string, subStatus?: string) => {
       try {
         const res = await apiClient.get("/leads/mine", {
-          params: { page, limit, status: status || undefined },
+          params: {
+            page,
+            limit,
+            status: status || undefined,
+            subStatus: subStatus || undefined,
+          },
         });
         return res.data?.data ?? { leads: [], total: 0, totalPages: 1 };
       } catch {

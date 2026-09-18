@@ -2,7 +2,15 @@ import mongoose from "mongoose";
 import { LeadModel } from "../models/lead.schema";
 import { UserModel } from "../models/user.schema";
 import { AppError } from "../middlewares/error.middleware";
-import type { Lead, LeadStatus } from "../types/lead";
+import type { Lead } from "../types/lead";
+import {
+  isConverted,
+  isLeadStage,
+  isLeadSubStatus,
+  LEAD_STAGE_LABEL,
+  leadSubStatusLabel,
+  type LeadStage,
+} from "../constants/leadPipeline";
 
 export interface TransitionActor {
   userId: mongoose.Types.ObjectId | null;
@@ -15,21 +23,24 @@ export interface TransitionActor {
  * concurrent change slip in and record a `from` that was never true.
  */
 export const buildStatusTransitionPipeline = (
-  to: LeadStatus,
+  to: LeadStage,
+  toSubStatus: string,
   actor: TransitionActor,
   at: Date,
   note?: string,
 ): Record<string, unknown>[] => {
   const entry: Record<string, unknown> = {
     from: "$status",
+    fromSubStatus: "$subStatus",
     to,
+    toSubStatus,
     changedByUserId: actor.userId,
     changedByName: actor.name,
     changedAt: at,
     note: note ?? "",
   };
 
-  const converting = to === "converted";
+  const converting = isConverted(to, toSubStatus);
 
   return [
     {
@@ -42,6 +53,7 @@ export const buildStatusTransitionPipeline = (
     {
       $set: {
         status: to,
+        subStatus: toSubStatus,
         // Cleared on the way out, or a lead flipped to converted and back
         // would keep counting.
         convertedAt: converting ? at : null,
@@ -53,9 +65,27 @@ export const buildStatusTransitionPipeline = (
   ];
 };
 
+/** The pair is the unit of meaning, so it is checked as one. */
+export const assertLeadPipelinePair = (
+  stage: unknown,
+  subStatus: unknown,
+): { stage: LeadStage; subStatus: string } => {
+  if (!isLeadStage(stage)) {
+    throw new AppError("Invalid status", 400);
+  }
+  if (!isLeadSubStatus(stage, subStatus)) {
+    throw new AppError(
+      `Choose a sub-status that belongs to ${LEAD_STAGE_LABEL[stage]}`,
+      400,
+    );
+  }
+  return { stage, subStatus: String(subStatus) };
+};
+
 export const transitionLeadStatus = async (
   leadId: string,
-  to: LeadStatus,
+  to: LeadStage,
+  toSubStatus: string,
   actor: TransitionActor,
   note?: string,
   /**
@@ -70,8 +100,13 @@ export const transitionLeadStatus = async (
   }
 
   const updated = await LeadModel.findOneAndUpdate(
-    { _id: leadId, status: { $ne: to }, ...scope },
-    buildStatusTransitionPipeline(to, actor, new Date(), note),
+    // The pair is what changes, so a lead may move within its own stage.
+    {
+      _id: leadId,
+      $nor: [{ status: to, subStatus: toSubStatus }],
+      ...scope,
+    },
+    buildStatusTransitionPipeline(to, toSubStatus, actor, new Date(), note),
     { new: true },
   );
   if (updated) return updated as unknown as Lead;
@@ -84,7 +119,10 @@ export const transitionLeadStatus = async (
     { status: 1 },
   ).lean();
   if (!existing) throw new AppError("Lead not found", 404);
-  throw new AppError(`This lead is already marked ${to}`, 409);
+  throw new AppError(
+    `This lead is already marked ${LEAD_STAGE_LABEL[to]} / ${leadSubStatusLabel(to, toSubStatus)}`,
+    409,
+  );
 };
 
 /**

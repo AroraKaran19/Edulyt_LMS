@@ -28,7 +28,14 @@ import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSel
 import BrandMark from "@/components/admin/BrandMark";
 import BrandSelect from "@/components/admin/BrandSelect";
 import CategoryInputWithManagement from "@/components/ui/inputs/CategoryInputWithManagement";
-import { BRANDS, BRAND_LABEL, isBrand, type Brand } from "@/constants/brands";
+import {
+  BRAND,
+  BRANDS,
+  BRAND_LABEL,
+  BRAND_SITE_URL,
+  isBrand,
+  type Brand,
+} from "@/constants/brands";
 
 type AudienceFilter = "" | "college-students" | "professionals";
 
@@ -309,10 +316,11 @@ const ManageCoursesPage = () => {
   };
 
   // Handle view course
-  const handleViewCourse = (slug: string) => {
+  const handleViewCourse = (slug: string, brand?: unknown) => {
     if (slug) {
       setOpenMenuId(null);
-      window.open(`/programs/${slug}`, "_blank");
+      const origin = isBrand(brand) && brand !== BRAND ? BRAND_SITE_URL[brand] : "";
+      window.open(`${origin}/programs/${slug}`, "_blank");
     }
   };
 
@@ -764,7 +772,7 @@ const ManageCoursesPage = () => {
                             <button
                               onClick={() => {
                                 setOpenMenuId(null);
-                                handleViewCourse(course.slug);
+                                handleViewCourse(course.slug, course.brand);
                               }}
                               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left cursor-pointer"
                             >

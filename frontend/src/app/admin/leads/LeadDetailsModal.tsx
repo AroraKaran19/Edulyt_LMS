@@ -22,16 +22,33 @@ import {
   ATTEMPT_STYLES,
   COUPON_STYLES,
   LEAD_SOURCE_LABELS,
-  LEAD_STATUSES,
   PROGRAM_KIND_LABELS,
   STATUS_STYLES,
   couponSummary,
   type Lead,
-  type LeadStatus,
 } from "./types";
+import {
+  LEAD_STAGES,
+  LEAD_STAGE_LABEL,
+  defaultSubStatusFor,
+  leadSubStatusLabel,
+  subStatusesFor,
+  type LeadStage,
+} from "@/constants/leadPipeline";
 
 const CHIP =
   "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset";
+
+/**
+ * History entries written before the stage split carry the old flat vocabulary
+ * and no sub-status, so anything unrecognised is shown as it was stored.
+ */
+const historyLabel = (stage: string, sub?: string | null): string => {
+  const stageLabel = LEAD_STAGE_LABEL[stage as LeadStage];
+  if (!stageLabel) return stage;
+  const subLabel = leadSubStatusLabel(stage, sub);
+  return subLabel ? `${stageLabel} / ${subLabel}` : stageLabel;
+};
 
 /**
  * Where a campaign lead got to. Joined on read, so it is absent on an enquiry
@@ -154,6 +171,10 @@ export default function LeadDetailsModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState("");
+  // Staged locally: the stage alone is not a status, so nothing is written
+  // until a sub-status under it has been chosen.
+  const [stage, setStage] = useState<LeadStage>("new");
+  const [subStatus, setSubStatus] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -165,6 +186,8 @@ export default function LeadDetailsModal({
         const found: Lead = res.data?.data?.lead;
         setLead(found);
         setNote(found?.note ?? "");
+        setStage(found?.status ?? "new");
+        setSubStatus(found?.subStatus ?? "");
       })
       .catch(() => {
         if (!cancelled) toast.error("Could not load this lead");
@@ -177,7 +200,11 @@ export default function LeadDetailsModal({
     };
   }, [leadId]);
 
-  const save = async (patch: { status?: LeadStatus; note?: string }) => {
+  const save = async (patch: {
+    status?: LeadStage;
+    subStatus?: string;
+    note?: string;
+  }) => {
     setSaving(true);
     try {
       const res = await apiClient.patch(`/leads/admin/${leadId}`, patch);
@@ -187,8 +214,10 @@ export default function LeadDetailsModal({
       setLead((prev) => (prev ? { ...prev, ...updated } : updated));
       onUpdated(updated);
       toast.success("Lead updated");
-    } catch {
-      toast.error("Could not update this lead");
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { error?: { message?: string } } } })
+        ?.response?.data?.error?.message;
+      toast.error(message || "Could not update this lead");
     } finally {
       setSaving(false);
     }
@@ -435,8 +464,10 @@ export default function LeadDetailsModal({
                       className="flex flex-wrap justify-between gap-2"
                     >
                       <span className="text-gray-900">
-                        {entry.from ? `${entry.from} to ` : ""}
-                        {entry.to}
+                        {entry.from
+                          ? `${historyLabel(entry.from, entry.fromSubStatus)} to `
+                          : ""}
+                        {historyLabel(entry.to, entry.toSubStatus)}
                       </span>
                       <span className="text-xs text-gray-500">
                         {entry.changedByName || "Unknown"} ·{" "}
@@ -461,17 +492,44 @@ export default function LeadDetailsModal({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Select
-                label="Status"
-                options={LEAD_STATUSES}
-                value={lead.status}
+                label="Stage"
+                options={LEAD_STAGES}
+                value={stage}
                 disabled={saving}
-                onChange={(value) => save({ status: value as LeadStatus })}
+                onChange={(value) => {
+                  const next = value as LeadStage;
+                  setStage(next);
+                  // Two stages share sub-status values, so carrying the old one
+                  // over would keep a label that now means something else.
+                  setSubStatus(defaultSubStatusFor(next));
+                }}
               />
-              <div className="text-xs text-gray-500 sm:self-end sm:pb-2">
-                Signed in when submitting:{" "}
-                <b className="text-gray-700">
-                  {lead.submittedByUserId ? "yes" : "no"}
-                </b>
+              <Select
+                label="Sub-status"
+                options={subStatusesFor(stage)}
+                value={subStatus}
+                disabled={saving}
+                onChange={setSubStatus}
+              />
+              <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={
+                    saving ||
+                    !subStatus ||
+                    (stage === lead.status && subStatus === lead.subStatus)
+                  }
+                  onClick={() => save({ status: stage, subStatus })}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Update status"}
+                </button>
+                <span className="text-xs text-gray-500">
+                  Signed in when submitting:{" "}
+                  <b className="text-gray-700">
+                    {lead.submittedByUserId ? "yes" : "no"}
+                  </b>
+                </span>
               </div>
             </div>
 
@@ -504,7 +562,10 @@ export default function LeadDetailsModal({
               <span
                 className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
               >
-                {LEAD_STATUSES.find((s) => s.value === lead.status)?.label}
+                {LEAD_STAGE_LABEL[lead.status]}
+                {leadSubStatusLabel(lead.status, lead.subStatus)
+                  ? ` / ${leadSubStatusLabel(lead.status, lead.subStatus)}`
+                  : ""}
               </span>
 
               {isSuperAdmin ? (
