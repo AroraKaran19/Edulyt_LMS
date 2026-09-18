@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader2, Mail, Phone } from "lucide-react";
+import { Loader2, Mail, Phone, StickyNote } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
 import { formatStoredPhone } from "@/lib/phone";
@@ -9,6 +9,7 @@ import Select from "@/components/ui/inputs/Select";
 import Pagination from "@/components/admin/Pagination";
 import useCrm from "@/hooks/useCrm";
 import LeadDetailsModal from "../../leads/LeadDetailsModal";
+import LeadNoteModal from "../../leads/LeadNoteModal";
 import { type Lead } from "../../leads/types";
 import useLeadPipeline from "@/hooks/useLeadPipeline";
 import {
@@ -37,6 +38,7 @@ export default function MyLeadsPage() {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
+  const [noteLead, setNoteLead] = useState<Lead | null>(null);
   // Rows whose stage has been picked but whose sub-status has not. Nothing is
   // written until both halves are chosen.
   const [pendingStage, setPendingStage] = useState<Record<string, string>>({});
@@ -143,18 +145,19 @@ export default function MyLeadsPage() {
                 <th className="px-5 py-3">College</th>
                 <th className="px-5 py-3">Received</th>
                 <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center">
+                  <td colSpan={6} className="px-5 py-12 text-center">
                     <Loader2 className="mx-auto size-6 animate-spin text-gray-400" />
                   </td>
                 </tr>
               ) : leads.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-5 py-12 text-center text-gray-500">
                     Nothing assigned to you yet.
                   </td>
                 </tr>
@@ -249,6 +252,21 @@ export default function MyLeadsPage() {
                         />
                       </div>
                     </td>
+                    <td className="px-5 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setNoteLead(lead)}
+                        title={lead.note?.trim() || undefined}
+                        className="flex w-56 items-start gap-1.5 rounded-lg border border-gray-200 px-2.5 py-2 text-left text-xs text-gray-600 transition-colors hover:border-orange-300 hover:text-orange-600"
+                      >
+                        <StickyNote className="mt-px size-3.5 shrink-0" />
+                        {lead.note?.trim() ? (
+                          <span className="line-clamp-2">{lead.note}</span>
+                        ) : (
+                          <span className="font-semibold">Add note</span>
+                        )}
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -277,6 +295,24 @@ export default function MyLeadsPage() {
               prev.map((l) => (l._id === updated._id ? { ...l, ...updated } : l)),
             )
           }
+        />
+      ) : null}
+
+      {noteLead ? (
+        <LeadNoteModal
+          leadId={noteLead._id}
+          leadName={noteLead.name}
+          initialNote={noteLead.note ?? ""}
+          scope="mine"
+          onClose={() => setNoteLead(null)}
+          onSaved={(updated) => {
+            setLeads((prev) =>
+              prev.map((l) =>
+                l._id === updated._id ? { ...l, ...updated } : l,
+              ),
+            );
+            setNoteLead(null);
+          }}
         />
       ) : null}
     </div>
