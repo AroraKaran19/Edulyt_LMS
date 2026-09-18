@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import apiClient from "@/configs/apiConfig";
+import type { Brand } from "@/constants/brands";
 
 export interface SlugCheckResponse {
   success: boolean;
@@ -17,12 +18,15 @@ export const useSlugCheck = () => {
   /**
    * Check if a slug is available for use
    * @param slug - The slug to check
+   * @param brand - The brand the course is sold on; slugs are unique per brand,
+   *   so the same URL may exist on the other site
    * @param excludeId - Optional course ID to exclude from check (for updates)
    * @returns Promise with availability status
    */
   const checkSlugAvailability = useCallback(
     async (
       slug: string,
+      brand: Brand,
       excludeId?: string
     ): Promise<{
       available: boolean;
@@ -39,7 +43,7 @@ export const useSlugCheck = () => {
       setError("");
 
       try {
-        const params = new URLSearchParams();
+        const params = new URLSearchParams({ brand });
         if (excludeId) {
           params.append("excludeId", excludeId);
         }

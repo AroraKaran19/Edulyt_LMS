@@ -20,6 +20,7 @@ import {
   getPartnerInternshipStudentsService,
   type PartnerInternshipStudentStatusFilter,
 } from "../services/partner.services";
+import { readableBrands } from "../lib/brandScope";
 
 const parsePartnerTrendMonths = (raw: unknown): number => {
   const n = parseInt(String(raw ?? ""), 10);
@@ -264,7 +265,11 @@ export const getPartnerCourseDetail = asyncHandler(
     const collegeId = requirePartnerCollegeId(req);
     const slug = String(req.params.slug ?? "").trim();
     if (!slug) throw new AppError("Course slug is required", 400);
-    const result = await getPartnerCourseDetailService(collegeId, slug);
+    const result = await getPartnerCourseDetailService(
+      collegeId,
+      slug,
+      readableBrands(req.brand),
+    );
     if (!result) throw new AppError("Course not found", 404);
     sendSuccessResponse(res, result, "Partner course analytics fetched");
   },

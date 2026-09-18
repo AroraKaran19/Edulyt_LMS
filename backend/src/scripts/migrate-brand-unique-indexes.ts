@@ -1,12 +1,14 @@
 /**
- * Moves two unique keys from a single field to a brand-scoped pair:
+ * Moves three unique keys from a single field to a brand-scoped pair:
  *   referralprofiles  userId        -> { userId, brand }
  *   categories        name          -> { name, brand }
+ *   courses           slug          -> { slug, brand }
  *
  * Mongoose creates the new indexes on boot but never drops the old ones, and
- * the old ones keep enforcing one referral profile per person and one category
- * per name across both brands. Brand-scoped referral cannot ship until this has
- * run.
+ * the old ones keep enforcing one referral profile per person, one category per
+ * name, and one course per slug across both brands. Brand-scoped referral
+ * cannot ship until this has run, and until the course swap runs, a course
+ * copied to the other brand cannot keep its URL.
  *
  * Re-runs are safe: an existing index is left alone and a missing one is not an
  * error.
@@ -39,6 +41,11 @@ const SWAPS: IndexSwap[] = [
     collection: "categories",
     create: { keys: { name: 1, brand: 1 }, name: "name_1_brand_1" },
     drop: "name_1",
+  },
+  {
+    collection: "courses",
+    create: { keys: { slug: 1, brand: 1 }, name: "slug_1_brand_1" },
+    drop: "slug_1",
   },
 ];
 

@@ -36,7 +36,7 @@ import {
   LeadProgram,
   LeadProgramKind,
 } from "../types/lead";
-import { asBrand, BRAND_MAIL } from "../constants/brands";
+import { asBrand, BRAND_MAIL, type Brand } from "../constants/brands";
 import { enquiryReceivedMail } from "../mail";
 import { isValidPhone } from "../services/phoneVerification.services";
 
@@ -109,18 +109,24 @@ async function resolveEmailsOnPlatform(leads: Lead[]): Promise<void> {
 
 const PROGRAM_KINDS: readonly LeadProgramKind[] = ["course", "internship"];
 
-// Titled from the catalogue, never the browser. Both slugs are uniquely indexed.
+// Titled from the catalogue, never the browser. A course slug is unique per
+// brand, so the enquiry's own brand picks which catalogue is read; an
+// internship slug is still unique on its own.
 // `Internship` types `_id` as a string, but lean returns an ObjectId.
 const findProgramTitle = async (
   kind: LeadProgramKind,
   slug: string,
+  brand: Brand,
 ): Promise<{ _id: unknown; title?: unknown } | null> =>
   kind === "course"
-    ? await CourseModel.findOne({ slug }, { title: 1 }).lean()
+    ? await CourseModel.findOne({ slug, brand }, { title: 1 }).lean()
     : await InternshipModel.findOne({ slug }, { title: 1 }).lean();
 
 // An unmatched slug or a failed lookup still keeps the slug: neither may cost the lead.
-const resolveProgram = async (raw: unknown): Promise<LeadProgram | undefined> => {
+const resolveProgram = async (
+  raw: unknown,
+  brand: Brand,
+): Promise<LeadProgram | undefined> => {
   const input = (raw ?? {}) as { kind?: unknown; slug?: unknown };
   const kind = PROGRAM_KINDS.find((k) => k === input.kind);
   const slug = String(input.slug ?? "").trim().slice(0, 200);
@@ -128,7 +134,7 @@ const resolveProgram = async (raw: unknown): Promise<LeadProgram | undefined> =>
 
   const program: LeadProgram = { kind, title: "", slug };
   try {
-    const doc = await findProgramTitle(kind, slug);
+    const doc = await findProgramTitle(kind, slug, brand);
     if (doc) {
       program.refId = doc._id as mongoose.Types.ObjectId;
       program.title = String(doc.title ?? "");
@@ -258,7 +264,7 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     }
   }
 
-  const program = await resolveProgram(rawProgram);
+  const program = await resolveProgram(rawProgram, brand);
   // The landing pair is whatever the admin marked as the default stage, so a
   // renamed or reordered funnel still captures into a stage that exists.
   const landing = defaultPair(await getLeadPipeline());

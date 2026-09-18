@@ -121,7 +121,7 @@ const Screen8 = () => {
       }
 
       // Use the hook's availability check
-      const result = await checkSlugAvailability(slug);
+      const result = await checkSlugAvailability(slug, brand);
       if (result) {
         setSlugValidation({
           isChecking: false,
@@ -136,7 +136,7 @@ const Screen8 = () => {
         });
       }
     },
-    [checkSlugAvailability, validateSlugFormat]
+    [brand, checkSlugAvailability, validateSlugFormat]
   );
 
   // Debounce slug validation (skip in edit mode)

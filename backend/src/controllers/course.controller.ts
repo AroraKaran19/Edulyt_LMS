@@ -35,6 +35,7 @@ import {
 import { isBrand } from "../constants/brands";
 import { readableBrands } from "../lib/brandScope";
 import { findCourseBrandOutside } from "../services/courseMove.services";
+import { parseBrandInput } from "../services/brandOwnership.services";
 
 export const getAllCourses = asyncHandler(
   async (req: Request, res: Response) => {
@@ -318,7 +319,10 @@ export const getAdminCourseBySlug = asyncHandler(
       throw new AppError("Slug is required", 400);
     }
 
-    const result = await getCourseBySlugService(slug, true);
+    // A slug is unique per brand, so the lookup has to say which one it means.
+    const result = await getCourseBySlugService(slug, true, [
+      parseBrandInput(req.query.brand, "course"),
+    ]);
     if (!result) {
       sendSuccessResponse(res, [], "Course not found", 200);
       return;
@@ -796,8 +800,11 @@ export const checkSlugAvailability = asyncHandler(
       throw new AppError("Slug is required", 400);
     }
 
+    // Named by the caller, not taken from the request's own site: the admin
+    // panel is served on one brand and authors courses for both.
     const result = await checkSlugAvailabilityService(
       slug,
+      parseBrandInput(req.query.brand, "course"),
       excludeId as string
     );
 

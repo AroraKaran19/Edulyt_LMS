@@ -5,7 +5,7 @@ import { AxiosError } from "axios";
 import CoursePage from "./CoursePage";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetcher } from "@/lib/utils";
-import { permanentRedirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { movedCourseUrl } from "@/lib/edulytRedirect";
 
 // Fetch course data
@@ -56,7 +56,7 @@ export async function generateMetadata({
   const slug = (await params).slug;
   const { course, movedTo } = await fetchCourse(slug);
   if (movedTo === "edulyt") {
-    permanentRedirect(movedCourseUrl(slug));
+    redirect(movedCourseUrl(slug));
   }
 
   if (!isPublicViewableCourse(course)) {
@@ -105,8 +105,11 @@ const IndividualCoursePage = async ({
 }) => {
   const { slug } = await params;
   const { status, course, movedTo } = await fetchCourse(slug);
+  // Temporary, not permanent: slugs are unique per brand, so Airkrit may
+  // publish its own course on this URL later, and a cached 301 would keep
+  // sending visitors to Edulyt long after it does.
   if (movedTo === "edulyt") {
-    permanentRedirect(movedCourseUrl(slug));
+    redirect(movedCourseUrl(slug));
   }
 
   const errorConfig = getErrorUIConfig({

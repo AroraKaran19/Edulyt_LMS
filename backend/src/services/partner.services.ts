@@ -7,6 +7,8 @@ import { CourseModel } from "../models/course.schema";
 import { CategoryModel } from "../models/category.schema";
 import { CertificateModel } from "../models/certificate.schema";
 import { InternshipModel } from "../models/internship.schema";
+import { preferOwnBrand } from "../lib/brandScope";
+import type { Brand } from "../constants/brands";
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -1277,10 +1279,15 @@ export interface PartnerCourseDetailResult {
 export const getPartnerCourseDetailService = async (
   partnerCollegeId: mongoose.Types.ObjectId,
   slug: string,
+  brands: Brand[],
 ): Promise<PartnerCourseDetailResult | null> => {
-  const course = await CourseModel.findOne({ slug })
-    .select("_id title slug thumbnail category")
+  // Unique per brand, so the same slug can name a course on each: at most one
+  // per brand, and the portal's own brand wins.
+  const matches = await CourseModel.find({ slug, brand: { $in: brands } })
+    .limit(2)
+    .select("_id title slug thumbnail category brand")
     .lean();
+  const course = preferOwnBrand(matches, brands);
   if (!course) return null;
 
   const categoryDocs = await CategoryModel.find({

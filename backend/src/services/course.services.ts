@@ -22,12 +22,13 @@ import {
   planMirrorSync,
 } from "../lib/courseInternshipOffer";
 import { rebrandMetaTitle } from "../lib/brandRules";
+import { preferOwnBrand } from "../lib/brandScope";
 import { CourseInternshipModel } from "../models/courseInternship.schema";
 import {
   deleteFilesFromS3,
   extractS3KeyFromUrl,
 } from "./upload.services";
-import { asBrand, type Brand } from "../constants/brands";
+import { BRAND_MAIL, asBrand, type Brand } from "../constants/brands";
 import {
   assertLiveAudienceOnBrand,
   defaultCourseMeta,
@@ -662,11 +663,13 @@ export const getCourseBySlugService = async (
   brands?: Brand[]
 ): Promise<Course | null> => {
   // Fetch course WITHOUT populating category to avoid CastError with invalid values
-  const course = await CourseModel.findOne({
+  const matches = await CourseModel.find({
     slug,
     isActive: true,
     ...(brands && brands.length > 0 ? { brand: { $in: brands } } : {}),
   })
+    // One per brand at most, and before cutover the Airkrit site reads both.
+    .limit(2)
     .where(isAdmin ? {} : { isActive: true })
     .select("-__v")
     .populate("instructor", "-__v")
@@ -690,6 +693,11 @@ export const getCourseBySlugService = async (
       },
     })
     .lean();
+
+  // A slug is unique per brand, not globally, so the same URL can name a
+  // course on each. The caller's own brand wins; the other is only a fallback
+  // for the pre-cutover Airkrit site, which still serves Edulyt's catalogue.
+  const course = preferOwnBrand(matches, brands ?? []);
 
   if (!course) {
     return null;
@@ -1239,12 +1247,18 @@ const generateSlugFromTitle = (title: string): string => {
 /**
  * Generate a unique slug by checking if it exists and appending a number if needed
  */
-const generateUniqueSlug = async (baseSlug: string): Promise<string> => {
+/** Slugs are unique per brand, so a copy on the other brand keeps its URL. */
+const generateUniqueSlug = async (
+  baseSlug: string,
+  brand: Brand
+): Promise<string> => {
   let slug = baseSlug;
   let counter = 1;
 
   while (true) {
-    const existingCourse = await CourseModel.findOne({ slug }).select("_id");
+    const existingCourse = await CourseModel.findOne({ slug, brand }).select(
+      "_id"
+    );
     if (!existingCourse) {
       return slug;
     }
@@ -1300,7 +1314,8 @@ export const DuplicateCourseService = async (
     try {
       // Generate a unique slug for this attempt
       cleanedCourseData.slug = await generateUniqueSlug(
-        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`
+        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`,
+        asBrand((cleanedCourseData as { brand?: unknown }).brand)
       );
 
       const duplicatedCourse = new CourseModel(cleanedCourseData);
@@ -1410,8 +1425,13 @@ export const DuplicateCourseMetadataService = async (
   metadataOnly.instructor = [];
   metadataOnly.testimonials = [];
 
-  // Generate unique slug and save with retry loop to handle race conditions
-  const baseSlug = generateSlugFromTitle(metadataOnly.title);
+  // A copy on the other brand is the same course on the other site, so it
+  // starts from the source's URL, which is free there now that slugs are
+  // unique per brand. A same-brand copy has to take a new one.
+  const baseSlug =
+    target && courseData.slug
+      ? String(courseData.slug)
+      : generateSlugFromTitle(metadataOnly.title);
   let savedCourse: any = null;
   let attempts = 0;
   const maxAttempts = 5;
@@ -1420,7 +1440,8 @@ export const DuplicateCourseMetadataService = async (
     try {
       // Generate a unique slug for this attempt
       metadataOnly.slug = await generateUniqueSlug(
-        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`
+        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`,
+        target?.brand ?? asBrand(courseData.brand)
       );
 
       const duplicatedCourse = new CourseModel(metadataOnly);
@@ -1515,8 +1536,12 @@ export const DuplicateCourseWithModulesService = async (
     dropoffPoints: [],
   };
 
-  // Generate unique slug
-  const baseSlug = generateSlugFromTitle(cleanedCourseData.title);
+  // A copy on the other brand keeps the source's URL, which is free there now
+  // that slugs are unique per brand. A same-brand copy has to take a new one.
+  const baseSlug =
+    target && courseData.slug
+      ? String(courseData.slug)
+      : generateSlugFromTitle(cleanedCourseData.title);
   let savedCourse: any = null;
   let attempts = 0;
   const maxAttempts = 5;
@@ -1524,7 +1549,8 @@ export const DuplicateCourseWithModulesService = async (
   while (!savedCourse && attempts < maxAttempts) {
     try {
       cleanedCourseData.slug = await generateUniqueSlug(
-        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`
+        attempts === 0 ? baseSlug : `${baseSlug}-${Date.now()}-${attempts}`,
+        target?.brand ?? asBrand(courseData.brand)
       );
 
       // Create the new course
@@ -1952,6 +1978,7 @@ export const DeleteCourseService = async (
  */
 export const checkSlugAvailabilityService = async (
   slug: string,
+  brand: Brand,
   excludeId?: string
 ): Promise<{ available: boolean; message: string }> => {
   try {
@@ -1988,8 +2015,9 @@ export const checkSlugAvailabilityService = async (
       };
     }
 
-    // Check if slug exists in database
-    const query: any = { slug };
+    // Only on this brand: the other site is a separate catalogue, and the same
+    // course sold on both is meant to share its URL.
+    const query: any = { slug, brand };
     if (excludeId) {
       query._id = { $ne: excludeId };
     }
@@ -1999,7 +2027,7 @@ export const checkSlugAvailabilityService = async (
     if (existingCourse) {
       return {
         available: false,
-        message: "This slug is already taken",
+        message: `This slug is already taken on ${BRAND_MAIL[brand].fromName}`,
       };
     }
 

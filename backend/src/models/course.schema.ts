@@ -309,7 +309,10 @@ const courseSchema = new mongoose.Schema<Course>(
         message: "Audience must be either college-students or professionals",
       },
     },
-    slug: { type: String, required: true, unique: true },
+    // Unique per brand, not globally: the two sites are separate catalogues and
+    // the same course sold on both should have the same URL on both. The
+    // compound index is declared below, after the brand field is added.
+    slug: { type: String, required: true },
     metaTitle: {
       type: String,
       required: false,
@@ -408,6 +411,9 @@ courseSchema.index({ updatedAt: 1 }); // For listing courses by update date
 courseSchema.index({ title: "text" }); // For full-text search
 courseSchema.plugin(brandPlugin, { derive: (doc) => brandFromAudience(doc.get("audience")) });
 courseSchema.index({ brand: 1, isActive: 1 });
+// Replaces the old global `slug_1`, which stopped a course copied to the other
+// brand from keeping its URL. `scripts:migrate-brand-unique-indexes` drops it.
+courseSchema.index({ slug: 1, brand: 1 }, { unique: true });
 
 courseSchema.pre("save", function (next) {
   this.set("updatedAt", new Date());
