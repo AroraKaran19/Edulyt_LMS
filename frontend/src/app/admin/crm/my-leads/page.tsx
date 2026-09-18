@@ -10,12 +10,13 @@ import Pagination from "@/components/admin/Pagination";
 import useCrm from "@/hooks/useCrm";
 import LeadDetailsModal from "../../leads/LeadDetailsModal";
 import { type Lead } from "../../leads/types";
+import useLeadPipeline from "@/hooks/useLeadPipeline";
 import {
-  LEAD_STAGES,
-  leadPipelineLabel,
-  subStatusesFor,
-  type LeadStage,
-} from "@/constants/leadPipeline";
+  onlySubStatusFor,
+  pipelineLabel,
+  stageOptions,
+  subStatusOptions,
+} from "@/lib/leadPipeline";
 import BrandMark from "@/components/admin/BrandMark";
 
 const formatDate = (value: string) =>
@@ -26,6 +27,7 @@ const formatDate = (value: string) =>
 
 export default function MyLeadsPage() {
   const { listMyAssignedLeads } = useCrm();
+  const { pipeline } = useLeadPipeline();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [status, setStatus] = useState("");
   const [subStatus, setSubStatus] = useState("");
@@ -37,7 +39,7 @@ export default function MyLeadsPage() {
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   // Rows whose stage has been picked but whose sub-status has not. Nothing is
   // written until both halves are chosen.
-  const [pendingStage, setPendingStage] = useState<Record<string, LeadStage>>({});
+  const [pendingStage, setPendingStage] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -54,7 +56,7 @@ export default function MyLeadsPage() {
 
   const changeStatus = async (
     lead: Lead,
-    nextStage: LeadStage,
+    nextStage: string,
     nextSubStatus: string,
   ) => {
     setSavingId(lead._id);
@@ -69,7 +71,7 @@ export default function MyLeadsPage() {
       setLeads((prev) =>
         prev.map((l) => (l._id === lead._id ? { ...l, ...updated } : l)),
       );
-      toast.success(`Marked ${leadPipelineLabel(nextStage, nextSubStatus)}`);
+      toast.success(`Marked ${pipelineLabel(pipeline, nextStage, nextSubStatus)}`);
     } catch (e) {
       const err = e as {
         response?: { data?: { message?: string; error?: { message?: string } } };
@@ -100,7 +102,11 @@ export default function MyLeadsPage() {
 
       <div className="flex flex-wrap items-center gap-2.5">
         <Select
-          options={[{ value: "", label: "All stages" }, ...LEAD_STAGES]}
+          options={[
+            { value: "", label: "All stages" },
+            // Retired stages are included: leads still sit on them.
+            ...stageOptions(pipeline, true),
+          ]}
           value={status}
           onChange={(v) => {
             setStatus(v);
@@ -115,7 +121,7 @@ export default function MyLeadsPage() {
           <Select
             options={[
               { value: "", label: "All sub-statuses" },
-              ...subStatusesFor(status),
+              ...subStatusOptions(pipeline, status, true),
             ]}
             value={subStatus}
             onChange={(v) => {
@@ -194,20 +200,20 @@ export default function MyLeadsPage() {
                       <div className="flex flex-wrap items-center gap-2">
                         <Select
                           dropdownPortal
-                          options={LEAD_STAGES}
+                          options={stageOptions(pipeline)}
                           value={pendingStage[lead._id] ?? lead.status}
                           disabled={savingId === lead._id}
                           onChange={(v) => {
-                            const next = v as LeadStage;
-                            const only = subStatusesFor(next);
-                            // A stage with one sub-status has nothing to ask.
-                            if (only.length === 1) {
+                            const next = v;
+                            // A stage with one live sub-status has nothing to ask.
+                            const only = onlySubStatusFor(pipeline, next);
+                            if (only) {
                               setPendingStage((prev) => {
                                 const rest = { ...prev };
                                 delete rest[lead._id];
                                 return rest;
                               });
-                              void changeStatus(lead, next, only[0].value);
+                              void changeStatus(lead, next, only);
                               return;
                             }
                             setPendingStage((prev) => ({
@@ -219,7 +225,8 @@ export default function MyLeadsPage() {
                         />
                         <Select
                           dropdownPortal
-                          options={subStatusesFor(
+                          options={subStatusOptions(
+                            pipeline,
                             pendingStage[lead._id] ?? lead.status,
                           )}
                           // Blank while a new stage is pending: the stored

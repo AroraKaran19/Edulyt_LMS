@@ -191,6 +191,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
       { key: "settings.partnership-import", label: "Partnerships", href: "/admin/settings/partnership-import" },
       { key: "settings.announcements", label: "Announcements", href: "/admin/settings/announcements" },
       { key: "settings.referral-commission-tiers", label: "Referral Commission Tiers", href: "/admin/settings/referral-commission-tiers" },
+      { key: "settings.lead-pipeline", label: "Lead Pipeline", href: "/admin/settings/lead-pipeline" },
     ],
   },
 ];

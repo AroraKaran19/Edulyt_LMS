@@ -8,11 +8,9 @@ import apiClient from "@/configs/apiConfig";
 import { formatStoredPhone } from "@/lib/phone";
 import Pagination from "@/components/admin/Pagination";
 import LeadDetailsModal from "../../../leads/LeadDetailsModal";
-import { STATUS_STYLES, type Lead } from "../../../leads/types";
-import {
-  LEAD_STAGE_LABEL,
-  leadSubStatusLabel,
-} from "@/constants/leadPipeline";
+import { type Lead } from "../../../leads/types";
+import useLeadPipeline from "@/hooks/useLeadPipeline";
+import { stageLabel, stageStyle, subStatusLabel } from "@/lib/leadPipeline";
 
 type Scope = "generated" | "team" | "assigned" | "converted";
 type Tab = "leads" | "ambassadors";
@@ -66,6 +64,7 @@ const formatDay = (value: string | null) =>
     : "—";
 
 export default function CrmPersonPage() {
+  const { pipeline } = useLeadPipeline();
   const params = useParams();
   const id = String(params?.id ?? "");
 
@@ -341,12 +340,12 @@ export default function CrmPersonPage() {
                         </td>
                         <td className="px-3 py-2.5 sm:px-4">
                           <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${stageStyle(pipeline, lead.status)}`}
                           >
-                            {LEAD_STAGE_LABEL[lead.status]}
+                            {stageLabel(pipeline, lead.status)}
                           </span>
                           <div className="mt-0.5 text-[11px] text-gray-600">
-                            {leadSubStatusLabel(lead.status, lead.subStatus)}
+                            {subStatusLabel(pipeline, lead.status, lead.subStatus)}
                           </div>
                         </td>
                         <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 sm:px-4">

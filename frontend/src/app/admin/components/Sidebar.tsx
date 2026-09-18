@@ -342,6 +342,10 @@ const AdminSidebar = ({
           label: "Referral Commission Tiers",
           href: "/admin/settings/referral-commission-tiers",
         },
+        {
+          label: "Lead Pipeline",
+          href: "/admin/settings/lead-pipeline",
+        },
       ],
     },
   ];

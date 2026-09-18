@@ -1,6 +1,5 @@
 import { Document, Types } from "mongoose";
 import { Brand } from "../constants/brands";
-import type { LeadStage } from "../constants/leadPipeline";
 
 export type LeadSourceKind = "enquiry" | "scholarship";
 
@@ -76,7 +75,6 @@ export interface LeadAssignmentChange {
   at: Date;
 }
 
-export type { LeadStage } from "../constants/leadPipeline";
 
 /** Flat so a source can ask anything without a migration. */
 export interface LeadAnswer {
@@ -116,7 +114,8 @@ export interface Lead extends Document {
   convertedAt?: Date | null;
   convertedBy?: LeadActor | null;
 
-  status: LeadStage;
+  /** A stage `key` from `LeadPipelineSettings`, which the admin edits. */
+  status: string;
   subStatus: string;
   note?: string;
 

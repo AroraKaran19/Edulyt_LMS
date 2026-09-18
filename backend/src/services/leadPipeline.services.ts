@@ -4,15 +4,12 @@ import { UserModel } from "../models/user.schema";
 import { AppError } from "../middlewares/error.middleware";
 import type { Lead } from "../types/lead";
 import {
-  DEFAULT_LEAD_STAGE,
-  DEFAULT_LEAD_SUB_STATUS,
-  isConverted,
-  isLeadStage,
-  isLeadSubStatus,
-  LEAD_STAGE_LABEL,
-  leadSubStatusLabel,
-  type LeadStage,
-} from "../constants/leadPipeline";
+  conversionPair,
+  defaultPair,
+  findStage,
+  findSubStatus,
+  getLeadPipeline,
+} from "./leadPipelineSettings.services";
 
 export interface TransitionActor {
   userId: mongoose.Types.ObjectId | null;
@@ -25,11 +22,13 @@ export interface TransitionActor {
  * concurrent change slip in and record a `from` that was never true.
  */
 export const buildStatusTransitionPipeline = (
-  to: LeadStage,
+  to: string,
   toSubStatus: string,
   actor: TransitionActor,
   at: Date,
   note?: string,
+  /** The pair the admin has marked as a conversion, or null if none is. */
+  converts?: { status: string; subStatus: string } | null,
 ): Record<string, unknown>[] => {
   const entry: Record<string, unknown> = {
     from: "$status",
@@ -44,7 +43,8 @@ export const buildStatusTransitionPipeline = (
     note: { $literal: note ?? "" },
   };
 
-  const converting = isConverted(to, toSubStatus);
+  const converting =
+    !!converts && converts.status === to && converts.subStatus === toSubStatus;
 
   return [
     {
@@ -69,26 +69,33 @@ export const buildStatusTransitionPipeline = (
   ];
 };
 
-/** The pair is the unit of meaning, so it is checked as one. */
-export const assertLeadPipelinePair = (
+/**
+ * The pair is the unit of meaning, so it is checked as one, against the
+ * pipeline the admin has configured. A retired row is refused for a *new*
+ * change while staying readable on the leads already holding it.
+ */
+export const assertLeadPipelinePair = async (
   stage: unknown,
   subStatus: unknown,
-): { stage: LeadStage; subStatus: string } => {
-  if (!isLeadStage(stage)) {
+): Promise<{ stage: string; subStatus: string }> => {
+  const pipeline = await getLeadPipeline();
+  const found = findStage(pipeline, stage);
+  if (!found || !found.active) {
     throw new AppError("Invalid status", 400);
   }
-  if (!isLeadSubStatus(stage, subStatus)) {
+  const sub = findSubStatus(pipeline, stage, subStatus);
+  if (!sub || !sub.active) {
     throw new AppError(
-      `Choose a sub-status that belongs to ${LEAD_STAGE_LABEL[stage]}`,
+      `Choose a sub-status that belongs to ${found.label}`,
       400,
     );
   }
-  return { stage, subStatus: String(subStatus) };
+  return { stage: found.key, subStatus: sub.key };
 };
 
 export const transitionLeadStatus = async (
   leadId: string,
-  to: LeadStage,
+  to: string,
   toSubStatus: string,
   actor: TransitionActor,
   note?: string,
@@ -103,6 +110,7 @@ export const transitionLeadStatus = async (
     throw new AppError("Invalid lead id", 400);
   }
 
+  const pipeline = await getLeadPipeline();
   const updated = await LeadModel.findOneAndUpdate(
     // The pair is what changes, so a lead may move within its own stage.
     {
@@ -110,7 +118,14 @@ export const transitionLeadStatus = async (
       $nor: [{ status: to, subStatus: toSubStatus }],
       ...scope,
     },
-    buildStatusTransitionPipeline(to, toSubStatus, actor, new Date(), note),
+    buildStatusTransitionPipeline(
+      to,
+      toSubStatus,
+      actor,
+      new Date(),
+      note,
+      conversionPair(pipeline),
+    ),
     { new: true },
   );
   if (updated) return updated as unknown as Lead;
@@ -123,8 +138,10 @@ export const transitionLeadStatus = async (
     { status: 1 },
   ).lean();
   if (!existing) throw new AppError("Lead not found", 404);
+  const stage = findStage(pipeline, to);
+  const sub = findSubStatus(pipeline, to, toSubStatus);
   throw new AppError(
-    `This lead is already marked ${LEAD_STAGE_LABEL[to]} / ${leadSubStatusLabel(to, toSubStatus)}`,
+    `This lead is already marked ${stage?.label ?? to} / ${sub?.label ?? toSubStatus}`,
     409,
   );
 };
@@ -250,12 +267,13 @@ export const buildAssignmentResetPipeline = (
   to: AssignTarget | null,
   by: TransitionActor,
   at: Date,
+  reset: { status: string; subStatus: string },
 ): Record<string, unknown>[] => {
   const statusEntry = {
     from: "$status",
     fromSubStatus: "$subStatus",
-    to: DEFAULT_LEAD_STAGE,
-    toSubStatus: DEFAULT_LEAD_SUB_STATUS,
+    to: reset.status,
+    toSubStatus: reset.subStatus,
     changedByUserId: by.userId,
     // `$literal` because these are data, not expressions: a name beginning
     // with "$" would otherwise be read as a field path and rejected.
@@ -292,8 +310,8 @@ export const buildAssignmentResetPipeline = (
           : null,
         assignedBy: { userId: by.userId, name: { $literal: by.name } },
         assignedAt: at,
-        status: DEFAULT_LEAD_STAGE,
-        subStatus: DEFAULT_LEAD_SUB_STATUS,
+        status: reset.status,
+        subStatus: reset.subStatus,
         note: "",
       },
     },
@@ -315,7 +333,7 @@ export const assignLeads = async (
   const res = await LeadModel.updateMany(
     { _id: { $in: ids } },
     resetStatus
-      ? buildAssignmentResetPipeline(to, by, at)
+      ? buildAssignmentResetPipeline(to, by, at, defaultPair(await getLeadPipeline()))
       : buildAssignmentUpdate(to, by, at),
   );
   return res.modifiedCount;

@@ -29,16 +29,17 @@ import { BRANDS, BRAND_LABEL } from "@/constants/brands";
 import {
   LEAD_SOURCE_LABELS,
   LEAD_SOURCE_OPTIONS,
-  STATUS_STYLES,
   type Lead,
   type LeadCampaignOption,
 } from "./types";
+import useLeadPipeline from "@/hooks/useLeadPipeline";
 import {
-  LEAD_STAGES,
-  LEAD_STAGE_LABEL,
-  leadSubStatusLabel,
-  subStatusesFor,
-} from "@/constants/leadPipeline";
+  stageLabel,
+  stageOptions,
+  stageStyle,
+  subStatusLabel,
+  subStatusOptions,
+} from "@/lib/leadPipeline";
 
 const PAGE_SIZE = 20;
 
@@ -59,6 +60,7 @@ export default function LeadsPage() {
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const { pipeline } = useLeadPipeline();
   const [status, setStatus] = useState("");
   const [subStatus, setSubStatus] = useState("");
   const [brand, setBrand] = useState("");
@@ -226,7 +228,11 @@ export default function LeadsPage() {
           />
         </div>
         <Select
-          options={[{ value: "", label: "All stages" }, ...LEAD_STAGES]}
+          options={[
+            { value: "", label: "All stages" },
+            // Retired stages are included: leads still sit on them.
+            ...stageOptions(pipeline, true),
+          ]}
           value={status}
           onChange={(value) => {
             setStatus(value);
@@ -241,7 +247,7 @@ export default function LeadsPage() {
           <Select
             options={[
               { value: "", label: "All sub-statuses" },
-              ...subStatusesFor(status),
+              ...subStatusOptions(pipeline, status, true),
             ]}
             value={subStatus}
             onChange={(value) => {
@@ -497,12 +503,12 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-3 py-2.5 sm:px-4">
                       <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${stageStyle(pipeline, lead.status)}`}
                       >
-                        {LEAD_STAGE_LABEL[lead.status]}
+                        {stageLabel(pipeline, lead.status)}
                       </span>
                       <div className="mt-0.5 text-[11px] text-gray-600">
-                        {leadSubStatusLabel(lead.status, lead.subStatus)}
+                        {subStatusLabel(pipeline, lead.status, lead.subStatus)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-gray-400">
                         {LEAD_SOURCE_LABELS[lead.source?.kind] ?? lead.source?.kind}

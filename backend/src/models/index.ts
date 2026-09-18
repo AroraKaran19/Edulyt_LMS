@@ -44,6 +44,7 @@ import { ScholarshipAttemptModel } from "./scholarshipAttempt.schema";
 import { ScholarshipCouponEntitlementModel } from "./scholarshipCouponEntitlement.schema";
 import { ScholarshipTestDailyStatModel } from "./scholarshipTestDailyStat.schema";
 import { CrmProfileModel } from "./crmProfile.schema";
+import { LeadPipelineSettingsModel } from "./leadPipelineSettings.schema";
 import { ContactEmailOtpModel } from "./contactEmailOtp.schema";
 import { ContactSessionModel } from "./contactSession.schema";
 
@@ -92,6 +93,7 @@ export {
   ScholarshipCouponEntitlementModel,
   ScholarshipTestDailyStatModel,
   CrmProfileModel,
+  LeadPipelineSettingsModel,
   ContactEmailOtpModel,
   ContactSessionModel,
 };

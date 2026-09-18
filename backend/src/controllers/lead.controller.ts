@@ -13,6 +13,11 @@ import { InternshipModel } from "../models/internship.schema";
 import { resolveCrmCode } from "../services/crmProfile.services";
 import { buildAttribution, LeadAttribution } from "../lib/leadAttribution";
 import {
+  defaultPair,
+  getLeadPipeline,
+  updateLeadPipeline,
+} from "../services/leadPipelineSettings.services";
+import {
   assertLeadPipelinePair,
   assignLeads,
   countDuplicates,
@@ -254,8 +259,13 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const program = await resolveProgram(rawProgram);
+  // The landing pair is whatever the admin marked as the default stage, so a
+  // renamed or reordered funnel still captures into a stage that exists.
+  const landing = defaultPair(await getLeadPipeline());
 
   const lead = await LeadModel.create({
+    status: landing.status,
+    subStatus: landing.subStatus,
     // The endpoint decides the kind; the caller says which site, and which program if any.
     source: { kind: "enquiry", brand, ...(program ? { program } : {}) },
     ...attribution,
@@ -471,7 +481,7 @@ export const updateLead = asyncHandler(async (req: Request, res: Response) => {
   let lead: Lead | null = null;
 
   if (status !== undefined) {
-    const pair = assertLeadPipelinePair(status, subStatus);
+    const pair = await assertLeadPipelinePair(status, subStatus);
     lead = await transitionLeadStatus(
       id,
       pair.stage,
@@ -571,6 +581,38 @@ export const assignLeadsController = asyncHandler(
       resetStatus === true,
     );
     sendSuccessResponse(res, { assigned: count }, "Leads assigned", 200);
+  }
+);
+
+/**
+ * @desc  The configured stages and sub-statuses, for the dropdowns
+ * @route GET /api/leads/pipeline
+ * @access Any signed-in staff member
+ *
+ * Open to sales as well as admins: every screen that shows or changes a lead
+ * status needs it, and it carries no lead data.
+ */
+export const getLeadPipelineController = asyncHandler(
+  async (_req: Request, res: Response) => {
+    const pipeline = await getLeadPipeline();
+    sendSuccessResponse(res, pipeline, "Pipeline fetched", 200);
+  }
+);
+
+/**
+ * @desc  Replace the pipeline
+ * @route PUT /api/leads/admin/pipeline
+ * @access Admin with `settings.lead-pipeline`, super-admin
+ */
+export const updateLeadPipelineController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const updated = await updateLeadPipeline(
+      req.body?.stages,
+      req.user?._id
+        ? new mongoose.Types.ObjectId(String(req.user._id))
+        : null
+    );
+    sendSuccessResponse(res, updated, "Pipeline saved", 200);
   }
 );
 
@@ -725,7 +767,7 @@ export const updateMyAssignedLead = asyncHandler(
     let lead: Lead | null = null;
 
     if (status !== undefined) {
-      const pair = assertLeadPipelinePair(status, subStatus);
+      const pair = await assertLeadPipelinePair(status, subStatus);
       lead = await transitionLeadStatus(
         id,
         pair.stage,

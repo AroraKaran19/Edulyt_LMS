@@ -23,18 +23,19 @@ import {
   COUPON_STYLES,
   LEAD_SOURCE_LABELS,
   PROGRAM_KIND_LABELS,
-  STATUS_STYLES,
   couponSummary,
   type Lead,
 } from "./types";
+import useLeadPipeline from "@/hooks/useLeadPipeline";
 import {
-  LEAD_STAGES,
-  LEAD_STAGE_LABEL,
   defaultSubStatusFor,
-  leadSubStatusLabel,
-  subStatusesFor,
-  type LeadStage,
-} from "@/constants/leadPipeline";
+  pipelineLabel,
+  stageLabel,
+  stageOptions,
+  stageStyle,
+  subStatusOptions,
+  type LeadPipeline,
+} from "@/lib/leadPipeline";
 
 const CHIP =
   "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset";
@@ -43,11 +44,13 @@ const CHIP =
  * History entries written before the stage split carry the old flat vocabulary
  * and no sub-status, so anything unrecognised is shown as it was stored.
  */
-const historyLabel = (stage: string, sub?: string | null): string => {
-  const stageLabel = LEAD_STAGE_LABEL[stage as LeadStage];
-  if (!stageLabel) return stage;
-  const subLabel = leadSubStatusLabel(stage, sub);
-  return subLabel ? `${stageLabel} / ${subLabel}` : stageLabel;
+const historyLabel = (
+  pipeline: LeadPipeline,
+  stage: string,
+  sub?: string | null,
+): string => {
+  if (!sub) return stageLabel(pipeline, stage);
+  return pipelineLabel(pipeline, stage, sub);
 };
 
 /**
@@ -174,6 +177,7 @@ export default function LeadDetailsModal({
   scope = "admin",
 }: Props) {
   const { user } = useAuth();
+  const { pipeline } = useLeadPipeline();
   const isSuperAdmin = scope === "admin" && user?.userType === "super-admin";
   const base = scope === "mine" ? "/leads/mine" : "/leads/admin";
   const [lead, setLead] = useState<Lead | null>(null);
@@ -182,7 +186,7 @@ export default function LeadDetailsModal({
   const [note, setNote] = useState("");
   // Staged locally: the stage alone is not a status, so nothing is written
   // until a sub-status under it has been chosen.
-  const [stage, setStage] = useState<LeadStage>("new");
+  const [stage, setStage] = useState("");
   const [subStatus, setSubStatus] = useState("");
 
   useEffect(() => {
@@ -210,7 +214,7 @@ export default function LeadDetailsModal({
   }, [leadId, base]);
 
   const save = async (patch: {
-    status?: LeadStage;
+    status?: string;
     subStatus?: string;
     note?: string;
   }) => {
@@ -474,9 +478,9 @@ export default function LeadDetailsModal({
                     >
                       <span className="text-gray-900">
                         {entry.from
-                          ? `${historyLabel(entry.from, entry.fromSubStatus)} to `
+                          ? `${historyLabel(pipeline, entry.from, entry.fromSubStatus)} to `
                           : ""}
-                        {historyLabel(entry.to, entry.toSubStatus)}
+                        {historyLabel(pipeline, entry.to, entry.toSubStatus)}
                       </span>
                       <span className="text-xs text-gray-500">
                         {entry.changedByName || "Unknown"} ·{" "}
@@ -502,20 +506,20 @@ export default function LeadDetailsModal({
             <div className="grid gap-3 sm:grid-cols-2">
               <Select
                 label="Stage"
-                options={LEAD_STAGES}
+                options={stageOptions(pipeline)}
                 value={stage}
                 disabled={saving}
                 onChange={(value) => {
-                  const next = value as LeadStage;
+                  const next = value;
                   setStage(next);
                   // Two stages share sub-status values, so carrying the old one
                   // over would keep a label that now means something else.
-                  setSubStatus(defaultSubStatusFor(next));
+                  setSubStatus(defaultSubStatusFor(pipeline, next));
                 }}
               />
               <Select
                 label="Sub-status"
-                options={subStatusesFor(stage)}
+                options={subStatusOptions(pipeline, stage)}
                 value={subStatus}
                 disabled={saving}
                 onChange={setSubStatus}
@@ -569,12 +573,9 @@ export default function LeadDetailsModal({
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
               <span
-                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${STATUS_STYLES[lead.status]}`}
+                className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${stageStyle(pipeline, lead.status)}`}
               >
-                {LEAD_STAGE_LABEL[lead.status]}
-                {leadSubStatusLabel(lead.status, lead.subStatus)
-                  ? ` / ${leadSubStatusLabel(lead.status, lead.subStatus)}`
-                  : ""}
+                {pipelineLabel(pipeline, lead.status, lead.subStatus)}
               </span>
 
               {isSuperAdmin ? (

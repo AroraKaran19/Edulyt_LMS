@@ -1,4 +1,3 @@
-import type { LeadStage } from "@/constants/leadPipeline";
 
 export interface LeadAnswer {
   key: string;
@@ -16,7 +15,7 @@ export interface LeadPlatformUser {
   createdAt?: string;
 }
 
-export type { LeadStage } from "@/constants/leadPipeline";
+
 
 export interface LeadActor {
   userId: string | null;
@@ -117,7 +116,8 @@ export interface Lead {
   emailCheckedAt?: string;
   platformUserId?: LeadPlatformUser | string | null;
   submittedByUserId?: string | null;
-  status: LeadStage;
+  /** A stage `key` from the configured pipeline, not a fixed value. */
+  status: string;
   subStatus: string;
   note?: string;
   pageQuery?: string;
@@ -182,4 +182,4 @@ export const couponSummary = (scholarship: LeadScholarship): string => {
     : `Coupon ${label}`;
 };
 
-export { STAGE_STYLES as STATUS_STYLES } from "@/constants/leadPipeline";
+

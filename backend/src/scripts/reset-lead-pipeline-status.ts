@@ -25,10 +25,9 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import { connectDB, disconnectDB } from "../config/database";
 import {
-  DEFAULT_LEAD_STAGE,
-  DEFAULT_LEAD_SUB_STATUS,
-  LEAD_STAGES,
-} from "../constants/leadPipeline";
+  defaultPair,
+  getLeadPipeline,
+} from "../services/leadPipelineSettings.services";
 
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
@@ -39,12 +38,17 @@ async function main() {
 
   try {
     const leads = db.collection("leads");
+    // Seeds the pipeline if this environment has none yet, so the landing pair
+    // below is always one the configured funnel actually contains.
+    const pipeline = await getLeadPipeline();
+    const landing = defaultPair(pipeline);
+    const stageKeys = pipeline.stages.map((stage) => stage.key);
 
-    // A lead is stale when its stage is not one of the new five, or when it
+    // A lead is stale when its stage is not one the pipeline knows, or when it
     // carries no sub-status at all.
     const stale = {
       $or: [
-        { status: { $nin: [...LEAD_STAGES] } },
+        { status: { $nin: stageKeys } },
         { subStatus: { $exists: false } },
         { subStatus: null },
         { subStatus: "" },
@@ -73,10 +77,7 @@ async function main() {
 
     if (apply) {
       const result = await leads.updateMany(stale, {
-        $set: {
-          status: DEFAULT_LEAD_STAGE,
-          subStatus: DEFAULT_LEAD_SUB_STATUS,
-        },
+        $set: { status: landing.status, subStatus: landing.subStatus },
       });
       console.log(`\nreset: ${result.modifiedCount}`);
     } else {

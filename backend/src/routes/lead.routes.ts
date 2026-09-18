@@ -5,11 +5,13 @@ import {
   deleteLead,
   getLeadById,
   getLeads,
+  getLeadPipelineController,
   getMyAssignedLead,
   listAssigneesController,
   listLeadCampaignsController,
   listMyAssignedLeads,
   updateLead,
+  updateLeadPipelineController,
   updateMyAssignedLead,
 } from "../controllers/lead.controller";
 import { adminGuard, verifySuperAdmin } from "../middlewares/admin.middleware";
@@ -32,6 +34,16 @@ const router = Router();
  * what makes changing it here require a fresh OTP.
  */
 router.post("/", attachUserIfPresent, requireVerifiedLeadContact, createLead);
+
+/**
+ * @route   GET /api/leads/pipeline
+ * @desc    The configured stages and sub-statuses, for the dropdowns
+ * @access  Any signed-in staff member, sales included
+ *
+ * Above the admin block on purpose: sales needs it to render My leads, and it
+ * carries no lead data of its own.
+ */
+router.get("/pipeline", verifyUser, getLeadPipelineController);
 
 /**
  * @route   GET /api/leads/mine
@@ -85,6 +97,19 @@ router.get(
   "/admin/campaigns",
   ...adminGuard("leads"),
   listLeadCampaignsController
+);
+
+/**
+ * @route   PUT /api/leads/admin/pipeline
+ * @desc    Replace the stages and sub-statuses
+ * @access  Admin with `settings.lead-pipeline`, super-admin
+ *
+ * Before `/admin/:id`, or "pipeline" is parsed as a lead id.
+ */
+router.put(
+  "/admin/pipeline",
+  ...adminGuard("settings.lead-pipeline"),
+  updateLeadPipelineController
 );
 
 /**

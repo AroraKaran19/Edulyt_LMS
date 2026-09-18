@@ -1,11 +1,5 @@
 import mongoose from "mongoose";
 import { Lead } from "../types/lead";
-import {
-  DEFAULT_LEAD_STAGE,
-  DEFAULT_LEAD_SUB_STATUS,
-  LEAD_STAGES,
-  LEAD_SUB_STATUS_VALUES,
-} from "../constants/leadPipeline";
 
 // ===================
 // Lead Schema
@@ -226,24 +220,15 @@ const leadSchema = new mongoose.Schema<Lead>(
     /** Snapshot of `College.state`, so filtering never joins. */
     state: { type: String, required: false, trim: true },
 
-    /** Stage, the first dropdown. The pair with `subStatus` is what has meaning. */
-    status: {
-      type: String,
-      required: true,
-      enum: LEAD_STAGES,
-      default: DEFAULT_LEAD_STAGE,
-    },
     /**
-     * The second dropdown, scoped to `status`. Flat enum because a stage-aware
-     * one is not expressible here; the pair is validated in
-     * `leadPipeline.services`.
+     * Stage, the first dropdown, and the sub-status under it. Both hold a `key`
+     * from `LeadPipelineSettings`, which the admin edits, so no enum can be
+     * declared here; the pair is validated against the configured pipeline in
+     * `leadPipeline.services`. Storing the key rather than the label is what
+     * lets a stage be renamed without touching a single lead.
      */
-    subStatus: {
-      type: String,
-      required: true,
-      enum: LEAD_SUB_STATUS_VALUES,
-      default: DEFAULT_LEAD_SUB_STATUS,
-    },
+    status: { type: String, required: true },
+    subStatus: { type: String, required: true },
     note: { type: String, required: false, trim: true },
 
     pageQuery: { type: String, required: false },
