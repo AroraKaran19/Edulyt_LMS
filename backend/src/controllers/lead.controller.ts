@@ -589,6 +589,54 @@ export const listAssigneesController = asyncHandler(
 );
 
 /**
+ * @desc  One of the caller's own leads, in full
+ * @route GET /api/leads/mine/:id
+ * @access Sales
+ *
+ * The assignment is part of the query rather than a check after the read, so a
+ * lead belonging to someone else reads as missing instead of being fetched and
+ * then hidden.
+ */
+export const getMyAssignedLead = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (req.user?.userType !== "sales") {
+      throw new AppError("You don't have access to this section", 403);
+    }
+
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError("Invalid lead id", 400);
+    }
+
+    const lead = await LeadModel.findOne({
+      _id: id,
+      "assignedTo.userId": new mongoose.Types.ObjectId(String(req.user._id)),
+    }).populate(
+      "platformUserId",
+      "firstName lastName email phone userType createdAt"
+    );
+    if (!lead) {
+      throw new AppError("Lead not found", 404);
+    }
+
+    await resolveEmailsOnPlatform([lead]);
+    const scholarship = await buildScholarshipViews([lead]);
+
+    sendSuccessResponse(
+      res,
+      {
+        lead: {
+          ...lead.toObject(),
+          scholarship: scholarshipViewFor(scholarship, lead),
+        },
+      },
+      "Lead fetched",
+      200
+    );
+  }
+);
+
+/**
  * @desc  The caller's own assigned leads
  * @route GET /api/leads/mine
  * @access Sales

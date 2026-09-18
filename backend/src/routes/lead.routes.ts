@@ -5,6 +5,7 @@ import {
   deleteLead,
   getLeadById,
   getLeads,
+  getMyAssignedLead,
   listAssigneesController,
   listLeadCampaignsController,
   listMyAssignedLeads,
@@ -38,6 +39,13 @@ router.post("/", attachUserIfPresent, requireVerifiedLeadContact, createLead);
  * @access  Sales
  */
 router.get("/mine", verifyUser, listMyAssignedLeads);
+
+/**
+ * @route   GET /api/leads/mine/:id
+ * @desc    One of the caller's own leads, in full
+ * @access  Sales
+ */
+router.get("/mine/:id", verifyUser, getMyAssignedLead);
 
 /**
  * @route   PATCH /api/leads/mine/:id

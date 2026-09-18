@@ -8,6 +8,7 @@ import { formatStoredPhone } from "@/lib/phone";
 import Select from "@/components/ui/inputs/Select";
 import Pagination from "@/components/admin/Pagination";
 import useCrm from "@/hooks/useCrm";
+import LeadDetailsModal from "../../leads/LeadDetailsModal";
 import { type Lead } from "../../leads/types";
 import {
   LEAD_STAGES,
@@ -33,6 +34,7 @@ export default function MyLeadsPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   // Rows whose stage has been picked but whose sub-status has not. Nothing is
   // written until both halves are chosen.
   const [pendingStage, setPendingStage] = useState<Record<string, LeadStage>>({});
@@ -154,9 +156,13 @@ export default function MyLeadsPage() {
                 leads.map((lead) => (
                   <tr key={lead._id}>
                     <td className="px-5 py-3">
-                      <div className="font-medium text-gray-900">
+                      <button
+                        type="button"
+                        onClick={() => setOpenLeadId(lead._id)}
+                        className="text-left font-medium text-gray-900 hover:text-orange-600 hover:underline"
+                      >
                         {lead.name}
-                      </div>
+                      </button>
                       <a
                         href={`mailto:${lead.email}`}
                         className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 hover:text-orange-600"
@@ -253,6 +259,19 @@ export default function MyLeadsPage() {
           </div>
         ) : null}
       </div>
+
+      {openLeadId ? (
+        <LeadDetailsModal
+          leadId={openLeadId}
+          scope="mine"
+          onClose={() => setOpenLeadId(null)}
+          onUpdated={(updated) =>
+            setLeads((prev) =>
+              prev.map((l) => (l._id === updated._id ? { ...l, ...updated } : l)),
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }

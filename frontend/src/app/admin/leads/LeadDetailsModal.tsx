@@ -148,7 +148,14 @@ interface Props {
   leadId: string;
   onClose: () => void;
   onUpdated: (lead: Lead) => void;
-  onDeleted: (leadId: string) => void;
+  onDeleted?: (leadId: string) => void;
+  /**
+   * "mine" is the salesperson's view of a lead assigned to them: the same
+   * record, read and written through the endpoints scoped to their own
+   * assignments, and without the attribution block, which is the org chart
+   * behind the lead rather than anything they need on a call.
+   */
+  scope?: "admin" | "mine";
 }
 
 const formatDateTime = (value?: string) =>
@@ -164,9 +171,11 @@ export default function LeadDetailsModal({
   onClose,
   onUpdated,
   onDeleted,
+  scope = "admin",
 }: Props) {
   const { user } = useAuth();
-  const isSuperAdmin = user?.userType === "super-admin";
+  const isSuperAdmin = scope === "admin" && user?.userType === "super-admin";
+  const base = scope === "mine" ? "/leads/mine" : "/leads/admin";
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -180,7 +189,7 @@ export default function LeadDetailsModal({
     let cancelled = false;
     setLoading(true);
     apiClient
-      .get(`/leads/admin/${leadId}`)
+      .get(`${base}/${leadId}`)
       .then((res) => {
         if (cancelled) return;
         const found: Lead = res.data?.data?.lead;
@@ -198,7 +207,7 @@ export default function LeadDetailsModal({
     return () => {
       cancelled = true;
     };
-  }, [leadId]);
+  }, [leadId, base]);
 
   const save = async (patch: {
     status?: LeadStage;
@@ -207,7 +216,7 @@ export default function LeadDetailsModal({
   }) => {
     setSaving(true);
     try {
-      const res = await apiClient.patch(`/leads/admin/${leadId}`, patch);
+      const res = await apiClient.patch(`${base}/${leadId}`, patch);
       const updated: Lead = res.data?.data?.lead;
       // Merged, not replaced: the write path returns the stored lead, which
       // carries none of the scholarship view the read path joined on.
@@ -232,7 +241,7 @@ export default function LeadDetailsModal({
     try {
       await apiClient.delete(`/leads/admin/${leadId}`);
       toast.success("Lead deleted");
-      onDeleted(leadId);
+      onDeleted?.(leadId);
       onClose();
     } catch {
       toast.error("Could not delete this lead");
@@ -406,7 +415,7 @@ export default function LeadDetailsModal({
               </div>
             )}
 
-            {lead.creator || lead.collegeName ? (
+            {scope === "admin" && (lead.creator || lead.collegeName) ? (
               <div>
                 <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
                   Attribution
