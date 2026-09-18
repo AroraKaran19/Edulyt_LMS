@@ -523,7 +523,7 @@ export const deleteLead = asyncHandler(async (req: Request, res: Response) => {
  */
 export const assignLeadsController = asyncHandler(
   async (req: Request, res: Response) => {
-    const { leadIds, assigneeId } = req.body ?? {};
+    const { leadIds, assigneeId, resetStatus } = req.body ?? {};
     if (!Array.isArray(leadIds) || leadIds.length === 0) {
       throw new AppError("Select at least one lead", 400);
     }
@@ -564,7 +564,12 @@ export const assignLeadsController = asyncHandler(
           .trim() || "",
     };
 
-    const count = await assignLeads(leadIds.map(String), target, actor);
+    const count = await assignLeads(
+      leadIds.map(String),
+      target,
+      actor,
+      resetStatus === true,
+    );
     sendSuccessResponse(res, { assigned: count }, "Leads assigned", 200);
   }
 );

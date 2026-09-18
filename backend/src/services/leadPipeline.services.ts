@@ -4,6 +4,8 @@ import { UserModel } from "../models/user.schema";
 import { AppError } from "../middlewares/error.middleware";
 import type { Lead } from "../types/lead";
 import {
+  DEFAULT_LEAD_STAGE,
+  DEFAULT_LEAD_SUB_STATUS,
   isConverted,
   isLeadStage,
   isLeadSubStatus,
@@ -35,9 +37,11 @@ export const buildStatusTransitionPipeline = (
     to,
     toSubStatus,
     changedByUserId: actor.userId,
-    changedByName: actor.name,
+    // `$literal` because these are data, not expressions: a note typed as
+    // "$200 budget" would otherwise be read as a field path and rejected.
+    changedByName: { $literal: actor.name },
     changedAt: at,
-    note: note ?? "",
+    note: { $literal: note ?? "" },
   };
 
   const converting = isConverted(to, toSubStatus);
@@ -233,19 +237,86 @@ export const buildAssignmentUpdate = (
   },
 });
 
+/**
+ * Assignment and a reset to New / New Lead in one write.
+ *
+ * A pipeline rather than a plain update because the history entry needs each
+ * lead's own status *before* the reset, which only `$status` can read and only
+ * while the first stage is still running. `convertedAt` and `convertedBy` are
+ * left alone deliberately: they are the previous owner's credit on the CRM
+ * leaderboards, and a handover is not a reason to take it away.
+ */
+export const buildAssignmentResetPipeline = (
+  to: AssignTarget | null,
+  by: TransitionActor,
+  at: Date,
+): Record<string, unknown>[] => {
+  const statusEntry = {
+    from: "$status",
+    fromSubStatus: "$subStatus",
+    to: DEFAULT_LEAD_STAGE,
+    toSubStatus: DEFAULT_LEAD_SUB_STATUS,
+    changedByUserId: by.userId,
+    // `$literal` because these are data, not expressions: a name beginning
+    // with "$" would otherwise be read as a field path and rejected.
+    changedByName: { $literal: by.name },
+    changedAt: at,
+    note: { $literal: "Reset on reassignment" },
+  };
+  const assignmentEntry = {
+    toUserId: to?.userId ?? null,
+    toName: { $literal: to?.name ?? "" },
+    byUserId: by.userId,
+    byName: { $literal: by.name },
+    at,
+  };
+
+  return [
+    {
+      $set: {
+        statusHistory: {
+          $concatArrays: [{ $ifNull: ["$statusHistory", []] }, [statusEntry]],
+        },
+        assignmentHistory: {
+          $concatArrays: [
+            { $ifNull: ["$assignmentHistory", []] },
+            [assignmentEntry],
+          ],
+        },
+      },
+    },
+    {
+      $set: {
+        assignedTo: to
+          ? { userId: to.userId, name: { $literal: to.name } }
+          : null,
+        assignedBy: { userId: by.userId, name: { $literal: by.name } },
+        assignedAt: at,
+        status: DEFAULT_LEAD_STAGE,
+        subStatus: DEFAULT_LEAD_SUB_STATUS,
+        note: "",
+      },
+    },
+  ];
+};
+
 export const assignLeads = async (
   leadIds: string[],
   to: AssignTarget | null,
   by: TransitionActor,
+  resetStatus = false,
 ): Promise<number> => {
   const ids = leadIds
     .filter((id) => mongoose.isValidObjectId(id))
     .map((id) => new mongoose.Types.ObjectId(id));
   if (ids.length === 0) throw new AppError("No valid lead ids", 400);
 
+  const at = new Date();
   const res = await LeadModel.updateMany(
     { _id: { $in: ids } },
-    buildAssignmentUpdate(to, by, new Date()),
+    resetStatus
+      ? buildAssignmentResetPipeline(to, by, at)
+      : buildAssignmentUpdate(to, by, at),
   );
   return res.modifiedCount;
 };

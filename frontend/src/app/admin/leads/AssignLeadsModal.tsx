@@ -27,10 +27,11 @@ export default function AssignLeadsModal({
   ) => Promise<{ items: { value: string; label: string }[]; totalPages: number }>;
   saving: boolean;
   onClose: () => void;
-  onConfirm: (assigneeId: string | null) => void;
+  onConfirm: (assigneeId: string | null, resetStatus: boolean) => void;
 }) {
   const [target, setTarget] = useState("");
   const [targetLabel, setTargetLabel] = useState("");
+  const [resetStatus, setResetStatus] = useState(false);
 
   /** Unassign is offered as the first row of page 1, never inside a search. */
   const fetchWithUnassign = async (page: number, search: string) => {
@@ -101,6 +102,25 @@ export default function AssignLeadsModal({
             They will see these under My leads and can change their status. Only
             an admin can reassign them afterwards.
           </p>
+
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-gray-200 px-3.5 py-3">
+            <input
+              type="checkbox"
+              checked={resetStatus}
+              onChange={(e) => setResetStatus(e.target.checked)}
+              className="mt-0.5 size-4 rounded border-gray-300 text-orange-600"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-900">
+                Reset the status first
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-500">
+                Sends {count === 1 ? "the lead" : "every selected lead"} back to
+                New / New Lead and clears the note, so the new owner starts
+                fresh. The status history and who converted what are kept.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
@@ -111,7 +131,7 @@ export default function AssignLeadsModal({
             type="button"
             glow={false}
             disabled={saving || !picked}
-            onClick={() => onConfirm(isUnassign ? null : target)}
+            onClick={() => onConfirm(isUnassign ? null : target, resetStatus)}
           >
             {saving ? "Assigning…" : isUnassign ? "Unassign" : "Assign"}
           </OrangeButton>

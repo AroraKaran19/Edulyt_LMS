@@ -151,12 +151,16 @@ export default function LeadsPage() {
     return result;
   };
 
-  const assignSelected = async (assigneeId: string | null) => {
+  const assignSelected = async (
+    assigneeId: string | null,
+    resetStatus: boolean,
+  ) => {
     setAssigning(true);
     try {
       await apiClient.post("/leads/admin/assign", {
         leadIds: selected,
         assigneeId,
+        resetStatus,
       });
       const n = selected.length;
       toast.success(
