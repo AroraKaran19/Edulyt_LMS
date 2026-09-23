@@ -1,7 +1,14 @@
 import { Document, Types } from "mongoose";
 import { Brand } from "../constants/brands";
 
-export type LeadSourceKind = "enquiry" | "scholarship";
+export type LeadSourceKind = "enquiry" | "scholarship" | "import";
+
+/** Every kind a lead's `source.kind` may hold, for filters that must reject the rest. */
+export const LEAD_SOURCE_KINDS: readonly LeadSourceKind[] = [
+  "enquiry",
+  "scholarship",
+  "import",
+];
 
 export type LeadProgramKind = "course" | "internship";
 
@@ -30,6 +37,10 @@ export interface LeadSource {
   campaignOwnerName?: string;
   /** Set when the enquiry came from a course or internship page. */
   program?: LeadProgram;
+  /** Set for `kind: "import"`: the Excel file this row came from. */
+  fileName?: string;
+  /** Set for `kind: "import"`: the admin who ran the import. */
+  importedBy?: { userId: Types.ObjectId | null; name: string };
 }
 
 /** Frozen at capture. `userId` is nulled if that user is later deleted. */

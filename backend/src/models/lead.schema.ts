@@ -14,6 +14,18 @@ const leadAnswerSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const actorSnapshotSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    name: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
 const leadProgramSchema = new mongoose.Schema(
   {
     kind: { type: String, required: true, enum: ["course", "internship"] },
@@ -35,7 +47,7 @@ const leadSourceSchema = new mongoose.Schema(
     kind: {
       type: String,
       required: true,
-      enum: ["enquiry", "scholarship"],
+      enum: ["enquiry", "scholarship", "import"],
       default: "enquiry",
     },
     /** Defaulted, not required: rows written before two brands existed are
@@ -57,6 +69,10 @@ const leadSourceSchema = new mongoose.Schema(
     campaignOwnerName: { type: String, default: "" },
     /** The course or internship page an enquiry came from. */
     program: { type: leadProgramSchema, required: false },
+    /** Set for `kind: "import"`: the Excel file this row came from. */
+    fileName: { type: String, required: false },
+    /** Set for `kind: "import"`: the admin who ran the import. */
+    importedBy: { type: actorSnapshotSchema, required: false },
   },
   { _id: false }
 );
@@ -98,19 +114,6 @@ const leadCreatorSchema = new mongoose.Schema(
  * ambassador in March must not rewrite February's team totals.
  */
 const leadParentSchema = new mongoose.Schema(
-  {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
-    name: { type: String, default: "" },
-  },
-  { _id: false }
-);
-
-
-const actorSnapshotSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -260,6 +263,10 @@ leadSchema.index({ convertedAt: -1, "convertedBy.userId": 1 });
 leadSchema.index({ status: 1, createdAt: -1 });
 leadSchema.index({ email: 1 });
 leadSchema.index({ phone: 1 });
+// The import duplicate check is one batched query per brand; without these,
+// each falls back to the bare email/phone index and filters brand in memory.
+leadSchema.index({ "source.brand": 1, email: 1 });
+leadSchema.index({ "source.brand": 1, phone: 1 });
 // Lets the staleness sweep find unresolved rows without a collection scan.
 leadSchema.index({ emailCheckedAt: 1 });
 

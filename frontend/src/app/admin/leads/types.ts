@@ -79,7 +79,7 @@ export interface LeadCampaignOption {
 export interface Lead {
   _id: string;
   source: {
-    kind: "enquiry" | "scholarship";
+    kind: "enquiry" | "scholarship" | "import";
     /** Which site it came from. Absent on rows predating two brands, which are all Airkrit. */
     brand?: "airkrit" | "edulyt";
     testId?: string | null;
@@ -87,6 +87,8 @@ export interface Lead {
     slug?: string;
     /** The campaign's author, not the `?ref=` code that brought them in. */
     campaignOwnerName?: string;
+    /** The Excel file this lead came from, for a `source.kind === "import"` lead. */
+    fileName?: string;
     /** The course or internship page an enquiry came from. */
     program?: {
       kind: LeadProgramKind;
@@ -129,12 +131,14 @@ export interface Lead {
 export const LEAD_SOURCE_LABELS: Record<string, string> = {
   enquiry: "Enquiry form",
   scholarship: "Scholarship test",
+  import: "Imported",
 };
 
 export const LEAD_SOURCE_OPTIONS = [
   { value: "", label: "All sources" },
   { value: "enquiry", label: "Enquiry form" },
   { value: "scholarship", label: "Scholarship test" },
+  { value: "import", label: "Import" },
 ];
 
 export const ATTEMPT_LABELS: Record<ScholarshipAttemptStatus, string> = {

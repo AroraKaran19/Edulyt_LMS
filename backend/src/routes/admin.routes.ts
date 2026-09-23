@@ -77,6 +77,10 @@ import {
   listCaVoucherRequestsController,
   revokeCaVoucherEnrollmentController,
 } from "../controllers/caVoucherAdmin.controller";
+import {
+  downloadLeadImportTemplateController,
+  importLeadsController,
+} from "../controllers/leadImport.controller";
 
 const router = Router();
 
@@ -146,6 +150,14 @@ router.patch("/enquiry-page-settings", requirePermission("leads.enquiry-page"), 
 
 router.get("/ca-page-settings", requirePermission("leads.ca-page"), getAdminCaPageSettingsController);
 router.patch("/ca-page-settings", requirePermission("leads.ca-page"), patchCaPageSettingsController);
+
+// Excel lead import: the browser parses, the server validates and inserts.
+router.get(
+  "/leads/import/template",
+  requirePermission("leads.import"),
+  downloadLeadImportTemplateController,
+);
+router.post("/leads/import", requirePermission("leads.import"), importLeadsController);
 
 // Legal documents per brand (course and internship T&C), edited under
 // /admin/settings/terms-and-conditions

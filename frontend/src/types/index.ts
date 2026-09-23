@@ -20,6 +20,7 @@ export * from "./internship-submission";
 export * from "./internship-enrollment";
 export * from "./partner-college";
 export * from "./home-page-settings";
+export * from "./lead-import";
 
 // ===================
 // Type Exports

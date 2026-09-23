@@ -290,6 +290,11 @@ export default function LeadDetailsModal({
                 : ""}
               {lead ? ` · ${formatDateTime(lead.createdAt)}` : ""}
             </p>
+            {lead?.source?.kind === "import" && lead.source.fileName ? (
+              <p className="text-xs text-gray-500">
+                Imported from {lead.source.fileName}
+              </p>
+            ) : null}
           </div>
           <button
             type="button"

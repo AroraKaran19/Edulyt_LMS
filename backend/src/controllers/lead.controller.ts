@@ -35,6 +35,8 @@ import {
   LeadAnswer,
   LeadProgram,
   LeadProgramKind,
+  LeadSourceKind,
+  LEAD_SOURCE_KINDS,
 } from "../types/lead";
 import { asBrand, BRAND_MAIL, type Brand } from "../constants/brands";
 import { enquiryReceivedMail } from "../mail";
@@ -335,7 +337,11 @@ export const getLeads = asyncHandler(async (req: Request, res: Response) => {
   if (status) filter.status = status;
   // Only alongside a stage: the same sub-status value lives under two of them.
   if (status && subStatus) filter.subStatus = subStatus;
-  if (source) filter["source.kind"] = source;
+  // Gated to the known kinds ("import" among them) so a bad value falls
+  // through as "show everything" rather than as a filter that matches nothing.
+  if (source && LEAD_SOURCE_KINDS.includes(source as LeadSourceKind)) {
+    filter["source.kind"] = source;
+  }
   // Leads from before two brands existed carry no brand, and they are all Airkrit.
   if (brand === "airkrit") filter["source.brand"] = { $in: ["airkrit", null] };
   if (brand === "edulyt") filter["source.brand"] = "edulyt";
