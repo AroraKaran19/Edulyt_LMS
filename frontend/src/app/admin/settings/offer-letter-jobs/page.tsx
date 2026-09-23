@@ -21,6 +21,7 @@ import apiClient from "@/configs/apiConfig";
 import { toast } from "react-toastify";
 
 type JobStatus = "pending" | "processing" | "completed" | "failed";
+type SourceFilter = "internship" | "ca";
 
 interface OfferLetterJob {
   _id?: string;
@@ -78,6 +79,7 @@ const OfferLetterJobsPage = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(20);
   const [statusFilter, setStatusFilter] = useState<JobStatus | "">("");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("internship");
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -97,6 +99,7 @@ const OfferLetterJobsPage = () => {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("limit", String(limit));
+      params.set("source", sourceFilter);
       if (statusFilter) params.set("status", statusFilter);
       if (searchQuery) params.set("search", searchQuery);
 
@@ -118,7 +121,7 @@ const OfferLetterJobsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [page, limit, statusFilter, searchQuery]);
+  }, [page, limit, statusFilter, sourceFilter, searchQuery]);
 
   useEffect(() => {
     loadJobs();
@@ -127,7 +130,7 @@ const OfferLetterJobsPage = () => {
   const handleRetry = async (jobId: string) => {
     setRetryingJobId(jobId);
     try {
-      await apiClient.post(`/admin/offer-letter-jobs/${jobId}/retry`);
+      await apiClient.post(`/admin/offer-letter-jobs/${jobId}/retry?source=${sourceFilter}`);
       toast.success("Job queued for retry successfully");
       loadJobs();
     } catch (err: unknown) {
@@ -154,7 +157,7 @@ const OfferLetterJobsPage = () => {
   return (
     <Container
       title="Offer Letter Jobs"
-      description="View and manage internship offer letter generation jobs"
+      description="View and manage internship and Campus Ambassador offer letter generation jobs"
       className="h-full"
       classNameBody="flex flex-col gap-6"
     >
@@ -170,6 +173,22 @@ const OfferLetterJobsPage = () => {
               onChange={(e) => setSearchInput(e.target.value)}
               className="pl-9 pr-3 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px] min-w-[260px]"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-700">
+              Type
+            </label>
+            <select
+              value={sourceFilter}
+              onChange={(e) => {
+                setSourceFilter(e.target.value as SourceFilter);
+                setPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20 h-[38px]"
+            >
+              <option value="internship">Internship</option>
+              <option value="ca">Campus Ambassador</option>
+            </select>
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm font-semibold text-gray-700">

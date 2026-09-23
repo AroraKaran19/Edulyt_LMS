@@ -341,7 +341,14 @@ export const msg91BodyError = (body: unknown): string | null => {
   if (!body || typeof body !== "object") return null;
   const data = body as Record<string, any>;
 
-  const errors = Array.isArray(data.errors) ? data.errors : [];
+  // Validation failures arrive Laravel style: `errors: { "<field>": ["<reason>"] }`.
+  const errors = Array.isArray(data.errors)
+    ? data.errors
+    : data.errors && typeof data.errors === "object"
+      ? Object.entries(data.errors).map(
+          ([field, reasons]) => `${field}: ${[reasons].flat().join(", ")}`,
+        )
+      : [];
   const flagged =
     data.hasError === true ||
     data.status === "error" ||

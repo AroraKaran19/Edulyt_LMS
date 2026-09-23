@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
 import { OfferLetterJobModel } from "../models/offerLetterJob.schema";
+import { CaApplicationModel } from "../models/caApplication.schema";
+import { CaDocumentJobModel } from "../models/caDocumentJob.schema";
+import type { CaDocumentJob, CaDocumentJobStatus } from "../models/caDocumentJob.schema";
+import { enqueueCaDocumentJob } from "./caDocumentJob.services";
 import {
   OfferLetterJob,
   OfferLetterJobData,
@@ -8,6 +12,11 @@ import {
   OfferLetterJobStatus,
 } from "../types/offerLetterJob";
 import { v4 as uuidv4 } from "uuid";
+
+const CA_INTERNSHIP_TITLE: Record<string, string> = {
+  marketing: "Campus Ambassador (Marketing)",
+  "social-media": "Campus Ambassador (Social media)",
+};
 
 export const createOfferLetterJobService = async (
   data: OfferLetterJobData,
@@ -462,6 +471,100 @@ export const reclaimStuckOfferLetterJobs = async (
     `[Offer Letter Job] Reclaim sweep: reset=${reclaimed}, marked-failed=${failed} (timeout=${timeoutMinutes}m, maxReclaims=${maxReclaims})`,
   );
   return { reclaimed, failed };
+};
+
+/** CA equivalent of {@link getAllOfferLetterJobsService}, mapped to the same list row shape. */
+export const getAllCaOfferLetterJobsService = async (
+  options: {
+    page?: number;
+    limit?: number;
+    status?: CaDocumentJobStatus;
+    search?: string;
+  } = {},
+): Promise<{
+  jobs: OfferLetterJobListRow[];
+  total: number;
+  page: number;
+  limit: number;
+}> => {
+  try {
+    const page = options.page ?? 1;
+    const limit = options.limit ?? 20;
+    const skip = (page - 1) * limit;
+    const searchTrimmed = options.search?.trim();
+
+    const filter: Record<string, unknown> = { kind: "offer-letter" };
+    if (options.status) {
+      filter.status = options.status;
+    }
+
+    if (searchTrimmed) {
+      const searchRegex = new RegExp(
+        searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        "i",
+      );
+      const matchingApps = await CaApplicationModel.find({
+        $or: [{ name: searchRegex }, { email: searchRegex }, { internId: searchRegex }],
+      })
+        .select("_id")
+        .lean();
+      filter.applicationId = { $in: matchingApps.map((a) => a._id) };
+    }
+
+    const [jobsRaw, total] = await Promise.all([
+      CaDocumentJobModel.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+      CaDocumentJobModel.countDocuments(filter),
+    ]);
+
+    const applicationIds = jobsRaw.map((job) => job.applicationId);
+    const applications = applicationIds.length
+      ? await CaApplicationModel.find({ _id: { $in: applicationIds } })
+          .select("name email internId kind documents.offerLetter.url")
+          .lean()
+      : [];
+    const appById = new Map(applications.map((app) => [String(app._id), app]));
+
+    const jobs = jobsRaw.map((job): OfferLetterJobListRow => {
+      const app = appById.get(String(job.applicationId));
+      const kind = app?.kind ?? undefined;
+      return {
+        jobId: String(job._id),
+        enrollmentId: String(job.applicationId),
+        status: job.status,
+        internshipTitle: kind ? (CA_INTERNSHIP_TITLE[kind] ?? "") : "",
+        userName: app?.name ?? "",
+        userEmail: app?.email ?? "",
+        internId: app?.internId ?? undefined,
+        offerLetterUrl: app?.documents?.offerLetter?.url,
+        error: job.error ?? undefined,
+        progress: job.status === "completed" ? 100 : 0,
+        createdAt: job.createdAt instanceof Date ? job.createdAt.toISOString() : undefined,
+        completedAt: job.completedAt instanceof Date ? job.completedAt.toISOString() : undefined,
+      };
+    });
+
+    return { jobs, total, page, limit };
+  } catch (error) {
+    console.error("Error getting all CA offer letter jobs:", error);
+    throw new AppError("Failed to get CA offer letter jobs", 500);
+  }
+};
+
+/** CA equivalent of {@link retryOfferLetterJobService}: re-arms the CaDocumentJob queue row. */
+export const retryCaOfferLetterJobService = async (jobId: string): Promise<CaDocumentJob> => {
+  if (!mongoose.Types.ObjectId.isValid(jobId)) {
+    throw new AppError("Job not found", 404);
+  }
+
+  const job = await CaDocumentJobModel.findOne({ _id: jobId, kind: "offer-letter" }).lean();
+  if (!job) {
+    throw new AppError("Job not found", 404);
+  }
+
+  await enqueueCaDocumentJob(job.applicationId, "offer-letter");
+
+  const updated = await CaDocumentJobModel.findById(jobId).lean();
+  return updated as CaDocumentJob;
 };
 
 /** Ensure every `offer_letter_pending` enrollment has a queue job (idempotent). */

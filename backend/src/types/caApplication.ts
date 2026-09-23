@@ -95,6 +95,7 @@ export interface CaApplication {
   decidedBy?: CaActorSnapshot | null;
   decidedAt?: Date | null;
   attachedAt?: Date | null;
+  migrated?: boolean;
   attachIssue?: CaAttachIssue | null;
   /** When the attach sweep last looked at it without attaching; orders the sweep. */
   attachCheckedAt?: Date | null;

@@ -5,6 +5,7 @@ import { ScholarshipTestModel } from "../models/scholarshipTest.schema";
 import { resolveCrmCode } from "./crmProfile.services";
 import { buildAttribution } from "../lib/leadAttribution";
 import { isValidPhone } from "./phoneVerification.services";
+import { defaultPair, getLeadPipeline } from "./leadPipelineSettings.services";
 
 
 
@@ -99,7 +100,10 @@ export const captureScholarshipLead = async (
       }
     }
 
+    const landing = defaultPair(await getLeadPipeline());
     await LeadModel.create({
+      status: landing.status,
+      subStatus: landing.subStatus,
       source: {
         kind: "scholarship",
         testId,

@@ -72,6 +72,8 @@
     "scripts:reset-premature-verdicts:apply": "ts-node src/scripts/reset-premature-internship-verdicts.ts --apply",
     "scripts:migrate-ca-kind": "ts-node src/scripts/migrate-ca-kind-sales-to-marketing.ts",
     "scripts:migrate-ca-kind:apply": "ts-node src/scripts/migrate-ca-kind-sales-to-marketing.ts --apply",
+    "scripts:migrate-existing-cas": "ts-node src/scripts/migrate-existing-cas.ts",
+    "scripts:migrate-existing-cas:apply": "ts-node src/scripts/migrate-existing-cas.ts --apply",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json"

@@ -123,6 +123,8 @@ const caApplicationSchema = new Schema<CaApplication>(
     documents: { type: documentsSchema, default: () => ({}) },
     completion: { type: completionSchema, default: () => ({}) },
     emails: { type: emailMarkersSchema, default: () => ({}) },
+    // Created by scripts/migrate-existing-cas.ts for ambassadors added before applications existed.
+    migrated: { type: Boolean, default: false },
   },
   { timestamps: true },
 );

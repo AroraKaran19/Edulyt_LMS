@@ -6,6 +6,8 @@ import {
 import {
   getAllOfferLetterJobsService,
   retryOfferLetterJobService,
+  getAllCaOfferLetterJobsService,
+  retryCaOfferLetterJobService,
 } from "../services/offerLetterJob.services";
 
 /**
@@ -17,20 +19,19 @@ export const getAllOfferLetterJobs = asyncHandler(
   async (req: Request, res: Response) => {
     const page = req.query.page ? Number(req.query.page) : 1;
     const limit = req.query.limit ? Number(req.query.limit) : 20;
-    const status = req.query.status as string | undefined;
+    const status = req.query.status as
+      | "pending"
+      | "processing"
+      | "completed"
+      | "failed"
+      | undefined;
     const search = req.query.search as string | undefined;
+    const source = req.query.source === "ca" ? "ca" : "internship";
 
-    const result = await getAllOfferLetterJobsService({
-      page,
-      limit,
-      status: status as
-        | "pending"
-        | "processing"
-        | "completed"
-        | "failed"
-        | undefined,
-      search,
-    });
+    const result =
+      source === "ca"
+        ? await getAllCaOfferLetterJobsService({ page, limit, status, search })
+        : await getAllOfferLetterJobsService({ page, limit, status, search });
 
     sendSuccessResponse(res, result, "Offer letter jobs retrieved successfully", 200);
   },
@@ -44,7 +45,11 @@ export const getAllOfferLetterJobs = asyncHandler(
 export const retryOfferLetterJob = asyncHandler(
   async (req: Request, res: Response) => {
     const { jobId } = req.params;
-    const job = await retryOfferLetterJobService(jobId);
+    const source = req.query.source === "ca" ? "ca" : "internship";
+    const job =
+      source === "ca"
+        ? await retryCaOfferLetterJobService(jobId)
+        : await retryOfferLetterJobService(jobId);
     sendSuccessResponse(res, job, "Job queued for retry successfully", 200);
   },
 );
