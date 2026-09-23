@@ -31,3 +31,11 @@ export const formatPeriodDate = (d: Date): string => {
   const p = istParts(d);
   return `${p.day} - ${p.month} - ${p.year}`;
 };
+
+/** "sahil kharb" and "NANDAN BHAIRODGI" both print as "Sahil Kharb" / "Nandan Bhairodgi". */
+export const toNameCase = (name: string): string =>
+  name
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/(^|[\s\-'.])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());

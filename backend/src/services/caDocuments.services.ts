@@ -11,7 +11,7 @@ import {
 } from "../utils/certificateGeneratorDocx";
 import { uploadFileToS3 } from "./upload.services";
 import { verificationBaseUrl } from "../lib/verifyUrl";
-import { CA_PROGRAMME_NAME, formatLetterDate, formatPeriodDate } from "../lib/caDocuments";
+import { CA_PROGRAMME_NAME, formatLetterDate, formatPeriodDate, toNameCase } from "../lib/caDocuments";
 import type { CaApplication, CaDocumentRef } from "../types/caApplication";
 
 // Rendering only ever happens once the offer-letter job (joiningDate/endDate)
@@ -63,7 +63,7 @@ export const renderCaOfferLetter = async (
   const docx = await generateOfferLetterBuffer(
     {
       letterDate: formatLetterDate(app.decidedAt ?? new Date()),
-      name: app.name,
+      name: toNameCase(app.name),
       internId,
       joiningDate: formatLetterDate(app.joiningDate),
       domain: designation,
@@ -135,7 +135,7 @@ export const renderCaCompletionDocuments = async (
       template: TEMPLATES.training,
       code: `VER-${internId}-TR-${stamp}`,
       courseName: CA_PROGRAMME_NAME,
-      extra: {},
+      extra: { keyTopics: "campus marketing, student outreach and communication" },
     },
     {
       key: "lor" as const,
@@ -152,7 +152,7 @@ export const renderCaCompletionDocuments = async (
   for (const spec of specs) {
     const verificationUrl = `${base}/verify-certificate/${spec.code}`;
     const pdf = await renderCertificatePdf(spec.template, {
-      studentName: app.name,
+      studentName: toNameCase(app.name),
       courseName: spec.courseName,
       completionDate: app.endDate.toISOString(),
       certificateId: internId,
@@ -181,7 +181,7 @@ export const renderCaCompletionDocuments = async (
             userId: app.userId,
             courseId: null,
             certificateId: internId,
-            studentName: app.name,
+            studentName: toNameCase(app.name),
             courseName: spec.courseName,
             completionDate: app.endDate,
             issuedAt,
