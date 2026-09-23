@@ -97,6 +97,8 @@ export interface Enrollment {
   giftFrom?: User["_id"]; // If enrolled via gift
   promotionCode?: string; // If enrolled via promotion
   planType?: "elite" | "essential"; // Plan type for the enrollment
+  /** Set when the enrollment was granted free, e.g. via a Campus Ambassador voucher. */
+  grantSource?: string | null;
   
   // Partial access control (for admin-controlled access)
   // If undefined or null, user has full access to the entire course

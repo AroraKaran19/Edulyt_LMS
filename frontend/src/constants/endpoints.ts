@@ -576,6 +576,13 @@ export const ENDPOINTS = {
     attend: (token: string) => `/ca-meetings/attend/${encodeURIComponent(token)}`,
   },
 
+  /** The signed-in CA's one free course voucher. */
+  caVouchers: {
+    me: "/ca-vouchers/me",
+    courses: "/ca-vouchers/courses",
+    request: "/ca-vouchers/me/request",
+  },
+
   /** Pending file-answer review queue, shared by owners and admins. */
   caReviews: {
     list: "/ca-reviews",
@@ -605,6 +612,14 @@ export const ENDPOINTS = {
       activate: (id: string, slot: 1 | 2) => `/admin/ca-meetings/${encodeURIComponent(id)}/activate/${slot}`,
       attendance: (id: string) => `/admin/ca-meetings/${encodeURIComponent(id)}/attendance`,
       attendanceOverride: (id: string) => `/admin/ca-meetings/${encodeURIComponent(id)}/attendance/override`,
+    },
+    caVouchers: {
+      requests: "/admin/ca-vouchers/requests",
+      request: (id: string) => `/admin/ca-vouchers/requests/${encodeURIComponent(id)}`,
+      approve: (id: string) => `/admin/ca-vouchers/requests/${encodeURIComponent(id)}/approve`,
+      decline: (id: string) => `/admin/ca-vouchers/requests/${encodeURIComponent(id)}/decline`,
+      enrollments: "/admin/ca-vouchers/enrollments",
+      revoke: (id: string) => `/admin/ca-vouchers/enrollments/${encodeURIComponent(id)}/revoke`,
     },
   },
 };

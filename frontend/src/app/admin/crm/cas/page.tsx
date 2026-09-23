@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import Input from "@/components/ui/inputs/Input";
 import Select from "@/components/ui/inputs/Select";
@@ -24,12 +25,16 @@ export default function AllCasPage() {
   const { user } = useAuth();
   const isOwner = user?.userType === "marketer" || user?.userType === "sales";
   const { listDirectory, owners: fetchOwners } = useCaApplications();
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") ?? "";
 
-  const [state, setState] = useState<CaDirectoryState>("active");
+  const [state, setState] = useState<CaDirectoryState>(
+    initialSearch ? "all" : "active",
+  );
   const [ownerUserId, setOwnerUserId] = useState("");
   const [kind, setKind] = useState<AmbassadorKind | "">("");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState(initialSearch);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<CaDirectoryRow[]>([]);
   const [total, setTotal] = useState(0);

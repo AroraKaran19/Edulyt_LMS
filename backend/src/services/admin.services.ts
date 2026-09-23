@@ -7,6 +7,9 @@ import { getUserCertificatesService } from "./certificate.services";
 import { getTotalSpendByUserIdService } from "./order.services";
 import { listMyInternshipEnrollments } from "./internshipEnrollment.services";
 import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema";
+import { CaApplicationModel } from "../models/caApplication.schema";
+import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
+import type { AmbassadorKind } from "../types/crm";
 
 // User types to include in analytics (exclude admin, super-admin)
 const ANALYTICS_USER_TYPES = ["student", "instructor", "collaborator"];
@@ -334,8 +337,43 @@ export const getDashboardStats = async (
  * Get aggregated user details for admin modal (user, enrollments, certificates, totalSpend).
  * Single API call instead of 4 separate calls.
  */
+export interface CampusAmbassadorSummary {
+  kind: AmbassadorKind | null;
+  ownerName: string;
+  internId: string | null;
+  joiningDate: string | null;
+  endDate: string | null;
+  active: boolean;
+}
+
+const getCampusAmbassadorSummary = async (
+  userId: string,
+): Promise<CampusAmbassadorSummary | null> => {
+  const doc = await CaApplicationModel.findOne(
+    { userId, status: { $in: ["approved", "attached"] } },
+    { kind: 1, ownerName: 1, internId: 1, joiningDate: 1, endDate: 1, status: 1 },
+  )
+    .sort({ createdAt: -1 })
+    .lean();
+  if (!doc) return null;
+
+  const startOfTodayIst = parseIstDateOnly(todayIst()) as Date;
+  const active =
+    doc.status === "attached" &&
+    (doc.endDate == null || new Date(doc.endDate).getTime() >= startOfTodayIst.getTime());
+
+  return {
+    kind: doc.kind ?? null,
+    ownerName: doc.ownerName ?? "",
+    internId: doc.internId ?? null,
+    joiningDate: ymdIst(doc.joiningDate),
+    endDate: ymdIst(doc.endDate),
+    active,
+  };
+};
+
 export const getUserDetailsForAdmin = async (userId: string) => {
-  const [user, enrollmentsResult, certificates, totalSpend, internshipResult] =
+  const [user, enrollmentsResult, certificates, totalSpend, internshipResult, campusAmbassador] =
     await Promise.all([
       getUserByIdService(userId),
       GetUserEnrollmentsService(userId, undefined, 1, 1000),
@@ -348,6 +386,7 @@ export const getUserDetailsForAdmin = async (userId: string) => {
         1,
         50,
       ).catch(() => null),
+      getCampusAmbassadorSummary(userId).catch(() => null),
     ]);
 
   const enrollments = enrollmentsResult?.enrollments ?? [];
@@ -373,5 +412,6 @@ export const getUserDetailsForAdmin = async (userId: string) => {
     totalSpend: totalSpend ?? 0,
     averageTimeToCompleteSeconds,
     internshipEnrollments: internshipResult?.enrollments ?? [],
+    campusAmbassador,
   };
 };

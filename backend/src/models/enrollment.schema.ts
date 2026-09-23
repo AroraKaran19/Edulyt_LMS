@@ -202,7 +202,7 @@ const enrollmentSchema = new mongoose.Schema<Enrollment>(
     // in place and the admin screens read these to label them.
     grantSource: {
       type: String,
-      enum: ["category-sibling"],
+      enum: ["category-sibling", "ca-voucher"],
       default: undefined,
     },
     grantedFromCourseId: {

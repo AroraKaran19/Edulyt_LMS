@@ -42,6 +42,7 @@ import homePageSettingsRoutes from "./homePageSettings.routes";
 import enquiryPageSettingsRoutes from "./enquiryPageSettings.routes";
 import caPageRoutes from "./caPage.routes";
 import caApplicationRoutes from "./caApplication.routes";
+import caVoucherRoutes from "./caVoucher.routes";
 import legalSettingsRoutes from "./legalSettings.routes";
 import announcementRoutes from "./announcement.routes";
 import referralRoutes from "./referral.routes";
@@ -102,6 +103,7 @@ export {
   enquiryPageSettingsRoutes,
   caPageRoutes,
   caApplicationRoutes,
+  caVoucherRoutes,
   legalSettingsRoutes,
   announcementRoutes,
   referralRoutes,

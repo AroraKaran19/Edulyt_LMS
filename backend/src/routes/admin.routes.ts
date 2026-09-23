@@ -69,6 +69,14 @@ import {
   listCaTasksAdminController,
   updateCaTaskAdminController,
 } from "../controllers/caTask.controller";
+import {
+  approveCaVoucherRequestController,
+  declineCaVoucherRequestController,
+  deleteCaVoucherRequestController,
+  listCaVoucherEnrollmentsController,
+  listCaVoucherRequestsController,
+  revokeCaVoucherEnrollmentController,
+} from "../controllers/caVoucherAdmin.controller";
 
 const router = Router();
 
@@ -162,5 +170,28 @@ router.post("/ca-tasks", requirePermission("crm.ca-tasks"), createCaTaskAdminCon
 router.get("/ca-tasks/:id", requirePermission("crm.ca-tasks"), getCaTaskAdminController);
 router.patch("/ca-tasks/:id", requirePermission("crm.ca-tasks"), updateCaTaskAdminController);
 router.delete("/ca-tasks/:id", requirePermission("crm.ca-tasks"), deleteCaTaskAdminController);
+
+router.get("/ca-vouchers/requests", requirePermission("ca.vouchers"), listCaVoucherRequestsController);
+router.post(
+  "/ca-vouchers/requests/:id/approve",
+  requirePermission("ca.vouchers"),
+  approveCaVoucherRequestController,
+);
+router.post(
+  "/ca-vouchers/requests/:id/decline",
+  requirePermission("ca.vouchers"),
+  declineCaVoucherRequestController,
+);
+router.delete(
+  "/ca-vouchers/requests/:id",
+  requirePermission("ca.vouchers"),
+  deleteCaVoucherRequestController,
+);
+router.get("/ca-vouchers/enrollments", requirePermission("ca.vouchers"), listCaVoucherEnrollmentsController);
+router.post(
+  "/ca-vouchers/enrollments/:id/revoke",
+  requirePermission("ca.vouchers"),
+  revokeCaVoucherEnrollmentController,
+);
 
 export default router;

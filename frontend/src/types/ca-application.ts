@@ -104,3 +104,13 @@ export interface CaDirectoryPage {
   totalPages: number;
   counts: { active: number; ended: number };
 }
+
+/** Mirrors `CampusAmbassadorSummary` in `backend/src/services/admin.services.ts`. */
+export interface CampusAmbassadorSummary {
+  kind: AmbassadorKind | null;
+  ownerName: string;
+  internId: string | null;
+  joiningDate: string | null;
+  endDate: string | null;
+  active: boolean;
+}

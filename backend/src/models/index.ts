@@ -48,6 +48,7 @@ import { LeadPipelineSettingsModel } from "./leadPipelineSettings.schema";
 import { ContactEmailOtpModel } from "./contactEmailOtp.schema";
 import { ContactSessionModel } from "./contactSession.schema";
 import { CaApplicationModel } from "./caApplication.schema";
+import { CaCourseVoucherModel } from "./caCourseVoucher.schema";
 import { CaPageSettingsModel } from "./caPageSettings.schema";
 import { CaDocumentJobModel } from "./caDocumentJob.schema";
 import { CaMeetingModel } from "./caMeeting.schema";
@@ -105,6 +106,7 @@ export {
   ContactEmailOtpModel,
   ContactSessionModel,
   CaApplicationModel,
+  CaCourseVoucherModel,
   CaPageSettingsModel,
   CaDocumentJobModel,
   CaMeetingModel,

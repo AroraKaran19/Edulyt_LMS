@@ -9,6 +9,7 @@ import useCrm, { AMBASSADOR_KIND_TAB_LABELS } from "@/hooks/useCrm";
 import useCaTasks from "@/hooks/useCaTasks";
 import useCaMeetings from "@/hooks/useCaMeetings";
 import useCaDesk from "@/hooks/useCaDesk";
+import { useCaVoucher } from "@/hooks/useCaVouchers";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { cn } from "@/lib/utils";
 import { EMPTY_CA_SETTINGS, getCaPageSettings } from "@/lib/ca-page/getCaPageSettings";
@@ -19,6 +20,7 @@ import type { CaTaskMineRow } from "@/types/ca-task";
 import type { CaMeetingMineItem } from "@/types/ca-meeting";
 import type { CaDesk, CaReferralLeadsPage } from "@/types/ca-desk";
 import type { CaPageSettings } from "@/types/ca-page-settings";
+import type { CaVoucherMe } from "@/types/ca-voucher";
 import CaTaskList from "./components/CaTaskList";
 import CaMeetingsList, { isPastMeeting } from "./components/CaMeetingsList";
 import DeskHero from "./components/DeskHero";
@@ -28,6 +30,7 @@ import DeskLeads from "./components/DeskLeads";
 import DeskEarnings from "./components/DeskEarnings";
 import DeskQuestions from "./components/DeskQuestions";
 import DeskSkeleton from "./components/DeskSkeleton";
+import VoucherCard from "./components/VoucherCard";
 import { tenureOf } from "./deskTime";
 import s from "./desk.module.css";
 
@@ -61,6 +64,7 @@ export default function AmbassadorPage() {
   const { getDesk, listMyLeads } = useCaDesk();
   const { listMine: listMyCaTasks } = useCaTasks();
   const { listMine: listMyCaMeetings } = useCaMeetings();
+  const { getMe: getMyVoucher } = useCaVoucher();
   const now = useNow();
 
   const [phase, setPhase] = useState<Phase>("loading");
@@ -80,6 +84,8 @@ export default function AmbassadorPage() {
   const [caMeetings, setCaMeetings] = useState<CaMeetingMineItem[] | null>(null);
   const [caBusy, setCaBusy] = useState(false);
 
+  const [voucher, setVoucher] = useState<CaVoucherMe | null>(null);
+
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,13 +98,14 @@ export default function AmbassadorPage() {
     (async () => {
       // Tasks and meetings load alongside the CRM profile: a person can hold a
       // referral code without a CaApplication, or the other way round.
-      const [profile, deskData, cms, leadsPage, tasks, meetings] = await Promise.all([
+      const [profile, deskData, cms, leadsPage, tasks, meetings, voucherData] = await Promise.all([
         getProfile(),
         getDesk(),
         getCaPageSettings(),
         listMyLeads(1, LEADS_PER_PAGE),
         listMyCaTasks(),
         listMyCaMeetings(),
+        getMyVoucher(),
       ]);
       if (cancelled) return;
       if (!profile) {
@@ -118,12 +125,13 @@ export default function AmbassadorPage() {
       setLeadsFailed(!leadsPage);
       setCaTasks(tasks);
       setCaMeetings(meetings);
+      setVoucher(voucherData);
       setPhase("ready");
     })();
     return () => {
       cancelled = true;
     };
-  }, [attempt, getProfile, getDesk, listMyLeads, listMyCaTasks, listMyCaMeetings]);
+  }, [attempt, getProfile, getDesk, listMyLeads, listMyCaTasks, listMyCaMeetings, getMyVoucher]);
 
   const retryAll = () => {
     setPhase("loading");
@@ -281,6 +289,12 @@ export default function AmbassadorPage() {
 
       <div className={s.wrap}>
         <DeskTiles tiles={tiles} />
+
+        {voucher?.hasVoucher ? <VoucherCard
+            voucher={voucher}
+            voucherNo={user?._id ? `CA-${user._id.slice(-6).toUpperCase()}` : null}
+            onChange={setVoucher}
+          /> : null}
 
         {desk.isCa ? (
           <section className={s.section} aria-labelledby="desk-week-title">

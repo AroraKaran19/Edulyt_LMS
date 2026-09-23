@@ -23,15 +23,18 @@ import {
   Search,
   Clock,
   Star,
+  Megaphone,
 } from "lucide-react";
 import { Button } from "@/components/ui/buttons/button";
 import useUserManagement from "@/hooks/useUserManagement";
 import { User } from "@/types/user";
 import { Enrollment } from "@/types/enrollment";
 import type { InternshipEnrollmentListRow } from "@/types";
+import type { CampusAmbassadorSummary } from "@/types/ca-application";
 import { cn } from "@/lib/utils";
 import BrandMark from "@/components/admin/BrandMark";
 import { isBrand } from "@/constants/brands";
+import { AMBASSADOR_KIND_LABELS } from "@/hooks/useCrm";
 import SuccessPointsHistoryModal from "./SuccessPointsHistoryModal";
 import {
   getUserTypeBadgeColor,
@@ -95,6 +98,8 @@ export default function StudentDetailsModal({
   const [totalSpend, setTotalSpend] = useState<number>(0);
   const [averageTimeToCompleteSeconds, setAverageTimeToCompleteSeconds] =
     useState<number | null>(null);
+  const [campusAmbassador, setCampusAmbassador] =
+    useState<CampusAmbassadorSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   const { getUserDetailsForAdmin, getTimeSpentPerDay } = useUserManagement();
@@ -118,6 +123,7 @@ export default function StudentDetailsModal({
           setAverageTimeToCompleteSeconds(
             details.averageTimeToCompleteSeconds ?? null,
           );
+          setCampusAmbassador(details.campusAmbassador ?? null);
         }
       } catch (err) {
         console.error("Error fetching user details:", err);
@@ -138,6 +144,7 @@ export default function StudentDetailsModal({
       setCertificates([]);
       setTotalSpend(0);
       setAverageTimeToCompleteSeconds(null);
+      setCampusAmbassador(null);
     }
   }, [isOpen]);
 
@@ -217,6 +224,19 @@ export default function StudentDetailsModal({
                 >
                   {(user as any).status}
                 </span>
+                {campusAmbassador && (
+                  <span
+                    title={campusAmbassadorTooltip(campusAmbassador)}
+                    className={cn(
+                      "inline-flex px-2 py-0.5 text-xs font-semibold rounded-full",
+                      campusAmbassador.active
+                        ? "bg-orange-100 text-orange-800"
+                        : "bg-gray-100 text-gray-700",
+                    )}
+                  >
+                    {campusAmbassador.active ? "Campus Ambassador" : "Former CA"}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -299,6 +319,7 @@ export default function StudentDetailsModal({
                     certificates={certificates}
                     totalSpend={totalSpend}
                     averageTimeToCompleteSeconds={averageTimeToCompleteSeconds}
+                    campusAmbassador={campusAmbassador}
                     getTimeSpentPerDay={getTimeSpentPerDay}
                   />
                 )}
@@ -620,6 +641,15 @@ function TimeSpentGraph({
   );
 }
 
+function campusAmbassadorTooltip(ca: CampusAmbassadorSummary): string {
+  const parts = [
+    ca.kind ? AMBASSADOR_KIND_LABELS[ca.kind] : null,
+    ca.ownerName ? `Team: ${ca.ownerName}` : null,
+    ca.internId ? `Intern ID: ${ca.internId}` : null,
+  ].filter(Boolean);
+  return parts.join(" • ");
+}
+
 function formatDuration(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const mins = Math.floor(seconds / 60);
@@ -638,6 +668,7 @@ function OverviewSection({
   certificates,
   totalSpend,
   averageTimeToCompleteSeconds,
+  campusAmbassador,
   getTimeSpentPerDay,
 }: {
   user: User | null;
@@ -645,6 +676,7 @@ function OverviewSection({
   certificates: any[];
   totalSpend: number;
   averageTimeToCompleteSeconds: number | null;
+  campusAmbassador: CampusAmbassadorSummary | null;
   getTimeSpentPerDay: (
     userId: string,
     from: string,
@@ -777,6 +809,58 @@ function OverviewSection({
           />
         </div>
       </div>
+
+      {campusAmbassador && (
+        <div>
+          <h4 className="text-sm font-semibold text-gray-500 uppercase mb-3">
+            Campus Ambassador
+          </h4>
+          <div className="p-4 rounded-xl border border-orange-200 bg-orange-50/50 space-y-3">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-white/60 rounded-lg">
+                <Megaphone className="w-5 h-5 text-orange-700" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  {campusAmbassador.kind
+                    ? AMBASSADOR_KIND_LABELS[campusAmbassador.kind]
+                    : "Campus Ambassador"}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Team: {campusAmbassador.ownerName || "N/A"}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <InfoRow
+                label="Intern ID"
+                value={campusAmbassador.internId || "N/A"}
+                mono
+              />
+              <InfoRow
+                label="Tenure"
+                value={
+                  campusAmbassador.joiningDate
+                    ? `${formatInternshipDate(campusAmbassador.joiningDate)} to ${
+                        campusAmbassador.endDate
+                          ? formatInternshipDate(campusAmbassador.endDate)
+                          : "ongoing"
+                      }`
+                    : "Starts when their offer letter is generated"
+                }
+              />
+            </div>
+            <Link
+              href={`/admin/crm/cas?search=${encodeURIComponent(
+                campusAmbassador.internId || user.email || "",
+              )}`}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-orange-700 hover:underline"
+            >
+              View in All CAs <ExternalLink className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+      )}
 
       <SuccessPointsHistoryModal
         isOpen={isPointsHistoryOpen}

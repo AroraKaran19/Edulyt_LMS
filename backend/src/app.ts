@@ -57,6 +57,7 @@ import {
   enquiryPageSettingsRoutes,
   caPageRoutes,
   caApplicationRoutes,
+  caVoucherRoutes,
   legalSettingsRoutes,
   announcementRoutes,
   referralRoutes,
@@ -150,6 +151,7 @@ app.use("/api/home-page-settings", homePageSettingsRoutes);
 app.use("/api/enquiry-page-settings", enquiryPageSettingsRoutes);
 app.use("/api/ca-page", caPageRoutes);
 app.use("/api/ca-applications", caApplicationRoutes);
+app.use("/api/ca-vouchers", caVoucherRoutes);
 app.use("/api/legal-settings", legalSettingsRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/referral", referralRoutes);

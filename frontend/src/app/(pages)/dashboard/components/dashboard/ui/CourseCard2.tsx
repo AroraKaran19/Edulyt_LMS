@@ -106,6 +106,15 @@ const CourseCard2 = ({ course, enrollment }: CourseCard2Props) => {
               <AlertCircle className="h-3 w-3" /> No longer available
             </div>
           )}
+          {enrollment?.grantSource === "ca-voucher" && (
+            <span
+              className="absolute top-2 right-2 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-semibold text-white border border-orange-600 backdrop-blur-sm"
+              title="Unlocked with your Campus Ambassador voucher"
+              aria-label="Unlocked with your Campus Ambassador voucher"
+            >
+              CA perk
+            </span>
+          )}
         </div>
       </div>
       <div className="flex w-full h-full flex-col gap-2">

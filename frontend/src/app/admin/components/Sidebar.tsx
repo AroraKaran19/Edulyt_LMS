@@ -267,6 +267,14 @@ const AdminSidebar = ({
           href: "/admin/crm/ca-reviews",
         },
         {
+          label: "Voucher requests",
+          href: "/admin/ca-vouchers/requests",
+        },
+        {
+          label: "Voucher enrollments",
+          href: "/admin/ca-vouchers/enrollments",
+        },
+        {
           label: "Page settings",
           href: "/admin/ca-page",
         },

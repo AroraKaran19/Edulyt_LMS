@@ -141,6 +141,8 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
       // Reuses the CA leads permission key: reviews are a queue over the same CAs.
       { key: "crm.ca-leads", label: "CA reviews", href: "/admin/crm/ca-reviews" },
       { key: "leads.ca-page", label: "Configure CA Page", href: "/admin/ca-page" },
+      { key: "ca.vouchers", label: "Voucher requests", href: "/admin/ca-vouchers/requests" },
+      { key: "ca.vouchers", label: "Voucher enrollments", href: "/admin/ca-vouchers/enrollments" },
     ],
   },
   {

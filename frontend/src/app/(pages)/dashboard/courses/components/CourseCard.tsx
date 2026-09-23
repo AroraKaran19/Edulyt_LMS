@@ -324,6 +324,17 @@ const CourseCard = ({
           </div>
         </div>
 
+        {/* CA voucher badge */}
+        {enrollment.grantSource === "ca-voucher" && (
+          <span
+            className="absolute top-3 right-3 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-orange-500/90 text-white border border-orange-600 backdrop-blur-sm"
+            title="Unlocked with your Campus Ambassador voucher"
+            aria-label="Unlocked with your Campus Ambassador voucher"
+          >
+            CA perk
+          </span>
+        )}
+
         {/* Progress Overlay */}
         {progress > 0 && (
           <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-gray-200/50">

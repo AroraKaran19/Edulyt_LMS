@@ -5,6 +5,7 @@ import { Course } from "@/types/course";
 import { Enrollment, PartialAccessControl } from "@/types/enrollment";
 import type { InternshipEnrollmentListRow } from "@/types";
 import type { Brand } from "@/constants/brands";
+import type { CampusAmbassadorSummary } from "@/types/ca-application";
 
 export interface GetUsersParams {
   page?: number;
@@ -363,6 +364,7 @@ const useUserManagement = () => {
       totalSpend: number;
       averageTimeToCompleteSeconds: number | null;
       internshipEnrollments: InternshipEnrollmentListRow[];
+      campusAmbassador: CampusAmbassadorSummary | null;
     } | null> => {
       return handleRequest(
         async () => {
@@ -377,6 +379,7 @@ const useUserManagement = () => {
             totalSpend: d.totalSpend ?? 0,
             averageTimeToCompleteSeconds: d.averageTimeToCompleteSeconds ?? null,
             internshipEnrollments: d.internshipEnrollments ?? [],
+            campusAmbassador: d.campusAmbassador ?? null,
           };
         },
         "Failed to fetch user details"

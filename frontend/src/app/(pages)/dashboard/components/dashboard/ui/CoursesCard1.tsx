@@ -113,17 +113,28 @@ const CoursesCard1 = ({ course, enrollment }: CoursesCard1Props) => {
       }`}
     >
       {/* Image - responsive sizing */}
-      <Image
-        src={course.thumbnail || "/courses-demo-image.png"}
-        alt={course.title || "Course thumbnail"}
-        width={150}
-        height={100}
-        className="object-cover aspect-video rounded-lg select-none w-full sm:w-[150px] sm:h-[100px] h-auto"
-        loading="lazy"
-        quality={100}
-        draggable={false}
-      />
-      
+      <div className="relative w-full sm:w-[150px] shrink-0">
+        <Image
+          src={course.thumbnail || "/courses-demo-image.png"}
+          alt={course.title || "Course thumbnail"}
+          width={150}
+          height={100}
+          className="object-cover aspect-video rounded-lg select-none w-full sm:w-[150px] sm:h-[100px] h-auto"
+          loading="lazy"
+          quality={100}
+          draggable={false}
+        />
+        {enrollment?.grantSource === "ca-voucher" && (
+          <span
+            className="absolute top-1.5 right-1.5 rounded-full bg-orange-500/90 px-2 py-0.5 text-[10px] font-semibold text-white border border-orange-600 backdrop-blur-sm"
+            title="Unlocked with your Campus Ambassador voucher"
+            aria-label="Unlocked with your Campus Ambassador voucher"
+          >
+            CA perk
+          </span>
+        )}
+      </div>
+
       {/* Title and Instructors Section */}
       <div className="flex w-full flex-col gap-2 justify-center items-start min-w-0 flex-1">
         {isDisabled && (

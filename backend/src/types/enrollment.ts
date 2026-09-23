@@ -107,7 +107,7 @@ export interface Enrollment {
   // were left in place, and the admin enrolment screens read these to show such
   // a row as a free grant rather than a purchase. The enrollment itself is a
   // normal, fully-valid one; these are traceability markers only.
-  grantSource?: "category-sibling";
+  grantSource?: "category-sibling" | "ca-voucher";
   grantedFromCourseId?: Course["_id"]; // The paid course that triggered this grant
   
   // Partial access control (for admin-controlled access)
