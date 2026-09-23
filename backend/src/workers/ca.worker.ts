@@ -38,8 +38,10 @@ export const runCaWorkerTick = async (): Promise<void> => {
   await runCaStage("reclaim", () => reclaimStuckCaDocumentJobs().then(() => undefined));
   await runCaStage("completion-sweep", async () => {
     const completion = await runCaCompletionSweep();
-    if (completion.queued > 0 || completion.skipped > 0) {
-      console.log(`[CA Worker] Completion: ${completion.queued} queued, ${completion.skipped} no longer on a team`);
+    if (completion.queued > 0 || completion.skipped > 0 || completion.notEligible > 0) {
+      console.log(
+        `[CA Worker] Completion: ${completion.queued} queued, ${completion.notEligible} not eligible, ${completion.skipped} no longer on a team`,
+      );
     }
   });
   await runCaStage("document-jobs", async () => {

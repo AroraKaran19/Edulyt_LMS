@@ -122,5 +122,34 @@ export default function useCaApplications() {
     [run],
   );
 
-  return { isLoading, list, detail, reveal, owners, approve, decline, changeOwner, setHold, retryDocuments, team };
+  const changeDuration = useCallback(
+    (id: string, durationMonths: number) =>
+      run(
+        async () => (await apiClient.patch(ENDPOINTS.caApplications.changeDuration(id), { durationMonths })).data?.data as CaApplicationRow,
+        "Could not change the duration",
+      ),
+    [run],
+  );
+
+  const forcePass = useCallback(
+    (id: string) =>
+      run(async () => (await apiClient.post(ENDPOINTS.caApplications.forcePass(id))).data?.data as CaApplicationRow, "Could not force-pass"),
+    [run],
+  );
+
+  return {
+    isLoading,
+    list,
+    detail,
+    reveal,
+    owners,
+    approve,
+    decline,
+    changeOwner,
+    setHold,
+    retryDocuments,
+    team,
+    changeDuration,
+    forcePass,
+  };
 }

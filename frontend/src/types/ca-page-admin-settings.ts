@@ -10,7 +10,7 @@ export type CaPageAdminSettings = CaPageSettings & {
 
 /** Mirrors `CA_PAGE_SECTION_KEYS` in backend/src/services/caPageSettings.services.ts. */
 export const CA_PAGE_ADMIN_SECTION_KEYS = [
-  "batch",
+  "enrollment",
   "form",
   "documents",
   "money",

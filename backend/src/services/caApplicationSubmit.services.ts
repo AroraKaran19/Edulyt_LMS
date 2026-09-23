@@ -42,10 +42,14 @@ export const submitCaApplication = async (
   contact: CaContact,
 ): Promise<{ id: string }> => {
   const settings = await getCaPageSettings({ fresh: true });
-  const { joiningDate, durationMonths, endDate } = settings.batch;
-  if (!joiningDate || !endDate) {
+  const { acceptingApplications, durations } = settings.enrollment;
+  if (!acceptingApplications || durations.length === 0) {
     // Not a 5xx: the error middleware hides those messages outside development.
     throw new AppError("Applications are not open yet", 409, "CA_APPLICATIONS_CLOSED");
+  }
+  const durationMonths = Number(body.durationMonths);
+  if (!durations.includes(durationMonths)) {
+    throw new AppError("Choose one of the available durations", 400);
   }
 
   const email = contact.email.trim().toLowerCase();
@@ -97,17 +101,14 @@ export const submitCaApplication = async (
         ? { method: input.payout.method, ...encryptCaText(input.payout.value) }
         : null,
       address: input.address,
-      joiningDate,
+      joiningDate: null,
       durationMonths,
-      endDate,
+      endDate: null,
       referrer,
       status: "pending",
       open: true,
     });
-    queueCaReceivedEmail(
-      { name: input.name, email, joiningDate, durationMonths },
-      settings.form.whatsappLink,
-    );
+    queueCaReceivedEmail({ name: input.name, email, durationMonths }, settings.form.whatsappLink);
     return { id: String(doc._id) };
   } catch (error: unknown) {
     if ((error as { code?: number }).code === 11000) {

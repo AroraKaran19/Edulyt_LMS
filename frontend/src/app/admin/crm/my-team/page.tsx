@@ -479,6 +479,8 @@ export default function MyTeamPage() {
                 <th className="px-5 py-3">Code</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Tenure ends</th>
+                <th className="px-5 py-3">Points</th>
+                <th className="px-5 py-3">Outcome</th>
                 <th className="px-5 py-3">Documents</th>
                 <th className="px-5 py-3">Completion</th>
                 <th className="px-5 py-3" />
@@ -487,7 +489,7 @@ export default function MyTeamPage() {
             <tbody className="divide-y divide-gray-100">
               {ambassadors.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-5 py-10 text-center text-gray-500">
+                  <td colSpan={10} className="px-5 py-10 text-center text-gray-500">
                     No ambassadors yet. They need an account first.
                   </td>
                 </tr>
@@ -524,6 +526,18 @@ export default function MyTeamPage() {
                       </td>
                       <td className="px-5 py-3 text-gray-700">
                         {caRow?.endDate ? formatTenureEnd(caRow.endDate) : "-"}
+                      </td>
+                      <td className="px-5 py-3 text-gray-700 tabular-nums">
+                        {caRow ? caRow.caPoints : "-"}
+                      </td>
+                      <td className="px-5 py-3 text-gray-700">
+                        {caRow
+                          ? caRow.completion.outcome === "eligible"
+                            ? "Eligible"
+                            : caRow.completion.outcome === "not-eligible"
+                              ? "Not eligible"
+                              : "Pending"
+                          : "-"}
                       </td>
                       <td className="px-5 py-3">
                         {documentLinks.length > 0 ? (

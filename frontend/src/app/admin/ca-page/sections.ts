@@ -8,10 +8,10 @@ export const CA_SECTIONS: ReadonlyArray<{
   description: string;
 }> = [
   {
-    slug: "batch",
-    key: "batch",
-    title: "Batch",
-    description: "Joining date and duration for new applicants.",
+    slug: "enrollment",
+    key: "enrollment",
+    title: "Enrollment",
+    description: "Whether applications are open, the durations offered, and the points minimum for completion documents.",
   },
   {
     slug: "form",

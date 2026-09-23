@@ -5,10 +5,11 @@ import mongoose, { Schema } from "mongoose";
  * Mixed because the service rebuilds it through `resolveCaFields` on every read
  * and write, so a schema per field would only duplicate that.
  */
-const batchSchema = new Schema(
+const enrollmentSchema = new Schema(
   {
-    joiningDate: { type: Date, default: null },
-    durationMonths: { type: Number, min: 1, max: 6, default: 3 },
+    acceptingApplications: { type: Boolean, default: false },
+    durations: { type: [Number], default: [] },
+    minSuccessPoints: { type: Number, default: 0, min: 0 },
   },
   { _id: false },
 );
@@ -86,7 +87,7 @@ const samplesSchema = new Schema(
 const caPageSettingsSchema = new Schema(
   {
     key: { type: String, required: true, unique: true },
-    batch: { type: batchSchema, default: () => ({}) },
+    enrollment: { type: enrollmentSchema, default: () => ({}) },
     form: { type: formSchema, default: () => ({}) },
     documents: { type: documentsSchema, default: () => ({}) },
     money: { type: moneySchema, default: () => ({}) },

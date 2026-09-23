@@ -73,7 +73,9 @@ export type SuccessPointTransaction =
 export type SuccessPointRewardSource =
   | "login"
   | "community_review"
-  | "internship_registration";
+  | "internship_registration"
+  | "ca_task"
+  | "ca_meeting";
 
 export interface Collaborator extends User {
   totalReferrals: number;

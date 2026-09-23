@@ -3,13 +3,11 @@ import { cn } from "@/lib/utils";
 import type { CaPageSettings } from "@/types/ca-page-settings";
 import styles from "../ca.module.css";
 import { DEFAULT_KIT_ITEMS, inr, money, statementRows } from "../content";
-import { formatYmd } from "./formSteps";
 import Icon from "./Icon";
 
 export default function StatementSection({ settings }: { settings: CaPageSettings }) {
   const m = money(settings);
   const rows = statementRows(m, settings.kit.items.length ? settings.kit.items : DEFAULT_KIT_ITEMS);
-  const { joiningDate, durationMonths, endDate } = settings.batch;
 
   return (
     <section id="statement" className={styles.statement} aria-labelledby="ca-statement-title">
@@ -29,14 +27,6 @@ export default function StatementSection({ settings }: { settings: CaPageSetting
               <Image src="/logo.svg" alt="" width={133} height={38} />
               <p className={styles.sheetName}>Campus Ambassador statement</p>
             </div>
-            {joiningDate && (
-              <p className={styles.sheetMeta}>
-                Batch joining {formatYmd(joiningDate)}
-                <br />
-                {durationMonths} {durationMonths === 1 ? "month" : "months"}
-                {endDate ? `, ending ${formatYmd(endDate)}` : ""}
-              </p>
-            )}
           </div>
 
           <table className={styles.ledger}>

@@ -43,9 +43,15 @@ export interface CaSamples {
   trainingCertificate: string;
 }
 
+export interface CaEnrollment {
+  acceptingApplications: boolean;
+  durations: number[];
+  minSuccessPoints: number;
+}
+
 /** Public payload of `GET /api/ca-page/settings`. Dates are IST `YYYY-MM-DD`. */
 export interface CaPageSettings {
-  batch: { joiningDate: string | null; durationMonths: number; endDate: string | null };
+  enrollment: CaEnrollment;
   form: {
     fields: Record<CaOptionalField, CaFieldConfig>;
     languages: string[];

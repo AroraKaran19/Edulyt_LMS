@@ -75,6 +75,17 @@ export function istEndOfDayUtc(value: DateInput): Date | null {
 }
 
 /**
+ * Add whole calendar days to an instant, in IST. IST has a fixed +05:30
+ * offset with no daylight saving, so adding N days of milliseconds always
+ * lands on the same IST wall-clock time N calendar days later.
+ */
+export function addIstCalendarDays(value: DateInput, days: number): Date | null {
+  const d = toDate(value);
+  if (!d) return null;
+  return new Date(d.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+/**
  * Current wall-clock parts in IST. The server has no TZ set (so `getHours()` and
  * friends read UTC); anything comparing against an IST time-of-day must go
  * through here. Mirrors the frontend helper of the same name so both sides of a

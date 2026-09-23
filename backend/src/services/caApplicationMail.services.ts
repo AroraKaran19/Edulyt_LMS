@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { CaApplicationModel, UserModel } from "../models";
 import {
   caApplicationApprovedMail,
+  caApplicationNotEligibleMail,
   caApplicationReceivedMail,
   caCompletionMail,
 } from "../mail/caApplication.mail";
@@ -24,19 +25,18 @@ const recipient = (app: Pick<CaApplication, "name" | "email">) => [
 
 /** No marker: a person can hold only one open application, so this fires once per application. */
 export const queueCaReceivedEmail = (
-  app: Pick<CaApplication, "name" | "email" | "joiningDate" | "durationMonths">,
+  app: Pick<CaApplication, "name" | "email" | "durationMonths">,
   whatsappLink: string,
 ): void => {
   caApplicationReceivedMail.send(recipient(app), {
     name: app.name,
-    joiningDate: formatIstDate(app.joiningDate),
     durationMonths: app.durationMonths,
     whatsappLink,
     year: new Date().getFullYear(),
   });
 };
 
-type Marker = "approvedAt" | "completionAt";
+type Marker = "approvedAt" | "completionAt" | "notEligibleAt";
 
 const claim = async (id: mongoose.Types.ObjectId, marker: Marker): Promise<boolean> => {
   const res = await CaApplicationModel.updateOne(
@@ -142,6 +142,34 @@ export const sendCaCompletionEmail = async (
   } catch (error) {
     console.error(`[CA Mail] Completion email failed for ${String(app._id)}:`, error);
     if (claimed) await release(app._id, "completionAt").catch(() => undefined);
+    return "failed";
+  }
+};
+
+export const sendCaNotEligibleEmail = async (
+  app: Pick<CaApplication, "_id" | "name" | "email">,
+  points: number,
+  minPoints: number,
+): Promise<CaMailOutcome> => {
+  let claimed = false;
+  try {
+    if (!(await claim(app._id, "notEligibleAt"))) return "already-sent";
+    claimed = true;
+    const result = await caApplicationNotEligibleMail.sendNow(recipient(app), {
+      name: app.name,
+      points,
+      minPoints,
+      year: new Date().getFullYear(),
+    });
+    if (!result.ok) {
+      await release(app._id, "notEligibleAt");
+      console.error(`[CA Mail] Not-eligible email refused for ${String(app._id)}: ${result.error}`);
+      return "failed";
+    }
+    return "sent";
+  } catch (error) {
+    console.error(`[CA Mail] Not-eligible email failed for ${String(app._id)}:`, error);
+    if (claimed) await release(app._id, "notEligibleAt").catch(() => undefined);
     return "failed";
   }
 };

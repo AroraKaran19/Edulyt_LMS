@@ -14,10 +14,12 @@ import { verificationBaseUrl } from "../lib/verifyUrl";
 import { CA_PROGRAMME_NAME, formatLetterDate, formatPeriodDate } from "../lib/caDocuments";
 import type { CaApplication, CaDocumentRef } from "../types/caApplication";
 
+// Rendering only ever happens once the offer-letter job (joiningDate/endDate)
+// and the tenure (endDate) have been set, so both are narrowed to Date here.
 export type CaRenderable = Pick<
   CaApplication,
-  "_id" | "name" | "internId" | "kind" | "joiningDate" | "durationMonths" | "endDate" | "decidedAt" | "userId"
->;
+  "_id" | "name" | "internId" | "kind" | "durationMonths" | "decidedAt" | "userId"
+> & { joiningDate: Date; endDate: Date };
 
 // backend/src/services (or dist/services) up three segments is the repo root.
 const TEMPLATE_DIR = path.resolve(

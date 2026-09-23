@@ -3,7 +3,6 @@ import { defineMailTemplate } from "../utils/mailTemplates";
 /** Variables for `airkrit_ca-application-received.html`. Subject: `We got your Campus Ambassador application`. */
 export type CaApplicationReceivedVariables = {
   name: string;
-  joiningDate: string;
   durationMonths: number;
   whatsappLink: string;
   year: number;
@@ -49,5 +48,19 @@ export const caApplicationApprovedMail = defineMailTemplate<CaApplicationApprove
 export const caCompletionMail = defineMailTemplate<CaCompletionVariables>(
   "airkrit_ca_completion",
   "ca-completion",
+  { brand: "airkrit" },
+);
+
+/** Variables for `airkrit_ca-not-eligible.html`. Subject: `Your Campus Ambassador tenure has ended`. */
+export type CaNotEligibleVariables = {
+  name: string;
+  points: number;
+  minPoints: number;
+  year: number;
+};
+
+export const caApplicationNotEligibleMail = defineMailTemplate<CaNotEligibleVariables>(
+  "airkrit_ca_not_eligible",
+  "ca-not-eligible",
   { brand: "airkrit" },
 );

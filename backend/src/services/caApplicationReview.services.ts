@@ -3,7 +3,8 @@ import { CaApplicationModel, CaDocumentJobModel, UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { normalizePhone } from "./phoneVerification.services";
 import { decryptCaText } from "../lib/caPii";
-import { ymdIst } from "../utils/ist";
+import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
+import { tenureEndDate } from "../lib/caApplication";
 import { AMBASSADOR_KINDS } from "./crmProfile.services";
 import { attachApprovedApplication, type CaAttachOutcome } from "./caApplicationAttach.services";
 import { allocateNextInternId } from "./internId.services";
@@ -293,6 +294,30 @@ export const ensureCaInternId = async (
 };
 
 /**
+ * Sets the joining date to the start of today in IST, and the end date from
+ * it, only where none is set yet. A retried offer-letter job reuses the dates
+ * already stored, so the printed letter and the completion sweep never see
+ * the tenure shift under them.
+ */
+export const ensureCaJoiningDate = async (
+  app: Pick<CaApplication, "_id" | "joiningDate" | "endDate" | "durationMonths">,
+): Promise<{ joiningDate: Date; endDate: Date }> => {
+  if (app.joiningDate && app.endDate) {
+    return { joiningDate: app.joiningDate, endDate: app.endDate };
+  }
+  const joiningDate = parseIstDateOnly(todayIst()) as Date;
+  const endDate = tenureEndDate(joiningDate, app.durationMonths);
+  const updated = await CaApplicationModel.findOneAndUpdate(
+    { _id: app._id, joiningDate: null },
+    { $set: { joiningDate, endDate } },
+    { new: true, projection: { joiningDate: 1, endDate: 1 } },
+  ).lean();
+  if (updated) return { joiningDate: updated.joiningDate as Date, endDate: updated.endDate as Date };
+  const raced = await CaApplicationModel.findOne({ _id: app._id }, { joiningDate: 1, endDate: 1 }).lean();
+  return { joiningDate: raced?.joiningDate as Date, endDate: raced?.endDate as Date };
+};
+
+/**
  * The job is queued before the intern ID is assigned (not after), so a throw
  * from `ensureCaInternId` (counter or primary-election blip) still leaves the
  * job in place: the offer-letter processor's own fallback allocates the ID.
@@ -457,6 +482,49 @@ export const declineCaApplication = async (viewer: CaViewer, id: string): Promis
   throw new AppError(conflict, 409, "CA_ALREADY_DECIDED");
 };
 
+export const changeCaApplicationDuration = async (
+  viewer: CaViewer,
+  id: string,
+  durationMonths: unknown,
+): Promise<CaApplicationRow> => {
+  assertCaAdmin(viewer);
+  assertId(id);
+  const months = Number(durationMonths);
+  if (!Number.isInteger(months) || months < 1 || months > 6) {
+    throw new AppError("Duration must be 1 to 6 months", 400);
+  }
+
+  const current = await CaApplicationModel.findOne(
+    { _id: id, joiningDate: { $ne: null }, "completion.issuedAt": null, "completion.outcome": { $ne: "not-eligible" } },
+    { joiningDate: 1 },
+  ).lean();
+  if (!current?.joiningDate) {
+    throw new AppError(
+      "Duration can only be changed once the CA has joined and before the tenure is decided",
+      409,
+    );
+  }
+  const endDate = tenureEndDate(current.joiningDate, months);
+
+  const updated = await CaApplicationModel.findOneAndUpdate(
+    {
+      _id: id,
+      joiningDate: { $ne: null },
+      "completion.issuedAt": null,
+      "completion.outcome": { $ne: "not-eligible" },
+    },
+    { $set: { durationMonths: months, endDate } },
+    { new: true, projection: CA_ROW_PROJECTION },
+  ).lean();
+  if (!updated) {
+    throw new AppError(
+      "Duration can only be changed once the CA has joined and before the tenure is decided",
+      409,
+    );
+  }
+  return toCaApplicationRow(updated as CaRowSource);
+};
+
 export const changeCaApplicationOwner = async (
   viewer: CaViewer,
   id: string,
@@ -474,4 +542,40 @@ export const changeCaApplicationOwner = async (
     throw new AppError("Only an approved application that has not joined yet can move teams", 409);
   }
   return toCaApplicationRow(updated as CaRowSource);
+};
+
+export const forcePassCaApplication = async (viewer: CaViewer, id: string): Promise<CaApplicationRow> => {
+  assertCaAdmin(viewer);
+  assertId(id);
+  const updated = await CaApplicationModel.findOneAndUpdate(
+    { _id: id, status: "attached" },
+    { $set: { "completion.forcePassed": true } },
+    { new: true, projection: CA_ROW_PROJECTION },
+  ).lean();
+  if (!updated) throw new AppError("Ambassador not found", 404);
+
+  if (updated.completion?.outcome === "not-eligible") {
+    const flipped = await CaApplicationModel.findOneAndUpdate(
+      { _id: id, "completion.outcome": "not-eligible" },
+      { $set: { "completion.outcome": "eligible", "completion.queuedAt": new Date() } },
+      { new: true, projection: CA_ROW_PROJECTION },
+    ).lean();
+    if (flipped) {
+      await enqueueCaDocumentJob(new mongoose.Types.ObjectId(id), "completion");
+      return toCaApplicationRow(flipped as CaRowSource);
+    }
+  }
+  return toCaApplicationRow(updated as CaRowSource);
+};
+
+/** The signed-in user's own attached CA application, or null if they have none. */
+export const getAttachedCaApplication = async (
+  userId: mongoose.Types.ObjectId,
+): Promise<{ _id: mongoose.Types.ObjectId; joiningDate: Date | null; endDate: Date | null } | null> => {
+  const doc = await CaApplicationModel.findOne(
+    { userId, status: "attached" },
+    { joiningDate: 1, endDate: 1 },
+  ).lean();
+  if (!doc) return null;
+  return { _id: doc._id as mongoose.Types.ObjectId, joiningDate: doc.joiningDate ?? null, endDate: doc.endDate ?? null };
 };

@@ -8,8 +8,10 @@ import {
 import { submitCaApplication } from "../services/caApplicationSubmit.services";
 import {
   approveCaApplication,
+  changeCaApplicationDuration,
   changeCaApplicationOwner,
   declineCaApplication,
+  forcePassCaApplication,
   fullName,
   getCaApplication,
   listCaApplications,
@@ -89,6 +91,18 @@ export const changeCaApplicationOwnerController = asyncHandler(async (req: Reque
 export const setCaCompletionHoldController = asyncHandler(async (req: Request, res: Response) => {
   const row = await setCaCompletionHold(viewerOf(req), String(req.params.id), req.body?.hold);
   sendSuccessResponse(res, row, row.completion.hold ? "Completion documents on hold" : "Hold lifted", 200);
+});
+
+/** @route PATCH /api/ca-applications/:id/duration  Body: `{ durationMonths }` */
+export const changeCaApplicationDurationController = asyncHandler(async (req: Request, res: Response) => {
+  const row = await changeCaApplicationDuration(viewerOf(req), String(req.params.id), req.body?.durationMonths);
+  sendSuccessResponse(res, row, "Duration changed", 200);
+});
+
+/** @route POST /api/ca-applications/:id/force-pass */
+export const forcePassCaApplicationController = asyncHandler(async (req: Request, res: Response) => {
+  const row = await forcePassCaApplication(viewerOf(req), String(req.params.id));
+  sendSuccessResponse(res, row, "Force-passed", 200);
 });
 
 /** @route GET /api/ca-applications/team?ownerUserId= */

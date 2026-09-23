@@ -29,10 +29,10 @@ import {
   ClosedNote,
   CollegeStep,
   DoneStep,
+  DurationTicket,
   OtpStep,
   PayoutStep,
   StepsBar,
-  Ticket,
   YouStep,
   type Details,
   type FormErrors,
@@ -172,8 +172,15 @@ export default function ApplyForm({
   const [sendLimitMinutes, setSendLimitMinutes] = useState<number | null>(null);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaNonce, setCaptchaNonce] = useState(0);
+  const [durationMonths, setDurationMonths] = useState<number | null>(null);
 
-  const isClosed = closed || !settings.batch.joiningDate;
+  useEffect(() => {
+    if (durationMonths === null && settings.enrollment.durations.length > 0) {
+      setDurationMonths(settings.enrollment.durations[0]);
+    }
+  }, [settings.enrollment.durations, durationMonths]);
+
+  const isClosed = closed || !settings.enrollment.acceptingApplications || settings.enrollment.durations.length === 0;
   const e164 = toE164(countryIso, phone);
   const typedEmail = email.trim().toLowerCase();
   const phoneLabel = `${dialFor(countryIso)} ${phone.trim()}`;
@@ -497,6 +504,12 @@ export default function ApplyForm({
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
+    if (!durationMonths) {
+      setErrors({ form: "Choose a duration." });
+      setPane("you");
+      return;
+    }
+
     if (!proof) {
       setErrors({ form: "Verify your number again to continue." });
       setPane("you");
@@ -524,6 +537,7 @@ export default function ApplyForm({
         {
           name: name.trim(),
           phone: e164,
+          durationMonths,
           collegeId: details.collegeId || undefined,
           collegeName: details.collegeName.trim(),
           collegeEmail: details.collegeEmail.trim().toLowerCase(),
@@ -624,7 +638,7 @@ export default function ApplyForm({
         <ClosedNote />
       ) : (
         <>
-          <Ticket batch={settings.batch} />
+          <DurationTicket enrollment={settings.enrollment} value={durationMonths} onChange={setDurationMonths} />
           <StepsBar pane={pane} onGo={goBack} />
 
           {pane === "you" ? (

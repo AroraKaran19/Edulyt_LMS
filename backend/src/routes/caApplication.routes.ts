@@ -5,8 +5,10 @@ import { requireVerifiedLeadContact } from "../middlewares/verifiedLeadContact.m
 import { requireStaffPageAccess } from "../middlewares/staffAccess.middleware";
 import {
   approveCaApplicationController,
+  changeCaApplicationDurationController,
   changeCaApplicationOwnerController,
   declineCaApplicationController,
+  forcePassCaApplicationController,
   getCaApplicationController,
   listCaApplicationsController,
   listCaOwnersController,
@@ -88,11 +90,25 @@ router.delete("/:id", ...staff, declineCaApplicationController);
 router.patch("/:id/owner", ...staff, changeCaApplicationOwnerController);
 
 /**
+ * @route   PATCH /api/ca-applications/:id/duration
+ * @desc    Change one CA's duration; the end date is recomputed
+ * @access  Admin with `crm.ca-leads`, super-admin
+ */
+router.patch("/:id/duration", ...staff, changeCaApplicationDurationController);
+
+/**
  * @route   PATCH /api/ca-applications/:id/hold
  * @desc    Hold or release the end-of-tenure documents
  * @access  Admin with `crm.ca-leads`, super-admin, or the CA's current owner
  */
 router.patch("/:id/hold", ...staff, setCaCompletionHoldController);
+
+/**
+ * @route   POST /api/ca-applications/:id/force-pass
+ * @desc    Admin overrides the points gate for one CA's completion documents
+ * @access  Admin with `crm.ca-leads`, super-admin
+ */
+router.post("/:id/force-pass", ...staff, forcePassCaApplicationController);
 
 /**
  * @route   POST /api/ca-applications/:id/documents/retry

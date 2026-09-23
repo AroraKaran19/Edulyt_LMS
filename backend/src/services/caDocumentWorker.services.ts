@@ -1,14 +1,14 @@
 import mongoose from "mongoose";
-import { CaApplicationModel, CrmProfileModel } from "../models";
+import { CaApplicationModel, CaTaskSubmissionModel, CrmProfileModel } from "../models";
 import type { CaDocumentJob } from "../models/caDocumentJob.schema";
 import type { CaApplication } from "../types/caApplication";
 import type { AmbassadorKind } from "../types/crm";
 import { caDesignation } from "../lib/caDocuments";
 import { parseIstDateOnly, ymdIst } from "../utils/ist";
-import { ensureCaInternId } from "./caApplicationReview.services";
+import { ensureCaInternId, ensureCaJoiningDate } from "./caApplicationReview.services";
 import { getCaPageSettings } from "./caPageSettings.services";
-import { renderCaCompletionDocuments, renderCaOfferLetter } from "./caDocuments.services";
-import { sendCaApprovedEmail, sendCaCompletionEmail } from "./caApplicationMail.services";
+import { renderCaCompletionDocuments, renderCaOfferLetter, type CaRenderable } from "./caDocuments.services";
+import { sendCaApprovedEmail, sendCaCompletionEmail, sendCaNotEligibleEmail } from "./caApplicationMail.services";
 import {
   claimNextCaDocumentJob,
   completeCaDocumentJob,
@@ -25,17 +25,19 @@ const designationFor = async (kind: AmbassadorKind | null | undefined): Promise<
 };
 
 const processOfferLetter = async (job: CaDocumentJob, app: CaApplication): Promise<void> => {
-  let url = app.documents?.offerLetter?.url;
+  const { joiningDate, endDate } = await ensureCaJoiningDate(app);
+  const appWithDates: CaApplication = { ...app, joiningDate, endDate };
+  let url = appWithDates.documents?.offerLetter?.url;
   if (!url) {
-    const internId = await ensureCaInternId(app._id, app.internId);
-    const appWithInternId: CaApplication = { ...app, internId };
-    const ref = await renderCaOfferLetter(appWithInternId, await designationFor(app.kind));
+    const internId = await ensureCaInternId(appWithDates._id, appWithDates.internId);
+    const appWithInternId: CaApplication = { ...appWithDates, internId };
+    const ref = await renderCaOfferLetter(appWithInternId as CaRenderable, await designationFor(app.kind));
     await CaApplicationModel.updateOne({ _id: app._id }, { $set: { "documents.offerLetter": ref } });
     url = ref.url;
   }
   // "already-sent" means an earlier attempt won the claim: the job still completes,
   // never retries. Only "failed" goes back through the retry/alert policy.
-  const outcome = await sendCaApprovedEmail(app, url);
+  const outcome = await sendCaApprovedEmail(appWithDates, url);
   if (outcome === "failed") {
     await failCaDocumentJob(job, new Error("offer letter email send failed"));
     return;
@@ -59,7 +61,7 @@ const processCompletion = async (job: CaDocumentJob, app: CaApplication): Promis
     trainingCertificate: app.documents?.trainingCertificate?.url,
   };
   if (!app.completion?.issuedAt) {
-    const refs = await renderCaCompletionDocuments(app, await designationFor(app.kind));
+    const refs = await renderCaCompletionDocuments(app as CaRenderable, await designationFor(app.kind));
     await CaApplicationModel.updateOne(
       { _id: app._id },
       {
@@ -123,15 +125,20 @@ export const runCaDocumentJobs = async (limit = 5): Promise<number> => {
   return processed;
 };
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * Queues the completion documents of CAs whose tenure has ended. Anyone no longer
  * on a roster is marked skipped rather than re-read every tick, which would let
- * a backlog of leavers starve everyone behind them.
+ * a backlog of leavers starve everyone behind them. Eligibility (caPoints vs the
+ * enrollment minimum, or a force-pass) decides completion documents vs a one-time
+ * "not eligible" email; a pending file review holds the decision until it clears
+ * or 7 days past the end date, whichever comes first.
  */
 export const runCaCompletionSweep = async (
   now = new Date(),
   limit = 50,
-): Promise<{ due: number; queued: number; skipped: number }> => {
+): Promise<{ due: number; queued: number; skipped: number; notEligible: number }> => {
   // `endDate` is the IST midnight that starts the last tenure day, so the tenure
   // is over only once today's IST midnight is past it.
   const startOfTodayIst = parseIstDateOnly(ymdIst(now) ?? "") ?? now;
@@ -144,35 +151,65 @@ export const runCaCompletionSweep = async (
       "completion.skippedAt": null,
       "completion.hold": { $ne: true },
     },
-    { userId: 1 },
+    { userId: 1, caPoints: 1, endDate: 1, name: 1, email: 1, "completion.forcePassed": 1 },
   )
     .sort({ endDate: 1 })
     .limit(limit)
-    .lean()) as Array<{ _id: mongoose.Types.ObjectId; userId?: mongoose.Types.ObjectId | null }>;
-  if (due.length === 0) return { due: 0, queued: 0, skipped: 0 };
+    .lean()) as Array<{
+    _id: mongoose.Types.ObjectId;
+    userId?: mongoose.Types.ObjectId | null;
+    caPoints?: number;
+    endDate: Date;
+    name: string;
+    email: string;
+    completion?: { forcePassed?: boolean };
+  }>;
+  if (due.length === 0) return { due: 0, queued: 0, skipped: 0, notEligible: 0 };
 
-  const onRoster = await CrmProfileModel.find(
-    {
-      userId: { $in: due.map((d) => d.userId).filter(Boolean) },
-      parentUserId: { $ne: null },
-      codeActive: true,
-    },
-    { userId: 1 },
-  ).lean();
+  const [onRoster, pendingReviewRows, settings] = await Promise.all([
+    CrmProfileModel.find(
+      { userId: { $in: due.map((d) => d.userId).filter(Boolean) }, parentUserId: { $ne: null }, codeActive: true },
+      { userId: 1 },
+    ).lean(),
+    CaTaskSubmissionModel.find({ applicationId: { $in: due.map((d) => d._id) }, pendingReview: true }, { applicationId: 1 }).lean(),
+    getCaPageSettings(),
+  ]);
   const active = new Set(onRoster.map((p) => String(p.userId)));
+  const pending = new Set(pendingReviewRows.map((r: any) => String(r.applicationId)));
+  const minPoints = settings.enrollment.minSuccessPoints;
 
   // Each row is an independent document, so the batch runs concurrently instead
   // of one round trip per row; a single row's failure does not lose the rest.
   const outcomes = await Promise.all(
     due.map(async (row) => {
       try {
-        if (row.userId && active.has(String(row.userId))) {
+        if (!row.userId || !active.has(String(row.userId))) {
+          await CaApplicationModel.updateOne({ _id: row._id }, { $set: { "completion.skippedAt": now } });
+          return "skipped" as const;
+        }
+
+        const graceUntil = row.endDate.getTime() + SEVEN_DAYS_MS;
+        if (pending.has(String(row._id)) && now.getTime() < graceUntil) {
+          return "waiting" as const;
+        }
+
+        const points = row.caPoints ?? 0;
+        const eligible = row.completion?.forcePassed === true || points >= minPoints;
+        if (eligible) {
           await enqueueCaDocumentJob(row._id, "completion");
-          await CaApplicationModel.updateOne({ _id: row._id }, { $set: { "completion.queuedAt": now } });
+          await CaApplicationModel.updateOne(
+            { _id: row._id },
+            { $set: { "completion.queuedAt": now, "completion.outcome": "eligible" } },
+          );
           return "queued" as const;
         }
-        await CaApplicationModel.updateOne({ _id: row._id }, { $set: { "completion.skippedAt": now } });
-        return "skipped" as const;
+
+        await CaApplicationModel.updateOne(
+          { _id: row._id },
+          { $set: { "completion.queuedAt": now, "completion.outcome": "not-eligible" } },
+        );
+        await sendCaNotEligibleEmail(row, points, minPoints);
+        return "not-eligible" as const;
       } catch (error) {
         console.error(`[CA Worker] completion sweep failed for application ${String(row._id)}:`, error);
         return "error" as const;
@@ -184,5 +221,6 @@ export const runCaCompletionSweep = async (
     due: due.length,
     queued: outcomes.filter((o) => o === "queued").length,
     skipped: outcomes.filter((o) => o === "skipped").length,
+    notEligible: outcomes.filter((o) => o === "not-eligible").length,
   };
 };

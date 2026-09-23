@@ -1,11 +1,9 @@
 import { CaPageSettingsModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
-import { parseIstDateOnly, ymdIst } from "../utils/ist";
 import {
   DEFAULT_CA_LANGUAGES,
   isValidDurationMonths,
   resolveCaFields,
-  tenureEndDate,
   type CaFieldConfigMap,
 } from "../lib/caApplication";
 import type { AmbassadorKind } from "../types/crm";
@@ -15,7 +13,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const WHATSAPP_LINK = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]+$/;
 
 export const CA_PAGE_SECTION_KEYS = [
-  "batch",
+  "enrollment",
   "form",
   "documents",
   "money",
@@ -27,10 +25,10 @@ export const CA_PAGE_SECTION_KEYS = [
 ] as const;
 export type CaPageSectionKey = (typeof CA_PAGE_SECTION_KEYS)[number];
 
-export interface CaBatch {
-  joiningDate: Date | null;
-  durationMonths: number;
-  endDate: Date | null;
+export interface CaEnrollment {
+  acceptingApplications: boolean;
+  durations: number[];
+  minSuccessPoints: number;
 }
 
 export interface CaMoney {
@@ -46,7 +44,7 @@ export interface CaFaq { question: string; answer: string }
 export interface CaSamples { offerLetter: string; lor: string; internshipCertificate: string; trainingCertificate: string }
 
 export interface CaPageSettings {
-  batch: CaBatch;
+  enrollment: CaEnrollment;
   form: { fields: CaFieldConfigMap; languages: string[]; whatsappLink: string };
   documents: { designations: Record<AmbassadorKind, string> };
   money: CaMoney;
@@ -93,19 +91,18 @@ const readMoney = (raw: any): CaMoney =>
   ) as unknown as CaMoney;
 
 const toSettings = (doc: Record<string, any> | null): CaPageSettings => {
-  const joiningDate = doc?.batch?.joiningDate ? new Date(doc.batch.joiningDate) : null;
-  const durationMonths = isValidDurationMonths(doc?.batch?.durationMonths)
-    ? (doc?.batch?.durationMonths as number)
-    : 3;
+  const rawDurations: unknown[] = Array.isArray(doc?.enrollment?.durations) ? doc.enrollment.durations : [];
+  const durations = [...new Set(rawDurations.filter(isValidDurationMonths))].sort((a: number, b: number) => a - b);
+  const minRaw = doc?.enrollment?.minSuccessPoints;
   const languages: string[] =
     Array.isArray(doc?.form?.languages) && doc?.form?.languages.length
       ? doc.form.languages
       : DEFAULT_CA_LANGUAGES;
   return {
-    batch: {
-      joiningDate,
-      durationMonths,
-      endDate: joiningDate ? tenureEndDate(joiningDate, durationMonths) : null,
+    enrollment: {
+      acceptingApplications: Boolean(doc?.enrollment?.acceptingApplications),
+      durations,
+      minSuccessPoints: Number.isInteger(minRaw) && minRaw >= 0 ? minRaw : 0,
     },
     form: {
       fields: resolveCaFields(doc?.form?.fields),
@@ -155,15 +152,18 @@ const sanitizeSection = (
   section: CaPageSectionKey,
   value: Record<string, unknown>,
 ): Record<string, unknown> => {
-  if (section === "batch") {
-    const raw = value.joiningDate;
-    const joiningDate = raw ? parseIstDateOnly(String(raw)) : null;
-    if (raw && !joiningDate) throw new AppError("Joining date must be YYYY-MM-DD", 400);
-    const durationMonths = Number(value.durationMonths);
-    if (!isValidDurationMonths(durationMonths)) {
-      throw new AppError("Duration must be 1 to 6 months", 400);
+  if (section === "enrollment") {
+    const acceptingApplications = value.acceptingApplications === true;
+    const rawDurations = Array.isArray(value.durations) ? value.durations : [];
+    const durations = [...new Set(rawDurations.map(Number).filter(isValidDurationMonths))].sort((a, b) => a - b);
+    if (acceptingApplications && durations.length === 0) {
+      throw new AppError("Choose at least one duration to accept applications", 400);
     }
-    return { joiningDate, durationMonths };
+    const minSuccessPoints = Number(value.minSuccessPoints ?? 0);
+    if (!Number.isInteger(minSuccessPoints) || minSuccessPoints < 0) {
+      throw new AppError("Minimum points must be a non-negative whole number", 400);
+    }
+    return { acceptingApplications, durations, minSuccessPoints };
   }
 
   if (section === "form") {
@@ -271,11 +271,7 @@ export const updateCaPageSection = async (body: {
 };
 
 export const serializeCaPageSettings = (s: CaPageSettings) => ({
-  batch: {
-    joiningDate: s.batch.joiningDate ? ymdIst(s.batch.joiningDate) : null,
-    durationMonths: s.batch.durationMonths,
-    endDate: s.batch.endDate ? ymdIst(s.batch.endDate) : null,
-  },
+  enrollment: s.enrollment,
   form: s.form,
   documents: s.documents,
   money: s.money,

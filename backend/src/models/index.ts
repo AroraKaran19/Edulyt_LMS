@@ -50,6 +50,11 @@ import { ContactSessionModel } from "./contactSession.schema";
 import { CaApplicationModel } from "./caApplication.schema";
 import { CaPageSettingsModel } from "./caPageSettings.schema";
 import { CaDocumentJobModel } from "./caDocumentJob.schema";
+import { CaMeetingModel } from "./caMeeting.schema";
+import { CaMeetingAttendanceModel } from "./caMeetingAttendance.schema";
+import { InternshipQuestionModel } from "./internshipQuestion.schema";
+import { CaTaskModel } from "./caTask.schema";
+import { CaTaskSubmissionModel } from "./caTaskSubmission.schema";
 
 export {
   UserModel,
@@ -102,4 +107,9 @@ export {
   CaApplicationModel,
   CaPageSettingsModel,
   CaDocumentJobModel,
+  CaMeetingModel,
+  CaMeetingAttendanceModel,
+  InternshipQuestionModel,
+  CaTaskModel,
+  CaTaskSubmissionModel,
 };

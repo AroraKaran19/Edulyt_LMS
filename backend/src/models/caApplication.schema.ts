@@ -68,6 +68,8 @@ const completionSchema = new Schema(
     queuedAt: { type: Date, default: null },
     skippedAt: { type: Date, default: null },
     issuedAt: { type: Date, default: null },
+    outcome: { type: String, enum: ["eligible", "not-eligible"], default: null },
+    forcePassed: { type: Boolean, default: false },
   },
   { _id: false },
 );
@@ -76,6 +78,7 @@ const emailMarkersSchema = new Schema(
   {
     approvedAt: { type: Date, default: null },
     completionAt: { type: Date, default: null },
+    notEligibleAt: { type: Date, default: null },
   },
   { _id: false },
 );
@@ -96,9 +99,10 @@ const caApplicationSchema = new Schema<CaApplication>(
     whatsappJoined: { type: Boolean, default: false },
     payout: { type: payoutSchema, default: null },
     address: { type: addressSchema, default: null },
-    joiningDate: { type: Date, required: true },
+    joiningDate: { type: Date, default: null },
     durationMonths: { type: Number, required: true, min: 1, max: 6 },
-    endDate: { type: Date, required: true },
+    endDate: { type: Date, default: null },
+    caPoints: { type: Number, default: 0, min: 0 },
     referrer: { type: referrerSchema, default: null },
     status: {
       type: String,

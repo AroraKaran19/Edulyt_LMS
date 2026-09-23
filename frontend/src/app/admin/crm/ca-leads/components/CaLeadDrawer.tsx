@@ -64,7 +64,7 @@ export default function CaLeadDrawer({
   onDecline,
   onChanged,
 }: Props) {
-  const { detail, reveal, changeOwner, retryDocuments } = useCaApplications();
+  const { detail, reveal, changeOwner, retryDocuments, changeDuration, forcePass } = useCaApplications();
   const [row, setRow] = useState<CaApplicationRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [payout, setPayout] = useState<{ method: "upi" | "details"; value: string } | null>(null);
@@ -73,6 +73,9 @@ export default function CaLeadDrawer({
   const [moveOwnerId, setMoveOwnerId] = useState("");
   const [moving, setMoving] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [newDuration, setNewDuration] = useState("");
+  const [changingDuration, setChangingDuration] = useState(false);
+  const [forcePassing, setForcePassing] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -125,6 +128,30 @@ export default function CaLeadDrawer({
       setRow(updated);
       setMoveOwnerId("");
       toast.success("Moved to another team");
+      onChanged();
+    }
+  };
+
+  const changeDurationClick = async () => {
+    if (!newDuration) return;
+    setChangingDuration(true);
+    const updated = await changeDuration(id, Number(newDuration));
+    setChangingDuration(false);
+    if (updated) {
+      setRow(updated);
+      setNewDuration("");
+      toast.success("Duration changed");
+      onChanged();
+    }
+  };
+
+  const forcePassClick = async () => {
+    setForcePassing(true);
+    const updated = await forcePass(id);
+    setForcePassing(false);
+    if (updated) {
+      setRow(updated);
+      toast.success("Force-passed");
       onChanged();
     }
   };
@@ -237,11 +264,57 @@ export default function CaLeadDrawer({
                 />
               </Section>
 
-              <Section heading="Batch">
-                <Row label="Joining" value={row.joiningDate ? formatIstDate(row.joiningDate) : "-"} />
+              <Section heading="Tenure">
+                <Row label="Joining" value={row.joiningDate ? formatIstDate(row.joiningDate) : "Not yet joined"} />
                 <Row label="Duration" value={`${row.durationMonths} months`} />
                 <Row label="Ends" value={row.endDate ? formatIstDate(row.endDate) : "-"} />
+                <Row label="CA points" value={row.caPoints} />
+                <Row
+                  label="Outcome"
+                  value={
+                    row.completion.outcome === "eligible"
+                      ? "Eligible"
+                      : row.completion.outcome === "not-eligible"
+                        ? "Not eligible"
+                        : "Pending"
+                  }
+                />
               </Section>
+
+              {!isOwner && row.status === "attached" ? (
+                <div>
+                  <h3 className="mb-2 text-xs font-semibold text-gray-500">Admin controls</h3>
+                  <div className="space-y-3 rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
+                    <div className="flex items-end gap-2">
+                      <Select
+                        label="Change duration"
+                        options={[1, 2, 3, 4, 5, 6].map((m) => ({ value: String(m), label: `${m} months` }))}
+                        value={newDuration}
+                        onChange={setNewDuration}
+                      />
+                      <WhiteButton
+                        type="button"
+                        glow={false}
+                        disabled={!newDuration || changingDuration}
+                        onClick={() => void changeDurationClick()}
+                      >
+                        {changingDuration ? "Saving..." : "Save"}
+                      </WhiteButton>
+                    </div>
+                    {row.completion.outcome !== "eligible" && !row.completion.forcePassed ? (
+                      <WhiteButton
+                        type="button"
+                        glow={false}
+                        className="w-full justify-center"
+                        disabled={forcePassing}
+                        onClick={() => void forcePassClick()}
+                      >
+                        {forcePassing ? "Force-passing..." : "Force pass"}
+                      </WhiteButton>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
               {!isOwner && row.failedDocumentJobs?.length ? (
                 <div>

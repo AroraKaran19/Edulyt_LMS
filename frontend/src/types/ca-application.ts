@@ -29,6 +29,7 @@ export interface CaApplicationRow {
   joiningDate: string | null;
   durationMonths: number;
   endDate: string | null;
+  caPoints: number;
   referrer: { userId: string; name: string } | null;
   status: CaApplicationStatus;
   kind: AmbassadorKind | null;
@@ -46,7 +47,7 @@ export interface CaApplicationRow {
     internshipCertificate: string | null;
     trainingCertificate: string | null;
   };
-  completion: { hold: boolean; issuedAt: string | null };
+  completion: { hold: boolean; issuedAt: string | null; outcome: "eligible" | "not-eligible" | null; forcePassed: boolean };
   /** Admin detail only: document jobs that used up their automatic retries. */
   failedDocumentJobs?: { kind: "offer-letter" | "completion"; error: string | null }[];
 }

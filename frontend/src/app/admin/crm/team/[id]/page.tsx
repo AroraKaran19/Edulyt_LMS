@@ -437,6 +437,8 @@ export default function CrmPersonPage() {
                   {canSeeCa ? (
                     <>
                       <th className="px-3 py-2.5 sm:px-4">Tenure ends</th>
+                      <th className="px-3 py-2.5 sm:px-4">Points</th>
+                      <th className="px-3 py-2.5 sm:px-4">Outcome</th>
                       <th className="px-3 py-2.5 sm:px-4">Documents</th>
                       <th className="px-3 py-2.5 sm:px-4">Completion</th>
                     </>
@@ -446,13 +448,13 @@ export default function CrmPersonPage() {
               <tbody className="divide-y divide-gray-100">
                 {rosterLoading ? (
                   <tr>
-                    <td colSpan={canSeeCa ? 9 : 6} className="px-4 py-12 text-center">
+                    <td colSpan={canSeeCa ? 11 : 6} className="px-4 py-12 text-center">
                       <Loader2 className="mx-auto size-6 animate-spin text-gray-400" />
                     </td>
                   </tr>
                 ) : roster.length === 0 ? (
                   <tr>
-                    <td colSpan={canSeeCa ? 9 : 6} className="px-4 py-12 text-center">
+                    <td colSpan={canSeeCa ? 11 : 6} className="px-4 py-12 text-center">
                       <Users className="mx-auto size-6 text-gray-300" />
                       <p className="mt-2 text-gray-500">
                         They have not added anyone to their team yet.
@@ -502,6 +504,18 @@ export default function CrmPersonPage() {
                           <>
                             <td className="px-3 py-2.5 whitespace-nowrap text-gray-700 sm:px-4">
                               {caRow?.endDate ? formatTenureEnd(caRow.endDate) : "-"}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-700 tabular-nums sm:px-4">
+                              {caRow ? caRow.caPoints : "-"}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-700 sm:px-4">
+                              {caRow
+                                ? caRow.completion.outcome === "eligible"
+                                  ? "Eligible"
+                                  : caRow.completion.outcome === "not-eligible"
+                                    ? "Not eligible"
+                                    : "Pending"
+                                : "-"}
                             </td>
                             <td className="px-3 py-2.5 sm:px-4">
                               {documentLinks.length > 0 ? (

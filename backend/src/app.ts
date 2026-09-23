@@ -63,6 +63,9 @@ import {
   communityReviewRoutes,
   successPointsRoutes,
   reportRoutes,
+  caMeetingRoutes,
+  caTaskRoutes,
+  caReviewRoutes,
 } from "./routes";
 
 dotenv.config();
@@ -153,6 +156,9 @@ app.use("/api/referral", referralRoutes);
 app.use("/api/community-reviews", requireBrand("airkrit"), communityReviewRoutes);
 app.use("/api/success-points", successPointsRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/ca-meetings", caMeetingRoutes);
+app.use("/api/ca-tasks", caTaskRoutes);
+app.use("/api/ca-reviews", caReviewRoutes);
 
 app.use(notFoundHandler); // Handle 404 errors
 app.use(errorHandler); // Handle all other errors

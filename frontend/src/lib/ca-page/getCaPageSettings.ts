@@ -9,7 +9,7 @@ const FIELD = { enabled: true, required: true, label: "", help: "" };
 
 /** What the page renders when the API is unreachable: closed for applications, default copy. */
 export const EMPTY_CA_SETTINGS: CaPageSettings = {
-  batch: { joiningDate: null, durationMonths: 3, endDate: null },
+  enrollment: { acceptingApplications: false, durations: [], minSuccessPoints: 0 },
   form: {
     fields: {
       college: FIELD,

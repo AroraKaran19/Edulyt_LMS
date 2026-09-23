@@ -52,11 +52,16 @@ export interface CaCompletion {
   /** Set when the end date passed but they were no longer on a roster. */
   skippedAt?: Date | null;
   issuedAt?: Date | null;
+  /** Set by the sweep once it decides; "not-eligible" until a force-pass flips it. */
+  outcome?: "eligible" | "not-eligible" | null;
+  /** Admin override: makes the CA eligible regardless of caPoints. */
+  forcePassed?: boolean;
 }
 
 export interface CaEmailMarkers {
   approvedAt?: Date | null;
   completionAt?: Date | null;
+  notEligibleAt?: Date | null;
 }
 
 export interface CaApplication {
@@ -76,9 +81,10 @@ export interface CaApplication {
   whatsappJoined: boolean;
   payout?: CaPayoutCiphertext | null;
   address?: CaAddress | null;
-  joiningDate: Date;
+  joiningDate: Date | null;
   durationMonths: number;
-  endDate: Date;
+  endDate: Date | null;
+  caPoints?: number;
   referrer?: CaReferrer | null;
   status: CaApplicationStatus;
   /** True while pending or approved; unset on attach. Backs the one-open-per-person indexes. */

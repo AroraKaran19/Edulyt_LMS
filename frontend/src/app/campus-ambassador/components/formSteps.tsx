@@ -104,27 +104,31 @@ function Flag({ iso }: { iso: string }) {
   );
 }
 
-export function Ticket({ batch }: { batch: CaPageSettings["batch"] }) {
-  const months = batch.durationMonths;
+export function DurationTicket({
+  enrollment,
+  value,
+  onChange,
+}: {
+  enrollment: CaPageSettings["enrollment"];
+  value: number | null;
+  onChange: (months: number) => void;
+}) {
   return (
     <>
-      <div className={styles.ticket} role="group" aria-label="Your batch">
-        <div className={styles.ticketCell}>
-          <span className={styles.ticketK}>Joining</span>
-          <span className={styles.ticketV}>{formatYmd(batch.joiningDate)}</span>
-        </div>
-        <div className={styles.ticketCell}>
-          <span className={styles.ticketK}>Duration</span>
-          <span className={styles.ticketV}>
-            {months} month{months === 1 ? "" : "s"}
-          </span>
-        </div>
-        <div className={styles.ticketCell}>
-          <span className={styles.ticketK}>Ends</span>
-          <span className={styles.ticketV}>{formatYmd(batch.endDate)}</span>
-        </div>
+      <div className={styles.ticket} role="group" aria-label="Choose your duration">
+        {enrollment.durations.map((months) => (
+          <button
+            key={months}
+            type="button"
+            onClick={() => onChange(months)}
+            aria-pressed={value === months}
+            className={cn(styles.ticketCell, "max-sm:text-base", value === months && styles.ticketCellActive)}
+          >
+            <span className={styles.ticketK}>{months} month{months === 1 ? "" : "s"}</span>
+          </button>
+        ))}
       </div>
-      <p className={styles.ticketNote}>Dates are fixed for this batch.</p>
+      <p className={styles.ticketNote}>Your joining date is confirmed the moment you&apos;re approved.</p>
     </>
   );
 }

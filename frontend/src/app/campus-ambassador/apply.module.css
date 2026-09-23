@@ -35,8 +35,8 @@
 
 .ticket {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   margin: 18px 0 6px;
   background: var(--blush);
   border-radius: 14px;
@@ -64,10 +64,21 @@
 
 .ticketCell {
   padding: 11px 14px 12px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  flex: 1 1 0;
+  border-radius: 12px;
 }
 
 .ticketCell + .ticketCell {
   border-left: 1.5px dashed #f2cdb4;
+}
+
+.ticketCellActive {
+  color: var(--ember-deep);
+  background: rgba(247, 113, 36, 0.08);
+  border-color: var(--ember);
 }
 
 .ticketK {

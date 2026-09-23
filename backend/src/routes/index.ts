@@ -53,6 +53,9 @@ import scholarshipTestRoutes from "./scholarshipTest.routes";
 import crmProfileRoutes from "./crmProfile.routes";
 import crmPublicRoutes from "./crmPublic.routes";
 import scholarshipPublicRoutes from "./scholarshipPublic.routes";
+import caMeetingRoutes from "./caMeeting.routes";
+import caTaskRoutes from "./caTask.routes";
+import caReviewRoutes from "./caReview.routes";
 
 export {
   authRoutes,
@@ -110,4 +113,7 @@ export {
   scholarshipPublicRoutes,
   crmProfileRoutes,
   crmPublicRoutes,
+  caMeetingRoutes,
+  caTaskRoutes,
+  caReviewRoutes,
 };

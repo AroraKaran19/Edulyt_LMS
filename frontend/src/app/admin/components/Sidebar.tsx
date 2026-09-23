@@ -232,6 +232,18 @@ const AdminSidebar = ({
           href: "/admin/crm/ca-leads",
         },
         {
+          label: "CA tasks",
+          href: "/admin/crm/ca-tasks",
+        },
+        {
+          label: "CA meetings",
+          href: "/admin/crm/ca-meetings",
+        },
+        {
+          label: "CA reviews",
+          href: "/admin/crm/ca-reviews",
+        },
+        {
           label: "My leads",
           href: "/admin/crm/my-leads",
         },

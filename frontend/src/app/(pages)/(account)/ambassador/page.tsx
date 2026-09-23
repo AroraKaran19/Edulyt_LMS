@@ -6,6 +6,13 @@ import useAuth from "@/hooks/useAuth";
 import { toast } from "react-toastify";
 import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import useCrm, { AMBASSADOR_KIND_TAB_LABELS } from "@/hooks/useCrm";
+import useCaTasks from "@/hooks/useCaTasks";
+import useCaMeetings from "@/hooks/useCaMeetings";
+import CaProgressCard from "./components/CaProgressCard";
+import CaTaskList from "./components/CaTaskList";
+import CaMeetingsList from "./components/CaMeetingsList";
+import type { CaTaskMineRow } from "@/types/ca-task";
+import type { CaMeetingMineItem } from "@/types/ca-meeting";
 import ExtraQuestionsEditor, {
   MAX_EXTRA_QUESTIONS,
   toDrafts,
@@ -32,6 +39,11 @@ export default function AmbassadorPage() {
   /** Granted by their marketer; false means the form asks the marketer's. */
   const [canSetQuestions, setCanSetQuestions] = useState(false);
 
+  const [caTasks, setCaTasks] = useState<CaTaskMineRow[] | null>(null);
+  const [caMeetings, setCaMeetings] = useState<CaMeetingMineItem[] | null>(null);
+  const { listMine: listMyCaTasks } = useCaTasks();
+  const { listMine: listMyCaMeetings } = useCaMeetings();
+
   const title = user?.crmAmbassadorKind
     ? AMBASSADOR_KIND_TAB_LABELS[user.crmAmbassadorKind]
     : "Campus ambassador";
@@ -54,6 +66,22 @@ export default function AmbassadorPage() {
       cancelled = true;
     };
   }, [getProfile]);
+
+  // Independent of the `crmProfile` ambassador check above: a person can hold
+  // a referral code without an attached CaApplication, or the other way
+  // round, so this loads and fails on its own.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [tasks, meetings] = await Promise.all([listMyCaTasks(), listMyCaMeetings()]);
+      if (cancelled) return;
+      setCaTasks(tasks);
+      setCaMeetings(meetings);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [listMyCaTasks, listMyCaMeetings]);
 
   const onSaveQuestions = async () => {
     const result = await saveQuestion(
@@ -179,6 +207,43 @@ export default function AmbassadorPage() {
           </p>
         </div>
       </section>
+
+      {caTasks === null && caMeetings === null ? null : caTasks && caTasks.length === 0 && caMeetings && caMeetings.length === 0 ? null : (
+        <>
+          {caTasks && notJoinedYet(caTasks) ? (
+            <section className="rounded-2xl border border-gray-200 bg-white p-5 text-center">
+              <h2 className="text-sm font-bold text-gray-900">You haven&apos;t joined yet</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                Your tasks and meetings appear here once your Campus Ambassador application is approved and your
+                joining date is set.
+              </p>
+            </section>
+          ) : (
+            <>
+              {caTasks ? <CaProgressCard tasks={caTasks} /> : null}
+              <section>
+                <h2 className="mb-2 text-sm font-bold tracking-wide text-gray-500 uppercase">Tasks</h2>
+                {caTasks ? <CaTaskList tasks={caTasks} /> : <p className="text-sm text-gray-500">Loading...</p>}
+              </section>
+              <section>
+                <h2 className="mb-2 text-sm font-bold tracking-wide text-gray-500 uppercase">Meetings</h2>
+                {caMeetings ? <CaMeetingsList meetings={caMeetings} /> : <p className="text-sm text-gray-500">Loading...</p>}
+              </section>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
+}
+
+/**
+ * `/ca-tasks/mine` gives every task an `upcoming` status with no `opensAt`
+ * when the CA has no joining date yet (the task window has nothing to
+ * compute from). Any task carrying a real `opensAt` proves a joining date
+ * exists, so this distinguishes "not started" from a genuinely empty or
+ * all-upcoming task list.
+ */
+function notJoinedYet(tasks: CaTaskMineRow[]): boolean {
+  return tasks.length > 0 && tasks.every((t) => t.opensAt === null && t.status === "upcoming");
 }

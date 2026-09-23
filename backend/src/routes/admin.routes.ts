@@ -52,6 +52,23 @@ import {
   retryOfferLetterJob,
 } from "../controllers/offerLetterJob.controller";
 import { getTotalSpendByUserId } from "../controllers/order.controller";
+import {
+  activateCaMeetingLinkAdminController,
+  createCaMeetingAdminController,
+  deleteCaMeetingAdminController,
+  getCaMeetingAdminController,
+  getCaMeetingAttendanceAdminController,
+  listCaMeetingsAdminController,
+  setCaMeetingOverrideAdminController,
+  updateCaMeetingAdminController,
+} from "../controllers/caMeeting.controller";
+import {
+  createCaTaskAdminController,
+  deleteCaTaskAdminController,
+  getCaTaskAdminController,
+  listCaTasksAdminController,
+  updateCaTaskAdminController,
+} from "../controllers/caTask.controller";
 
 const router = Router();
 
@@ -126,5 +143,24 @@ router.patch("/ca-page-settings", requirePermission("leads.ca-page"), patchCaPag
 // /admin/settings/terms-and-conditions
 router.get("/legal-settings", requirePermission("settings.terms-and-conditions"), getAdminLegalSettingsController);
 router.patch("/legal-settings", requirePermission("settings.terms-and-conditions"), patchLegalSettingsController);
+
+router.post("/ca-meetings", requirePermission("crm.ca-meetings"), createCaMeetingAdminController);
+router.get("/ca-meetings", requirePermission("crm.ca-meetings"), listCaMeetingsAdminController);
+router.get("/ca-meetings/:id", requirePermission("crm.ca-meetings"), getCaMeetingAdminController);
+router.patch("/ca-meetings/:id", requirePermission("crm.ca-meetings"), updateCaMeetingAdminController);
+router.post("/ca-meetings/:id/activate/:slot", requirePermission("crm.ca-meetings"), activateCaMeetingLinkAdminController);
+router.delete("/ca-meetings/:id", requirePermission("crm.ca-meetings"), deleteCaMeetingAdminController);
+router.get("/ca-meetings/:id/attendance", requirePermission("crm.ca-meetings"), getCaMeetingAttendanceAdminController);
+router.post(
+  "/ca-meetings/:id/attendance/override",
+  requirePermission("crm.ca-meetings"),
+  setCaMeetingOverrideAdminController,
+);
+
+router.get("/ca-tasks", requirePermission("crm.ca-tasks"), listCaTasksAdminController);
+router.post("/ca-tasks", requirePermission("crm.ca-tasks"), createCaTaskAdminController);
+router.get("/ca-tasks/:id", requirePermission("crm.ca-tasks"), getCaTaskAdminController);
+router.patch("/ca-tasks/:id", requirePermission("crm.ca-tasks"), updateCaTaskAdminController);
+router.delete("/ca-tasks/:id", requirePermission("crm.ca-tasks"), deleteCaTaskAdminController);
 
 export default router;

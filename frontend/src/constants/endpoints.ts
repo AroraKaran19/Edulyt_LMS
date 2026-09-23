@@ -542,7 +542,30 @@ export const ENDPOINTS = {
    * Campus Ambassador applications: public submission plus staff review
    * (list, detail, reveal, approve, decline, owner and hold changes, team).
    */
-  caApplications: "/ca-applications",
+  caApplications: Object.assign("/ca-applications", {
+    changeDuration: (id: string) => `/ca-applications/${encodeURIComponent(id)}/duration`,
+    forcePass: (id: string) => `/ca-applications/${encodeURIComponent(id)}/force-pass`,
+  }),
+
+  /** CA task programme: mine, one attempt, submit (all CA-facing). */
+  caTasks: {
+    mine: "/ca-tasks/mine",
+    byId: (taskId: string) => `/ca-tasks/${encodeURIComponent(taskId)}`,
+    submit: (taskId: string) => `/ca-tasks/${encodeURIComponent(taskId)}/submit`,
+  },
+
+  /** CA meetings: mine and attendance click (CA-facing). */
+  caMeetings: {
+    mine: "/ca-meetings/mine",
+    attend: (token: string) => `/ca-meetings/attend/${encodeURIComponent(token)}`,
+  },
+
+  /** Pending file-answer review queue, shared by owners and admins. */
+  caReviews: {
+    list: "/ca-reviews",
+    review: (submissionId: string, questionId: string) =>
+      `/ca-reviews/${encodeURIComponent(submissionId)}/answers/${encodeURIComponent(questionId)}`,
+  },
 
   /** `/api/admin/*` — dashboard & global admin config */
   admin: {
@@ -554,5 +577,18 @@ export const ENDPOINTS = {
     legalSettings: "/admin/legal-settings",
     /** Batch and form configuration for the public CA page. */
     caPageSettings: "/admin/ca-page-settings",
+    caTasks: {
+      list: "/admin/ca-tasks",
+      create: "/admin/ca-tasks",
+      byId: (id: string) => `/admin/ca-tasks/${encodeURIComponent(id)}`,
+    },
+    caMeetings: {
+      list: "/admin/ca-meetings",
+      create: "/admin/ca-meetings",
+      byId: (id: string) => `/admin/ca-meetings/${encodeURIComponent(id)}`,
+      activate: (id: string, slot: 1 | 2) => `/admin/ca-meetings/${encodeURIComponent(id)}/activate/${slot}`,
+      attendance: (id: string) => `/admin/ca-meetings/${encodeURIComponent(id)}/attendance`,
+      attendanceOverride: (id: string) => `/admin/ca-meetings/${encodeURIComponent(id)}/attendance/override`,
+    },
   },
 };

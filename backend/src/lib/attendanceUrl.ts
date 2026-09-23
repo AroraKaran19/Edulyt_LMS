@@ -16,3 +16,7 @@ export const internshipAttendanceUrl = (token: string): string =>
 /** A live class follows its course's brand. */
 export const liveClassAttendanceUrl = (brand: Brand, token: string): string =>
   `${brandPageBaseUrl(brand)}/live-class/attend/${token}`;
+
+/** CA meetings are Airkrit-only. */
+export const caMeetingAttendanceUrl = (token: string): string =>
+  `${brandPageBaseUrl("airkrit")}/ambassador/meeting/attend/${token}`;
