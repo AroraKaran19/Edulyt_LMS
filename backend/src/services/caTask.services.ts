@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { CaApplicationModel, CaTaskModel, CaTaskSubmissionModel, InternshipQuestionModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { isCaTaskOpenForApplication } from "../lib/caTasks";
-import { awardWalletSuccessPoints } from "./successPoints.services";
 import type {
   CaTaskAdminDetail,
   CaTaskAdminRow,
@@ -243,7 +242,6 @@ async function awardCaTaskPoints(
 ): Promise<void> {
   if (points <= 0) return;
   try {
-    await awardWalletSuccessPoints(String(application.userId), points, "ca_task");
     await CaApplicationModel.updateOne({ _id: application._id }, { $inc: { caPoints: points } });
   } catch (error) {
     await CaTaskSubmissionModel.updateOne({ _id: submissionId }, { $set: { pointsAwardedAt: null } });

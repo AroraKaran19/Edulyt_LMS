@@ -282,7 +282,7 @@ export default function CaTaskUpsertModal({ isOpen, onClose, onSuccess, mode, ta
                 onChange={(e) => setSuccessPoints(e.target.value)}
               />
               <p className="text-xs text-gray-500">
-                Awarded to the wallet, and toward the CA&apos;s completion total, the moment they pass this task.
+                Internship success points: added to the CA&apos;s points total (not the wallet) the moment they pass this task. The total decides their completion documents.
               </p>
             </div>
           </div>
@@ -310,8 +310,9 @@ export default function CaTaskUpsertModal({ isOpen, onClose, onSuccess, mode, ta
             />
           </div>
           <p className="text-xs text-gray-500 -mt-2">
-            Days are counted from each CA&apos;s own joining date, in IST. Opens on day: the day the task appears. Closes on
-            day: the last day it can be submitted (must be on or after the opens day).
+            Days count from each CA&apos;s joining date in IST, starting at 0: day 0 is the joining date itself, day 1
+            is the next day. The task opens at 12:00 AM on the opens day and closes at 11:59 PM on the closes day. For
+            example, opens 0 and closes 6 covers the CA&apos;s first 7 days.
           </p>
 
           <CheckBoxContainer label="Task is active" checked={isActive} onChange={setIsActive} />

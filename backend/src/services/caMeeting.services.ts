@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import mongoose from "mongoose";
 import { CaApplicationModel, CaMeetingAttendanceModel, CaMeetingModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
@@ -12,7 +11,6 @@ import {
   resolveCheckpointVerdict,
   type CheckpointPhase,
 } from "../lib/checkpointAttendance";
-import { awardWalletSuccessPoints } from "./successPoints.services";
 
 export interface CaMeetingAdminRow {
   id: string;
@@ -278,12 +276,9 @@ async function finalizeCaMeeting(meetingId: mongoose.Types.ObjectId): Promise<vo
       { _id: { $in: presentApplicationIds }, userId: { $ne: null } },
       { userId: 1 },
     ).lean<{ _id: mongoose.Types.ObjectId; userId: mongoose.Types.ObjectId | null }[]>();
-    await Promise.all(
-      presentApps.map(async (app) => {
-        if (!app.userId) return;
-        await awardWalletSuccessPoints(String(app.userId), points, "ca_meeting");
-        await CaApplicationModel.updateOne({ _id: app._id }, { $inc: { caPoints: points } });
-      }),
+    await CaApplicationModel.updateMany(
+      { _id: { $in: presentApps.map((app) => app._id) } },
+      { $inc: { caPoints: points } },
     );
   }
 }
@@ -381,30 +376,14 @@ export const setCaMeetingOverrideAdmin = async (
     );
   }
 
-  if (isFinalized && application.userId) {
+  if (isFinalized) {
     if (points > 0 && willBePresent && !wasPresent) {
-      await awardWalletSuccessPoints(String(application.userId), points, "ca_meeting");
       await CaApplicationModel.updateOne({ _id: aid }, { $inc: { caPoints: points } });
     } else if (points > 0 && wasPresent && !willBePresent) {
-      // Reverse the credit with an admin_adjustment entry: `reward` transactions
-      // are always classified as credits, so a real deduction needs the signed type.
-      const { StudentModel } = await import("../models");
-      await StudentModel.findByIdAndUpdate(application.userId, {
-        $inc: { successPoints: -points },
-        $push: {
-          successPointsHistory: {
-            transactionId: crypto.randomUUID(),
-            earnedAt: new Date(),
-            type: "admin_adjustment",
-            points: -points,
-            adjustedByUserId: String(setBy),
-            adjustedByName: "CA meeting attendance correction",
-          },
-        },
-      });
-      const current = await CaApplicationModel.findById(aid).select("caPoints").lean();
-      const dec = Math.min(points, Math.max(0, Number(current?.caPoints ?? 0)));
-      if (dec > 0) await CaApplicationModel.updateOne({ _id: aid }, { $inc: { caPoints: -dec } });
+      // Pipeline keeps the total from going below zero in one atomic write.
+      await CaApplicationModel.updateOne({ _id: aid }, [
+        { $set: { caPoints: { $max: [0, { $subtract: [{ $ifNull: ["$caPoints", 0] }, points] }] } } },
+      ]);
     }
 
     if (willBePresent) {

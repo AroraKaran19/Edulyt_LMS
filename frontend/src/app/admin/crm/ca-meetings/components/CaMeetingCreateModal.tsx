@@ -205,7 +205,7 @@ export default function CaMeetingCreateModal({ isOpen, onClose, onCreated }: Pro
           onChange={(e) => setSuccessPoints(e.target.value)}
         />
         <p className="text-xs text-gray-500 -mt-2">
-          Awarded to the wallet, and toward the CA&apos;s completion total, for every CA marked present.
+          Internship success points: added to the points total (not the wallet) of every CA marked present.
         </p>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">

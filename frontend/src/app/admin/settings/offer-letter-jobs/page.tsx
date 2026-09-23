@@ -426,7 +426,8 @@ const OfferLetterJobsPage = () => {
                               View
                             </a>
                           )}
-                          {job.status === "failed" && (
+                          {(job.status === "failed" ||
+                            (sourceFilter === "ca" && job.status === "pending" && Boolean(job.error))) && (
                             <OrangeButton
                               onClick={() => handleRetry(job.jobId)}
                               disabled={retryingJobId === job.jobId}

@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import { CaApplicationModel, CaTaskModel, CaTaskSubmissionModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
-import { awardWalletSuccessPoints } from "./successPoints.services";
 import { isCaOwnerRole, type CaViewer } from "./caApplicationReview.services";
 
 export type { CaViewer };
@@ -150,7 +149,6 @@ export const reviewCaTaskAnswer = async (
 
   if (passed && successPoints > 0) {
     try {
-      await awardWalletSuccessPoints(String(finalized.userId), successPoints, "ca_task");
       await CaApplicationModel.updateOne({ _id: finalized.applicationId }, { $inc: { caPoints: successPoints } });
     } catch (error) {
       await CaTaskSubmissionModel.updateOne({ _id: submissionId }, { $set: { pointsAwardedAt: null } });

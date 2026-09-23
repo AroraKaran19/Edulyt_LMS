@@ -4,7 +4,7 @@ import { OfferLetterJobModel } from "../models/offerLetterJob.schema";
 import { CaApplicationModel } from "../models/caApplication.schema";
 import { CaDocumentJobModel } from "../models/caDocumentJob.schema";
 import type { CaDocumentJob, CaDocumentJobStatus } from "../models/caDocumentJob.schema";
-import { enqueueCaDocumentJob } from "./caDocumentJob.services";
+import { retryCaDocumentJobNow } from "./caDocumentJob.services";
 import {
   OfferLetterJob,
   OfferLetterJobData,
@@ -561,7 +561,9 @@ export const retryCaOfferLetterJobService = async (jobId: string): Promise<CaDoc
     throw new AppError("Job not found", 404);
   }
 
-  await enqueueCaDocumentJob(job.applicationId, "offer-letter");
+  if (!(await retryCaDocumentJobNow(job._id))) {
+    throw new AppError("This job is running right now. Try again in a minute.", 409);
+  }
 
   const updated = await CaDocumentJobModel.findById(jobId).lean();
   return updated as CaDocumentJob;

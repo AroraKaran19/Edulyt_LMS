@@ -132,3 +132,12 @@ export const rearmFailedCaDocumentJobs = async (
   const res = await CaDocumentJobModel.updateMany({ applicationId, status: "failed" }, { $set: REARM });
   return res.modifiedCount;
 };
+
+/** Admin retry: runs one job on the next worker pass with a fresh budget, skipping any backoff. Refuses a job that is running right now. */
+export const retryCaDocumentJobNow = async (jobId: mongoose.Types.ObjectId | string): Promise<boolean> => {
+  const res = await CaDocumentJobModel.updateOne(
+    { _id: jobId, status: { $ne: "processing" } },
+    { $set: REARM },
+  );
+  return res.matchedCount > 0;
+};
