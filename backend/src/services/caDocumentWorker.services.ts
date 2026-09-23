@@ -208,7 +208,12 @@ export const runCaCompletionSweep = async (
           { _id: row._id },
           { $set: { "completion.queuedAt": now, "completion.outcome": "not-eligible" } },
         );
-        await sendCaNotEligibleEmail(row, points, minPoints);
+        const mail = await sendCaNotEligibleEmail(row, points, minPoints);
+        if (mail === "failed") {
+          // Un-stamp so the next sweep retries; the mail's claim marker still sends it once.
+          await CaApplicationModel.updateOne({ _id: row._id }, { $set: { "completion.queuedAt": null } });
+          return "error" as const;
+        }
         return "not-eligible" as const;
       } catch (error) {
         console.error(`[CA Worker] completion sweep failed for application ${String(row._id)}:`, error);

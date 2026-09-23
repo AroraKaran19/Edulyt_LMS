@@ -121,6 +121,7 @@ module.exports = {
       env: {
         RUN_BACKGROUND_JOBS: "true",
         COLLABORATION_WORKER_POLL_MS: "10000",
+        CA_WORKER_ENABLED: "true",
       },
       max_memory_restart: "350M",
     },
