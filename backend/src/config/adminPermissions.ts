@@ -100,6 +100,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
       { key: "crm.ca-leads", label: "CA leads", href: "/admin/crm/ca-leads" },
       { key: "crm.ca-tasks", label: "CA tasks", href: "/admin/crm/ca-tasks" },
       { key: "crm.ca-meetings", label: "CA meetings", href: "/admin/crm/ca-meetings" },
+      // Reuses the CA leads permission key: reviews are a queue over the same CAs.
       { key: "crm.ca-leads", label: "CA reviews", href: "/admin/crm/ca-reviews" },
       // `roleOnly` pages belong to a marketer or sales person: they show that
       // person's own code, team and numbers, so they are meaningless for an

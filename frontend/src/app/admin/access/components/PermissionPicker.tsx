@@ -162,7 +162,9 @@ const PermissionPicker = ({
                   const checked = pageSet.has(page.key);
                   return (
                     <button
-                      key={page.key}
+                      // `href` rather than `key`: a page's permission key (e.g. "crm.ca-leads")
+                      // can be intentionally shared by more than one page row.
+                      key={page.href}
                       type="button"
                       disabled={disabled}
                       onClick={() => togglePage(page.key)}
