@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import EmptyState from "../components/applications/EmptyState";
-import { Download, Search, FileX, Loader2 } from "lucide-react";
+import { Search, FileX, Loader2 } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
 import useCertificateGroups from "@/hooks/useCertificateGroups";
 import type { CertificateGroup } from "@/types/certificateGroup";
@@ -165,8 +166,9 @@ const CertificatesPage = () => {
             ) : (
               <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
                 {displayedGroups.map((group) => (
-                  <div
+                  <Link
                     key={`${group.programType}-${group.programId}`}
+                    href={`/dashboard/certificates/${group.programType}/${group.programId}`}
                     className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div>
@@ -189,44 +191,11 @@ const CertificatesPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 mt-1">
-                      {group.documents.map((doc) => (
-                        <div
-                          key={doc.kind}
-                          className="flex items-center justify-between gap-2 border-t border-[#00000012] pt-2"
-                        >
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-black truncate">
-                              {doc.label}
-                            </div>
-                            <div className="text-[11px] text-gray-600">
-                              Issued:{" "}
-                              {new Date(doc.issuedAt).toLocaleDateString("en-IN", {
-                                timeZone: "Asia/Kolkata",
-                              })}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            className="flex items-center justify-center gap-1 sm:gap-2 shrink-0 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset] disabled:opacity-50 disabled:cursor-not-allowed"
-                            onClick={() => {
-                              if (doc.fileUrl) {
-                                window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
-                              }
-                            }}
-                            disabled={!doc.fileUrl}
-                            title={
-                              doc.fileUrl
-                                ? "Download certificate"
-                                : "Certificate file not available"
-                            }
-                          >
-                            <Download size={14} className="sm:w-4 sm:h-4" />
-                          </button>
-                        </div>
-                      ))}
+                    <div className="border-t border-[#00000012] pt-2 mt-1 text-[11px] font-semibold text-gray-600">
+                      {group.documents.length}{" "}
+                      {group.documents.length === 1 ? "document" : "documents"}
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

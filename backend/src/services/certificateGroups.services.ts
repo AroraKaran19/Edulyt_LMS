@@ -4,6 +4,7 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { InternshipModel } from "../models/internship.schema";
 import { CourseModel } from "../models/course.schema";
 import type { Brand } from "../constants/brands";
+import { verificationBaseUrl } from "../lib/verifyUrl";
 
 export type CertificateDocKind = "training" | "lor" | "offer-letter" | "internship";
 
@@ -47,6 +48,7 @@ type EnrollmentRow = {
   internship: mongoose.Types.ObjectId;
   offerLetterUrl?: string;
   offerLetterGeneratedAt?: Date;
+  internId?: string;
   createdAt?: Date;
 };
 
@@ -75,7 +77,7 @@ export const getCertificateGroupsService = async (
     }).lean<CertRow[]>(),
     InternshipEnrollmentModel.find(
       { user: userId, offerLetterUrl: { $exists: true, $nin: [null, ""] } },
-      { internship: 1, offerLetterUrl: 1, offerLetterGeneratedAt: 1, createdAt: 1 },
+      { internship: 1, offerLetterUrl: 1, offerLetterGeneratedAt: 1, createdAt: 1, internId: 1 },
     ).lean<EnrollmentRow[]>(),
   ]);
 
@@ -132,7 +134,10 @@ export const getCertificateGroupsService = async (
       kind: "offer-letter",
       fileUrl: e.offerLetterUrl,
       issuedAt: new Date(e.offerLetterGeneratedAt ?? e.createdAt ?? Date.now()).toISOString(),
-      verificationUrl: null,
+      // Same URL the letter's own QR encodes, so old letters verify too.
+      verificationUrl: e.internId
+        ? `${verificationBaseUrl("edulyt")}/verify/intern/${encodeURIComponent(e.internId)}`
+        : null,
     });
   }
 

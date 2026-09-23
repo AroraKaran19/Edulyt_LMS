@@ -46,6 +46,7 @@ export type Pane = "you" | "otp" | "college" | "payout" | "done";
 export type FormErrors = Partial<
   Record<
     | "name"
+    | "duration"
     | "email"
     | "phone"
     | "captcha"
@@ -108,28 +109,28 @@ export function DurationTicket({
   enrollment,
   value,
   onChange,
+  error,
 }: {
   enrollment: CaPageSettings["enrollment"];
   value: number | null;
   onChange: (months: number) => void;
+  error?: string;
 }) {
   return (
-    <>
-      <div className={styles.ticket} role="group" aria-label="Choose your duration">
-        {enrollment.durations.map((months) => (
-          <button
-            key={months}
-            type="button"
-            onClick={() => onChange(months)}
-            aria-pressed={value === months}
-            className={cn(styles.ticketCell, "max-sm:text-base", value === months && styles.ticketCellActive)}
-          >
-            <span className={styles.ticketK}>{months} month{months === 1 ? "" : "s"}</span>
-          </button>
-        ))}
-      </div>
+    <div className={styles.field}>
+      <Select
+        label="Internship duration"
+        placeholder="Select how long you want to intern"
+        options={enrollment.durations.map((months) => ({
+          value: String(months),
+          label: `${months} month${months === 1 ? "" : "s"}`,
+        }))}
+        value={value ? String(value) : ""}
+        onChange={(v) => onChange(Number(v))}
+        error={error}
+      />
       <p className={styles.ticketNote}>Your joining date is confirmed the moment you&apos;re approved.</p>
-    </>
+    </div>
   );
 }
 

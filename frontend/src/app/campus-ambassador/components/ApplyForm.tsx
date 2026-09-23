@@ -174,11 +174,6 @@ export default function ApplyForm({
   const [captchaNonce, setCaptchaNonce] = useState(0);
   const [durationMonths, setDurationMonths] = useState<number | null>(null);
 
-  useEffect(() => {
-    if (durationMonths === null && settings.enrollment.durations.length > 0) {
-      setDurationMonths(settings.enrollment.durations[0]);
-    }
-  }, [settings.enrollment.durations, durationMonths]);
 
   const isClosed = closed || !settings.enrollment.acceptingApplications || settings.enrollment.durations.length === 0;
   const e164 = toE164(countryIso, phone);
@@ -348,6 +343,7 @@ export default function ApplyForm({
 
   const validateYou = (): FormErrors => {
     const next: FormErrors = {};
+    if (!durationMonths) next.duration = "Select a duration";
     if (name.trim().length < 2) next.name = "Enter your full name";
     if (!EMAIL.test(email.trim())) next.email = "Enter a valid email address";
     const digitsOnly = phone.replace(/\D/g, "");
@@ -638,7 +634,15 @@ export default function ApplyForm({
         <ClosedNote />
       ) : (
         <>
-          <DurationTicket enrollment={settings.enrollment} value={durationMonths} onChange={setDurationMonths} />
+          <DurationTicket
+            enrollment={settings.enrollment}
+            value={durationMonths}
+            onChange={(months) => {
+              setDurationMonths(months);
+              setErrors((e) => ({ ...e, duration: undefined }));
+            }}
+            error={errors.duration}
+          />
           <StepsBar pane={pane} onGo={goBack} />
 
           {pane === "you" ? (
