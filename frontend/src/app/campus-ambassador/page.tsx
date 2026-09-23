@@ -1,29 +1,8 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
-import localFont from "next/font/local";
 import CaLanding from "./components/CaLanding";
+import { caBodyFont, caDisplayFont } from "./fonts";
 import { getCaPageSettings } from "@/lib/ca-page/getCaPageSettings";
-
-const display = localFont({
-  src: [
-    { path: "./fonts/CabinetGrotesk-500.woff2", weight: "500" },
-    { path: "./fonts/CabinetGrotesk-700.woff2", weight: "700" },
-    { path: "./fonts/CabinetGrotesk-800.woff2", weight: "800" },
-  ],
-  variable: "--font-ca-display",
-  display: "swap",
-});
-
-const body = localFont({
-  src: [
-    { path: "./fonts/Switzer-400.woff2", weight: "400" },
-    { path: "./fonts/Switzer-500.woff2", weight: "500" },
-    { path: "./fonts/Switzer-600.woff2", weight: "600" },
-    { path: "./fonts/Switzer-700.woff2", weight: "700" },
-  ],
-  variable: "--font-ca-body",
-  display: "swap",
-});
 
 /*
  * `getCaPageSettings` never throws, so a dead API on a background ISR
@@ -48,7 +27,7 @@ export const metadata: Metadata = {
 export default async function CampusAmbassadorPage() {
   const settings = await getCaPageSettings();
   return (
-    <div className={`${display.variable} ${body.variable}`}>
+    <div className={`${caDisplayFont.variable} ${caBodyFont.variable}`}>
       <Suspense fallback={<div className="min-h-dvh bg-[#2B1508]" />}>
         <CaLanding settings={settings} />
       </Suspense>

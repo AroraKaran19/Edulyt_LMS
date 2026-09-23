@@ -1,14 +1,23 @@
 import mongoose from "mongoose";
-import { CaApplicationModel, CaDocumentJobModel, UserModel } from "../models";
+import {
+  CaApplicationModel,
+  CaDocumentJobModel,
+  CaMeetingModel,
+  CaTaskModel,
+  CaTaskSubmissionModel,
+  UserModel,
+} from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { normalizePhone } from "./phoneVerification.services";
 import { decryptCaText } from "../lib/caPii";
-import { parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
+import { addIstCalendarDays, parseIstDateOnly, todayIst, ymdIst } from "../utils/ist";
 import { tenureEndDate } from "../lib/caApplication";
+import { caDesignation } from "../lib/caDocuments";
 import { AMBASSADOR_KINDS } from "./crmProfile.services";
 import { attachApprovedApplication, type CaAttachOutcome } from "./caApplicationAttach.services";
 import { allocateNextInternId } from "./internId.services";
 import { enqueueCaDocumentJob, rearmFailedCaDocumentJobs } from "./caDocumentJob.services";
+import { getCaPageSettings } from "./caPageSettings.services";
 import type { CaDocumentKind } from "../models/caDocumentJob.schema";
 import type { AmbassadorKind } from "../types/crm";
 import type {
@@ -78,7 +87,12 @@ export interface CaApplicationRow {
     internshipCertificate: string | null;
     trainingCertificate: string | null;
   };
-  completion: { hold: boolean; issuedAt: string | null };
+  completion: {
+    hold: boolean;
+    issuedAt: string | null;
+    outcome: "eligible" | "not-eligible" | null;
+    certificateOverride: "pass" | "fail" | null;
+  };
   createdAt: string;
   /** Admin detail only: document jobs that used up their retries. */
   failedDocumentJobs?: { kind: CaDocumentKind; error: string | null }[];
@@ -124,6 +138,8 @@ export const toCaApplicationRow = (doc: CaRowSource): CaApplicationRow => ({
   completion: {
     hold: Boolean(doc.completion?.hold),
     issuedAt: iso(doc.completion?.issuedAt),
+    outcome: doc.completion?.outcome ?? null,
+    certificateOverride: doc.completion?.certificateOverride ?? null,
   },
   createdAt: new Date(doc.createdAt).toISOString(),
 });
@@ -544,17 +560,35 @@ export const changeCaApplicationOwner = async (
   return toCaApplicationRow(updated as CaRowSource);
 };
 
-export const forcePassCaApplication = async (viewer: CaViewer, id: string): Promise<CaApplicationRow> => {
+/**
+ * Admin override of one CA's certificate verdict: "pass" is always eligible,
+ * "fail" never is, `null` clears the override back to the percentage rule.
+ * Blocked once the completion documents are already issued — there is
+ * nothing left for the override to change at that point.
+ */
+export const setCaCertificateOverride = async (
+  viewer: CaViewer,
+  id: string,
+  override: unknown,
+): Promise<CaApplicationRow> => {
   assertCaAdmin(viewer);
   assertId(id);
+  if (override !== "pass" && override !== "fail" && override !== null) {
+    throw new AppError("override must be pass, fail, or null", 400);
+  }
   const updated = await CaApplicationModel.findOneAndUpdate(
-    { _id: id, status: "attached" },
-    { $set: { "completion.forcePassed": true } },
+    { _id: id, status: "attached", "completion.issuedAt": null },
+    { $set: { "completion.certificateOverride": override } },
     { new: true, projection: CA_ROW_PROJECTION },
   ).lean();
-  if (!updated) throw new AppError("Ambassador not found", 404);
+  if (!updated) {
+    throw new AppError("Ambassador not found, or their documents have already been issued", 404);
+  }
 
-  if (updated.completion?.outcome === "not-eligible") {
+  // A "pass" must actually produce the documents when the sweep had already
+  // written them off as not-eligible; "fail" and "clear" only record state,
+  // since the sweep (not this call) decides what to send.
+  if (override === "pass" && updated.completion?.outcome === "not-eligible") {
     const flipped = await CaApplicationModel.findOneAndUpdate(
       { _id: id, "completion.outcome": "not-eligible" },
       { $set: { "completion.outcome": "eligible", "completion.queuedAt": new Date() } },
@@ -578,4 +612,341 @@ export const getAttachedCaApplication = async (
   ).lean();
   if (!doc) return null;
   return { _id: doc._id as mongoose.Types.ObjectId, joiningDate: doc.joiningDate ?? null, endDate: doc.endDate ?? null };
+};
+
+export interface CaAvailablePointsSources {
+  tasks: { successPoints: number; startFromDay: number }[];
+  meetings: { successPoints: number; startDateTime: Date }[];
+}
+
+/**
+ * Every active task and every meeting that has already started, as of `now`.
+ * Load this ONCE per tick (or once per request) and reuse it across CAs via
+ * `sumCaAvailablePoints` — the lists are the same for everyone, only the
+ * CA's own joining/end date decides which of them fall inside their tenure.
+ * `tasks` reads the `{isActive, startFromDay}` index; `meetings` reads `{startDateTime}`.
+ */
+export const loadCaAvailablePointsSources = async (
+  now: Date = new Date(),
+): Promise<CaAvailablePointsSources> => {
+  const [tasks, meetings] = await Promise.all([
+    CaTaskModel.find({ isActive: true }, { successPoints: 1, startFromDay: 1 }).lean<
+      { successPoints?: number; startFromDay?: number }[]
+    >(),
+    CaMeetingModel.find({ startDateTime: { $lte: now } }, { successPoints: 1, startDateTime: 1 }).lean<
+      { successPoints?: number; startDateTime: Date }[]
+    >(),
+  ]);
+  return {
+    tasks: tasks.map((t) => ({
+      successPoints: Math.max(0, Number(t.successPoints ?? 0)),
+      startFromDay: Math.max(0, Number(t.startFromDay ?? 0)),
+    })),
+    meetings: meetings.map((m) => ({
+      successPoints: Math.max(0, Number(m.successPoints ?? 0)),
+      startDateTime: new Date(m.startDateTime),
+    })),
+  };
+};
+
+/**
+ * Points available to one CA for their tenure so far: every task whose
+ * opening day (joining date + startFromDay, in IST) has arrived, plus every
+ * meeting that fell inside [joiningDate, min(endDate, now)]. Pure — no DB
+ * access — so a sweep can compute `sources` once and call this per row.
+ */
+export const sumCaAvailablePoints = (
+  app: { joiningDate?: Date | string | null; endDate?: Date | string | null },
+  sources: CaAvailablePointsSources,
+  now: Date = new Date(),
+): number => {
+  const joiningDate = app.joiningDate ? new Date(app.joiningDate) : null;
+  if (!joiningDate || Number.isNaN(joiningDate.getTime())) return 0;
+  const endDate = app.endDate ? new Date(app.endDate) : null;
+  const cutoffMs =
+    endDate && !Number.isNaN(endDate.getTime()) && endDate.getTime() < now.getTime()
+      ? endDate.getTime()
+      : now.getTime();
+
+  let total = 0;
+  for (const t of sources.tasks) {
+    const opensAt = addIstCalendarDays(joiningDate, t.startFromDay);
+    if (opensAt && opensAt.getTime() <= cutoffMs) total += t.successPoints;
+  }
+  for (const m of sources.meetings) {
+    const ms = m.startDateTime.getTime();
+    if (ms >= joiningDate.getTime() && ms <= cutoffMs) total += m.successPoints;
+  }
+  return total;
+};
+
+/** Convenience for a single CA (e.g. the desk API): loads sources fresh and sums. */
+export const computeCaAvailablePoints = async (
+  app: { joiningDate?: Date | string | null; endDate?: Date | string | null },
+  now: Date = new Date(),
+): Promise<number> => {
+  const sources = await loadCaAvailablePointsSources(now);
+  return sumCaAvailablePoints(app, sources, now);
+};
+
+/** Points a CA needs to clear the gate. 0 at a 0% threshold, regardless of the pool. */
+export const requiredCaPoints = (availablePoints: number, thresholdPct: number): number =>
+  Math.ceil((availablePoints * thresholdPct) / 100);
+
+export interface CaDeskSummary {
+  isCa: boolean;
+  designation: string | null;
+  kind: AmbassadorKind | null;
+  collegeName: string | null;
+  joiningDate: string | null;
+  endDate: string | null;
+  durationMonths: number | null;
+  caPoints: number;
+  thresholdPct: number;
+  /** Points on every task and meeting inside the tenure so far. */
+  availablePoints: number;
+  /** ceil(availablePoints * thresholdPct / 100). */
+  requiredPoints: number;
+  pointsFromTasks: number;
+  pointsFromMeetings: number;
+}
+
+/** The signed-in user's Ambassador desk: their attached CA row, plus a points breakdown. */
+export const getCaDeskSummary = async (
+  userId: mongoose.Types.ObjectId,
+): Promise<CaDeskSummary> => {
+  const [application, settings] = await Promise.all([
+    CaApplicationModel.findOne(
+      { userId, status: "attached" },
+      { kind: 1, collegeName: 1, joiningDate: 1, endDate: 1, durationMonths: 1, caPoints: 1 },
+    ).lean(),
+    getCaPageSettings(),
+  ]);
+  const thresholdPct = settings.enrollment.certificationThresholdPct;
+
+  if (!application) {
+    return {
+      isCa: false,
+      designation: null,
+      kind: null,
+      collegeName: null,
+      joiningDate: null,
+      endDate: null,
+      durationMonths: null,
+      caPoints: 0,
+      thresholdPct,
+      availablePoints: 0,
+      requiredPoints: 0,
+      pointsFromTasks: 0,
+      pointsFromMeetings: 0,
+    };
+  }
+
+  const kind = application.kind ?? null;
+  const caPoints = application.caPoints ?? 0;
+  const [pointsAgg, availablePoints] = await Promise.all([
+    CaTaskSubmissionModel.aggregate<{ total: number }>([
+      { $match: { applicationId: application._id, passed: true, pointsAwardedAt: { $ne: null } } },
+      { $group: { _id: null, total: { $sum: "$templateSnapshot.successPoints" } } },
+    ]).then((rows) => rows[0]),
+    computeCaAvailablePoints(application),
+  ]);
+  const pointsFromTasks = pointsAgg?.total ?? 0;
+  const requiredPoints = requiredCaPoints(availablePoints, thresholdPct);
+
+  return {
+    isCa: true,
+    designation: kind ? caDesignation(settings.documents.designations, kind) : null,
+    kind,
+    collegeName: application.collegeName ?? null,
+    joiningDate: ymdIst(application.joiningDate),
+    endDate: ymdIst(application.endDate),
+    durationMonths: application.durationMonths ?? null,
+    caPoints,
+    thresholdPct,
+    availablePoints,
+    requiredPoints,
+    pointsFromTasks,
+    pointsFromMeetings: Math.max(0, caPoints - pointsFromTasks),
+  };
+};
+
+export type CaDirectoryState = "active" | "ended" | "all";
+
+export type CaDirectoryOutcome =
+  | "active"
+  | "upcoming"
+  | "issued"
+  | "not-eligible"
+  | "on-hold"
+  | "awaiting-review";
+
+export interface CaDirectoryQuery {
+  state?: unknown;
+  search?: unknown;
+  ownerUserId?: unknown;
+  kind?: unknown;
+  page?: unknown;
+  limit?: unknown;
+}
+
+export interface CaDirectoryRow {
+  id: string;
+  name: string;
+  email: string;
+  internId: string | null;
+  kind: AmbassadorKind | null;
+  ownerName: string;
+  joiningDate: string | null;
+  endDate: string | null;
+  durationMonths: number;
+  caPoints: number;
+  migrated: boolean;
+  outcome: CaDirectoryOutcome;
+  certificateOverride: "pass" | "fail" | null;
+}
+
+type CaDirectorySource = Pick<
+  CaRowSource,
+  | "_id"
+  | "name"
+  | "email"
+  | "internId"
+  | "kind"
+  | "ownerName"
+  | "joiningDate"
+  | "endDate"
+  | "durationMonths"
+  | "caPoints"
+  | "migrated"
+  | "completion"
+>;
+
+const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Priority order matters: an override or a sweep verdict outranks a hold (both
+ * explain why nothing was issued), and a hold outranks "awaiting review" (which
+ * means the sweep simply hasn't looked yet).
+ */
+const directoryOutcome = (
+  doc: Pick<CaDirectorySource, "joiningDate" | "endDate" | "completion">,
+  startOfTodayIst: Date,
+): CaDirectoryOutcome => {
+  if (doc.joiningDate && new Date(doc.joiningDate).getTime() > Date.now()) return "upcoming";
+  const completion = doc.completion;
+  if (completion?.issuedAt) return "issued";
+  if (completion?.certificateOverride === "fail" || completion?.outcome === "not-eligible") {
+    return "not-eligible";
+  }
+  if (completion?.hold) return "on-hold";
+  if (doc.endDate && new Date(doc.endDate).getTime() < startOfTodayIst.getTime()) return "awaiting-review";
+  return "active";
+};
+
+const toCaDirectoryRow = (doc: CaDirectorySource, startOfTodayIst: Date): CaDirectoryRow => ({
+  id: String(doc._id),
+  name: doc.name,
+  email: doc.email,
+  internId: doc.internId ?? null,
+  kind: doc.kind ?? null,
+  ownerName: doc.ownerName ?? "",
+  joiningDate: ymdIst(doc.joiningDate),
+  endDate: ymdIst(doc.endDate),
+  durationMonths: doc.durationMonths,
+  caPoints: doc.caPoints ?? 0,
+  migrated: Boolean(doc.migrated),
+  outcome: directoryOutcome(doc, startOfTodayIst),
+  certificateOverride: doc.completion?.certificateOverride ?? null,
+});
+
+/**
+ * Every Campus Ambassador there has ever been, with whether they are
+ * currently active. Owners are pinned to their own `ownerUserId`; admins see
+ * everyone and may filter by it. Counts reuse the same scope/search/kind
+ * filter so the tab counters track what's on screen.
+ */
+export const listCaDirectory = async (
+  viewer: CaViewer,
+  query: CaDirectoryQuery,
+): Promise<{
+  rows: CaDirectoryRow[];
+  total: number;
+  page: number;
+  totalPages: number;
+  counts: { active: number; ended: number };
+}> => {
+  const now = new Date();
+  const startOfTodayIst = parseIstDateOnly(todayIst()) as Date;
+
+  const state: CaDirectoryState =
+    query.state === "ended" || query.state === "all" ? (query.state as CaDirectoryState) : "active";
+  const page = Math.max(1, Math.floor(Number(query.page)) || 1);
+  const limit = Math.min(100, Math.max(1, Math.floor(Number(query.limit)) || 20));
+
+  const baseConditions: Record<string, unknown>[] = [{ status: "attached" }];
+  if (isCaOwnerRole(viewer.userType)) {
+    baseConditions.push({ ownerUserId: viewer.userId });
+  } else if (mongoose.isValidObjectId(query.ownerUserId)) {
+    baseConditions.push({ ownerUserId: new mongoose.Types.ObjectId(String(query.ownerUserId)) });
+  }
+
+  const kind = AMBASSADOR_KINDS.find((k) => k === query.kind);
+  if (kind) baseConditions.push({ kind });
+
+  const search = String(query.search ?? "").trim();
+  if (search) {
+    baseConditions.push({
+      $or: [
+        { email: search.toLowerCase() },
+        { internId: search },
+        { name: { $regex: `^${escapeRegex(search)}`, $options: "i" } },
+      ],
+    });
+  }
+
+  const activeStateConditions: Record<string, unknown>[] = [
+    { joiningDate: { $ne: null, $lte: now } },
+    { $or: [{ endDate: null }, { endDate: { $gte: startOfTodayIst } }] },
+  ];
+  const endedStateConditions: Record<string, unknown>[] = [
+    { endDate: { $ne: null, $lt: startOfTodayIst } },
+  ];
+
+  const buildFilter = (stateConditions: Record<string, unknown>[]): Record<string, unknown> => {
+    const all = [...baseConditions, ...stateConditions];
+    return all.length === 1 ? all[0] : { $and: all };
+  };
+
+  const listFilter = buildFilter(
+    state === "active" ? activeStateConditions : state === "ended" ? endedStateConditions : [],
+  );
+  const activeFilter = buildFilter(activeStateConditions);
+  const endedFilter = buildFilter(endedStateConditions);
+  const needsSeparateTotal = state === "all";
+
+  // Ending soonest first for the active tab; most recently ended first otherwise
+  // (there is no natural "ending soonest" order once a tenure is over).
+  const sort = state === "active" ? { endDate: 1 as const } : { endDate: -1 as const };
+
+  const [rows, activeCount, endedCount, totalAll] = await Promise.all([
+    CaApplicationModel.find(listFilter, CA_ROW_PROJECTION)
+      .sort(sort)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    CaApplicationModel.countDocuments(activeFilter),
+    CaApplicationModel.countDocuments(endedFilter),
+    needsSeparateTotal ? CaApplicationModel.countDocuments(listFilter) : Promise.resolve(0),
+  ]);
+
+  const total = state === "active" ? activeCount : state === "ended" ? endedCount : totalAll;
+
+  return {
+    rows: (rows as CaDirectorySource[]).map((doc) => toCaDirectoryRow(doc, startOfTodayIst)),
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+    counts: { active: activeCount, ended: endedCount },
+  };
 };

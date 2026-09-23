@@ -8,13 +8,15 @@ import {
   changeCaApplicationDurationController,
   changeCaApplicationOwnerController,
   declineCaApplicationController,
-  forcePassCaApplicationController,
   getCaApplicationController,
+  getCaDeskController,
   listCaApplicationsController,
+  listCaDirectoryController,
   listCaOwnersController,
   listCaTeamApplicationsController,
   revealCaApplicationController,
   retryCaDocumentsController,
+  setCaCertificateOverrideController,
   setCaCompletionHoldController,
   submitCaApplicationController,
 } from "../controllers/caApplication.controller";
@@ -38,11 +40,26 @@ router.post(
 const staff = [verifyUser, requireStaffPageAccess("crm.ca-leads")];
 
 /**
+ * @route   GET /api/ca-applications/me/desk
+ * @desc    The signed-in user's Ambassador desk: their CA row and points, if any
+ * @access  Any signed-in user
+ */
+router.get("/me/desk", verifyUser, getCaDeskController);
+
+/**
  * @route   GET /api/ca-applications
  * @desc    Open applications. Marketers and sales see only their own referrals.
  * @access  Admin with `crm.ca-leads`, super-admin, marketer, sales
  */
 router.get("/", ...staff, listCaApplicationsController);
+
+/**
+ * @route   GET /api/ca-applications/directory?state=&search=&ownerUserId=&kind=&page=&limit=
+ * @desc    Every attached Campus Ambassador there has ever been, active or not.
+ *          Marketers and sales see only their own team.
+ * @access  Admin with `crm.ca-leads`, super-admin, marketer, sales
+ */
+router.get("/directory", ...staff, listCaDirectoryController);
 
 /**
  * @route   GET /api/ca-applications/owners
@@ -104,11 +121,12 @@ router.patch("/:id/duration", ...staff, changeCaApplicationDurationController);
 router.patch("/:id/hold", ...staff, setCaCompletionHoldController);
 
 /**
- * @route   POST /api/ca-applications/:id/force-pass
- * @desc    Admin overrides the points gate for one CA's completion documents
+ * @route   PATCH /api/ca-applications/:id/certificate-override
+ * @desc    Admin passes/fails a CA's completion documents, or clears the override
+ * @body    { override: "pass" | "fail" | null }
  * @access  Admin with `crm.ca-leads`, super-admin
  */
-router.post("/:id/force-pass", ...staff, forcePassCaApplicationController);
+router.patch("/:id/certificate-override", ...staff, setCaCertificateOverrideController);
 
 /**
  * @route   POST /api/ca-applications/:id/documents/retry

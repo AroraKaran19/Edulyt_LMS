@@ -7,6 +7,8 @@ import type {
   CaApplicationRow,
   CaApplicationsPage,
   CaAttachOutcome,
+  CaDirectoryPage,
+  CaDirectoryState,
   CaOwner,
 } from "@/types/ca-application";
 
@@ -21,6 +23,15 @@ export interface CaListQuery {
   status: "pending" | "approved";
   referrer?: string;
   q?: string;
+  page: number;
+  limit?: number;
+}
+
+export interface CaDirectoryQuery {
+  state?: CaDirectoryState;
+  search?: string;
+  ownerUserId?: string;
+  kind?: string;
   page: number;
   limit?: number;
 }
@@ -46,6 +57,15 @@ export default function useCaApplications() {
         const res = await apiClient.get(base, { params: { limit: 20, ...query } });
         return res.data?.data as CaApplicationsPage;
       }, "Could not load applications"),
+    [run],
+  );
+
+  const listDirectory = useCallback(
+    (query: CaDirectoryQuery) =>
+      run(async () => {
+        const res = await apiClient.get(ENDPOINTS.caApplications.directory, { params: { limit: 20, ...query } });
+        return res.data?.data as CaDirectoryPage;
+      }, "Could not load the CA directory"),
     [run],
   );
 
@@ -131,15 +151,21 @@ export default function useCaApplications() {
     [run],
   );
 
-  const forcePass = useCallback(
-    (id: string) =>
-      run(async () => (await apiClient.post(ENDPOINTS.caApplications.forcePass(id))).data?.data as CaApplicationRow, "Could not force-pass"),
+  const setCertificateOverride = useCallback(
+    (id: string, override: "pass" | "fail" | null) =>
+      run(
+        async () =>
+          (await apiClient.patch(ENDPOINTS.caApplications.certificateOverride(id), { override })).data
+            ?.data as CaApplicationRow,
+        "Could not update the certificate override",
+      ),
     [run],
   );
 
   return {
     isLoading,
     list,
+    listDirectory,
     detail,
     reveal,
     owners,
@@ -150,6 +176,6 @@ export default function useCaApplications() {
     retryDocuments,
     team,
     changeDuration,
-    forcePass,
+    setCertificateOverride,
   };
 }

@@ -11,14 +11,16 @@ import {
   changeCaApplicationDuration,
   changeCaApplicationOwner,
   declineCaApplication,
-  forcePassCaApplication,
   fullName,
   getCaApplication,
+  getCaDeskSummary,
   listCaApplications,
+  listCaDirectory,
   listCaOwners,
   listCaTeamApplications,
   retryCaDocumentJobs,
   revealCaApplication,
+  setCaCertificateOverride,
   setCaCompletionHold,
   type CaViewer,
 } from "../services/caApplicationReview.services";
@@ -48,9 +50,20 @@ const viewerOf = (req: Request): CaViewer => {
   };
 };
 
+/** @route GET /api/ca-applications/me/desk */
+export const getCaDeskController = asyncHandler(async (req: Request, res: Response) => {
+  const { userId } = viewerOf(req);
+  sendSuccessResponse(res, await getCaDeskSummary(userId), "Desk fetched", 200);
+});
+
 /** @route GET /api/ca-applications?status=&referrer=&q=&page=&limit= */
 export const listCaApplicationsController = asyncHandler(async (req: Request, res: Response) => {
   sendSuccessResponse(res, await listCaApplications(viewerOf(req), req.query), "Applications fetched", 200);
+});
+
+/** @route GET /api/ca-applications/directory?state=&search=&ownerUserId=&kind=&page=&limit= */
+export const listCaDirectoryController = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccessResponse(res, await listCaDirectory(viewerOf(req), req.query), "Directory fetched", 200);
 });
 
 /** @route GET /api/ca-applications/owners */
@@ -99,10 +112,10 @@ export const changeCaApplicationDurationController = asyncHandler(async (req: Re
   sendSuccessResponse(res, row, "Duration changed", 200);
 });
 
-/** @route POST /api/ca-applications/:id/force-pass */
-export const forcePassCaApplicationController = asyncHandler(async (req: Request, res: Response) => {
-  const row = await forcePassCaApplication(viewerOf(req), String(req.params.id));
-  sendSuccessResponse(res, row, "Force-passed", 200);
+/** @route PATCH /api/ca-applications/:id/certificate-override  Body: `{ override }` */
+export const setCaCertificateOverrideController = asyncHandler(async (req: Request, res: Response) => {
+  const row = await setCaCertificateOverride(viewerOf(req), String(req.params.id), req.body?.override ?? null);
+  sendSuccessResponse(res, row, "Certificate override updated", 200);
 });
 
 /** @route GET /api/ca-applications/team?ownerUserId= */

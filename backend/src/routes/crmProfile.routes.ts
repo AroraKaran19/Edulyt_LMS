@@ -4,6 +4,7 @@ import { requireStaffPageAccess } from "../middlewares/staffAccess.middleware";
 import {
   addMyAmbassador,
   getCrmAnalyticsController,
+  getMyCrmLeadsController,
   listCrmPeopleController,
   listPersonLeadsController,
   getCrmPersonController,
@@ -36,6 +37,13 @@ router.get("/me", getMyCrmProfile);
  * @access  Marketer, sales, campus ambassador
  */
 router.get("/me/stats", getMyCrmStats);
+
+/**
+ * @route   GET /api/crm/me/leads?page=&limit=
+ * @desc    The caller's own leads, name-masked and stripped of contact fields
+ * @access  Marketer, sales, campus ambassador
+ */
+router.get("/me/leads", getMyCrmLeadsController);
 
 /**
  * @route   PATCH /api/crm/me/questions

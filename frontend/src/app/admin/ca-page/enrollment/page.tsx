@@ -10,7 +10,7 @@ export default function EnrollmentSectionPage() {
   const { state, setState } = useSectionState("enrollment", (s) => ({
     acceptingApplications: s?.enrollment?.acceptingApplications ?? false,
     durations: s?.enrollment?.durations ?? [],
-    minSuccessPoints: s?.enrollment?.minSuccessPoints ?? 0,
+    certificationThresholdPct: s?.enrollment?.certificationThresholdPct ?? 0,
   }));
 
   const toggleDuration = (months: number) => {
@@ -26,7 +26,7 @@ export default function EnrollmentSectionPage() {
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
       <SectionHeader
         title="Enrollment"
-        description="Whether applications are open, the durations offered, and the points minimum for completion documents."
+        description="Whether applications are open, the durations offered, and the percentage minimum for completion documents."
       />
 
       <FieldGroup>
@@ -57,12 +57,19 @@ export default function EnrollmentSectionPage() {
         </div>
 
         <TextField
-          label="Minimum points for completion documents"
+          label="Minimum % of available points"
           type="number"
           min={0}
-          value={String(state.minSuccessPoints)}
-          onChange={(v) => setState((p) => ({ ...p, minSuccessPoints: Number(v) || 0 }))}
-          helperText="A CA below this many points at the end of their tenure gets the not-eligible email instead of the completion documents. 0 means everyone qualifies."
+          max={100}
+          endAdornment={<span className="text-sm text-gray-500">%</span>}
+          value={String(state.certificationThresholdPct)}
+          onChange={(v) =>
+            setState((p) => ({
+              ...p,
+              certificationThresholdPct: Math.min(100, Math.max(0, Number(v) || 0)),
+            }))
+          }
+          helperText="A CA needs this share of the points available during their own tenure (tasks and meetings) to receive the LOR and certificates. 0 means everyone qualifies."
         />
 
         <p className="text-xs text-stone-500">

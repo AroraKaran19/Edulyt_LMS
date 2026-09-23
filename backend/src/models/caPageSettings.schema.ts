@@ -9,7 +9,7 @@ const enrollmentSchema = new Schema(
   {
     acceptingApplications: { type: Boolean, default: false },
     durations: { type: [Number], default: [] },
-    minSuccessPoints: { type: Number, default: 0, min: 0 },
+    certificationThresholdPct: { type: Number, default: 0, min: 0, max: 100 },
   },
   { _id: false },
 );

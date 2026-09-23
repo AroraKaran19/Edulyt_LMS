@@ -28,7 +28,8 @@ export type CaPageSectionKey = (typeof CA_PAGE_SECTION_KEYS)[number];
 export interface CaEnrollment {
   acceptingApplications: boolean;
   durations: number[];
-  minSuccessPoints: number;
+  /** 0 to 100. A CA needs this share of the points available in their own tenure. 0 = no gate. */
+  certificationThresholdPct: number;
 }
 
 export interface CaMoney {
@@ -93,7 +94,7 @@ const readMoney = (raw: any): CaMoney =>
 const toSettings = (doc: Record<string, any> | null): CaPageSettings => {
   const rawDurations: unknown[] = Array.isArray(doc?.enrollment?.durations) ? doc.enrollment.durations : [];
   const durations = [...new Set(rawDurations.filter(isValidDurationMonths))].sort((a: number, b: number) => a - b);
-  const minRaw = doc?.enrollment?.minSuccessPoints;
+  const thresholdRaw = doc?.enrollment?.certificationThresholdPct;
   const languages: string[] =
     Array.isArray(doc?.form?.languages) && doc?.form?.languages.length
       ? doc.form.languages
@@ -102,7 +103,8 @@ const toSettings = (doc: Record<string, any> | null): CaPageSettings => {
     enrollment: {
       acceptingApplications: Boolean(doc?.enrollment?.acceptingApplications),
       durations,
-      minSuccessPoints: Number.isInteger(minRaw) && minRaw >= 0 ? minRaw : 0,
+      certificationThresholdPct:
+        Number.isInteger(thresholdRaw) && thresholdRaw >= 0 && thresholdRaw <= 100 ? thresholdRaw : 0,
     },
     form: {
       fields: resolveCaFields(doc?.form?.fields),
@@ -159,11 +161,15 @@ const sanitizeSection = (
     if (acceptingApplications && durations.length === 0) {
       throw new AppError("Choose at least one duration to accept applications", 400);
     }
-    const minSuccessPoints = Number(value.minSuccessPoints ?? 0);
-    if (!Number.isInteger(minSuccessPoints) || minSuccessPoints < 0) {
-      throw new AppError("Minimum points must be a non-negative whole number", 400);
+    const certificationThresholdPct = Number(value.certificationThresholdPct ?? 0);
+    if (
+      !Number.isInteger(certificationThresholdPct) ||
+      certificationThresholdPct < 0 ||
+      certificationThresholdPct > 100
+    ) {
+      throw new AppError("Minimum percentage must be a whole number from 0 to 100", 400);
     }
-    return { acceptingApplications, durations, minSuccessPoints };
+    return { acceptingApplications, durations, certificationThresholdPct };
   }
 
   if (section === "form") {

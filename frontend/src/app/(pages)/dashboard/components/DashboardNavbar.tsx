@@ -12,6 +12,7 @@ import { Course } from "@/types/course";
 import { Enrollment } from "@/types/enrollment";
 import { Loader2 } from "lucide-react";
 import useAuth from "@/hooks/useAuth";
+import TabScroller from "./TabScroller";
 import { AMBASSADOR_KIND_TAB_LABELS } from "@/hooks/useCrm";
 
 const SEARCH_DEBOUNCE_MS = 400;
@@ -252,11 +253,12 @@ const DashboardNavbar = () => {
       </div>
       {!isAccountRoute && (
         <div className="w-full py-4.25 px-4 lg:px-20 shadow-[0_2px_0_rgba(0,0,0,0.1)]">
-          <nav className="w-full flex items-center gap-4 overflow-x-auto">
+          <TabScroller activeKey={pathname}>
             {navItems.map((item, index) => (
               <Link
                 href={item.href}
                 key={index}
+                aria-current={pathname === item.href ? "page" : undefined}
                 className={cn(
                   "text-text-primary shrink-0 text-sm font-medium px-5 py-2.5 rounded-full transition-colors duration-200 ease-in-out flex items-center gap-2",
                   pathname === item.href && "bg-[#FFE9DB] text-orange-600",
@@ -282,7 +284,7 @@ const DashboardNavbar = () => {
                 )}
               </Link>
             ))}
-          </nav>
+          </TabScroller>
         </div>
       )}
     </div>

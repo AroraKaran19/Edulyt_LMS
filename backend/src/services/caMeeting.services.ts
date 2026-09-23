@@ -452,7 +452,6 @@ export interface CaMeetingMineItem {
   link1Clicked: boolean;
   link2Clicked: boolean;
   myVerdict: "present" | "absent" | "pending";
-  attendUrl: string | null;
 }
 
 export const listCaMeetingsMine = async (
@@ -487,12 +486,7 @@ export const listCaMeetingsMine = async (
         : "present"
       : resolveCheckpointVerdict({ override: overrideMap.get(idStr), clickedBoth: link1Clicked && link2Clicked, bothClosed });
     const phase = computeCheckpointPhase(doc);
-    // Only while the CA's own checkpoint is live and they have not already clicked it.
-    let attendUrl: string | null = null;
-    if (!doc.finalizedAt) {
-      if (phase === "link1-active" && !link1Clicked) attendUrl = caMeetingAttendanceUrl(doc.link1.token);
-      else if (phase === "link2-active" && !link2Clicked) attendUrl = caMeetingAttendanceUrl(doc.link2.token);
-    }
+    // Checkpoint links are never sent here: the host shares them live, which is what proves presence.
     return {
       id: String(doc._id),
       name: doc.name,
@@ -505,7 +499,6 @@ export const listCaMeetingsMine = async (
       link1Clicked,
       link2Clicked,
       myVerdict,
-      attendUrl,
     };
   });
 };

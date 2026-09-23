@@ -73,7 +73,9 @@ export function TextField({
   required,
   type = "text",
   min,
+  max,
   step,
+  endAdornment,
 }: {
   label?: string;
   value: string;
@@ -83,7 +85,9 @@ export function TextField({
   required?: boolean;
   type?: string;
   min?: number;
+  max?: number;
   step?: string | number;
+  endAdornment?: React.ReactNode;
 }) {
   return (
     <div className="w-full flex flex-col gap-1.5">
@@ -92,10 +96,12 @@ export function TextField({
         required={required}
         type={type}
         min={min}
+        max={max}
         step={step}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
+        endAdornment={endAdornment}
       />
       {helperText && (
         <p className="text-xs text-stone-500">{helperText}</p>

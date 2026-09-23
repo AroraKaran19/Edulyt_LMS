@@ -52,10 +52,10 @@ export interface CaCompletion {
   /** Set when the end date passed but they were no longer on a roster. */
   skippedAt?: Date | null;
   issuedAt?: Date | null;
-  /** Set by the sweep once it decides; "not-eligible" until a force-pass flips it. */
+  /** Set by the sweep once it decides; "not-eligible" until a "pass" override flips it. */
   outcome?: "eligible" | "not-eligible" | null;
-  /** Admin override: makes the CA eligible regardless of caPoints. */
-  forcePassed?: boolean;
+  /** Admin override: "pass" is always eligible, "fail" never is, null defers to the percentage rule. */
+  certificateOverride?: "pass" | "fail" | null;
 }
 
 export interface CaEmailMarkers {

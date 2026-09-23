@@ -1,70 +1,166 @@
 "use client";
 
+import { useState } from "react";
+import { CalendarClock, Play } from "lucide-react";
+import Pagination from "@/components/admin/Pagination";
+import { cn } from "@/lib/utils";
 import type { CaMeetingMineItem } from "@/types/ca-meeting";
+import { formatDate, formatTime, formatWeekday } from "../deskTime";
+import s from "../desk.module.css";
 
-const VERDICT_LABEL: Record<CaMeetingMineItem["myVerdict"], string> = {
-  present: "Present",
-  absent: "Absent",
-  pending: "Pending",
+const VERDICT: Record<CaMeetingMineItem["myVerdict"], { label: string; pill: string }> = {
+  present: { label: "Present", pill: s.chipPts },
+  absent: { label: "Absent", pill: s.chipFail },
+  pending: { label: "Attendance not recorded", pill: s.chipSoon },
 };
 
-const VERDICT_CLASS: Record<CaMeetingMineItem["myVerdict"], string> = {
-  present: "bg-emerald-100 text-emerald-800",
-  absent: "bg-red-100 text-red-800",
-  pending: "bg-amber-100 text-amber-800",
-};
+const isLive = (m: CaMeetingMineItem) => m.phase === "link1-active" || m.phase === "link2-active";
+const isUnderway = (m: CaMeetingMineItem) => isLive(m) || m.phase === "link1-closed";
 
-function formatSchedule(iso: string): string {
-  return new Date(iso).toLocaleString("en-IN", {
-    timeZone: "Asia/Kolkata",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+export function isPastMeeting(m: CaMeetingMineItem, now: number): boolean {
+  if (m.phase === "closed") return true;
+  if (isUnderway(m)) return false;
+  return new Date(m.endDateTime ?? m.startDateTime).getTime() < now;
 }
 
-/**
- * `attendUrl` is only present while this CA's own checkpoint is live and they
- * have not already clicked it (see `listCaMeetingsMine` on the backend), so a
- * truthy value is exactly when the "Mark attendance" button should show.
- */
-export default function CaMeetingsList({ meetings }: { meetings: CaMeetingMineItem[] }) {
-  if (meetings.length === 0) {
-    return <p className="rounded-2xl border border-gray-200 bg-white p-6 text-center text-sm text-gray-500">No meetings yet.</p>;
+function schedule(m: CaMeetingMineItem): string {
+  const end = m.endDateTime ? ` to ${formatTime(m.endDateTime)}` : "";
+  return `${formatWeekday(m.startDateTime)}, ${formatDate(m.startDateTime)} · ${formatTime(m.startDateTime)}${end}`;
+}
+
+function Status({ m }: { m: CaMeetingMineItem }) {
+  if (isLive(m)) {
+    return (
+      <span className={cn(s.live, s.livePulse)}>
+        <i aria-hidden="true" />
+        Live now
+      </span>
+    );
+  }
+  return (
+    <span className={s.live}>
+      <i aria-hidden="true" />
+      {isUnderway(m) ? "In progress" : "Coming up next"}
+    </span>
+  );
+}
+
+const PAST_PER_PAGE = 5;
+
+export default function CaMeetingsList({ meetings, now }: { meetings: CaMeetingMineItem[]; now: number }) {
+  const [page, setPage] = useState(1);
+  const [seen, setSeen] = useState(meetings);
+  if (seen !== meetings) {
+    setSeen(meetings);
+    setPage(1);
   }
 
+  const byStart = [...meetings].sort(
+    (a, b) => new Date(a.startDateTime).getTime() - new Date(b.startDateTime).getTime(),
+  );
+  const past = byStart.filter((m) => isPastMeeting(m, now)).reverse();
+  const ahead = byStart.filter((m) => !isPastMeeting(m, now));
+  const featured = ahead.find(isLive) ?? ahead.find(isUnderway) ?? ahead[0] ?? null;
+  const later = ahead.filter((m) => m !== featured);
+  const pastPages = Math.ceil(past.length / PAST_PER_PAGE);
+  const pastPage = Math.min(page, Math.max(pastPages, 1));
+  const pastRows = past.slice((pastPage - 1) * PAST_PER_PAGE, pastPage * PAST_PER_PAGE);
+
   return (
-    <ul className="flex flex-col gap-2">
-      {meetings.map((m) => {
-        const checkpointLive = m.phase === "link1-active" || m.phase === "link2-active";
-        return (
-          <li key={m.id} className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-gray-900">{m.name}</p>
-                <p className="text-xs text-gray-500">{formatSchedule(m.startDateTime)}</p>
-              </div>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${VERDICT_CLASS[m.myVerdict]}`}>
-                {VERDICT_LABEL[m.myVerdict]}
-              </span>
-            </div>
-            {m.attendUrl ? (
-              <a
-                href={m.attendUrl}
-                className="mt-2 inline-flex items-center justify-center rounded-lg bg-amber-700 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-800 max-sm:text-base"
-              >
-                Mark attendance
-              </a>
-            ) : checkpointLive ? (
-              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 max-sm:text-base">
-                A checkpoint is live for this meeting. You&apos;ve already marked it.
-              </p>
+    <div>
+      <div className={s.meet}>
+        {featured ? (
+          <>
+            <Status m={featured} />
+            <h3>{featured.name}</h3>
+            <p>{schedule(featured)}</p>
+            {isLive(featured) ? (
+              <p className={s.meetNote}>Your host will share the attendance links during the meeting.</p>
             ) : null}
-          </li>
-        );
-      })}
-    </ul>
+            {featured.meetingLink ? (
+              <div className={s.meetBtns}>
+                <a
+                  href={featured.meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(s.btn, s.btnGlass)}
+                >
+                  Join meeting
+                </a>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className={cn(s.empty, s.emptyDark)}>
+            <span className={s.emptyIc}>
+              <CalendarClock aria-hidden="true" />
+            </span>
+            <h3>No meetings coming up</h3>
+            <p>When a meeting is scheduled, it shows up here.</p>
+          </div>
+        )}
+      </div>
+
+      <div className={cn(s.card, s.pastCard)}>
+        <h3>Past meetings</h3>
+        {past.length === 0 ? (
+          <p className={s.pastEmpty}>No past meetings yet.</p>
+        ) : (
+          <>
+            <ul className={s.past}>
+              {pastRows.map((m) => (
+                <li key={m.id} className={s.pastRow}>
+                  <span className={s.pastName}>
+                    <span className={s.clamp2} title={m.name}>{m.name}</span>
+                    <small>
+                      {formatDate(m.startDateTime)}, {formatTime(m.startDateTime)}
+                      {m.endDateTime ? ` to ${formatTime(m.endDateTime)}` : ""}
+                    </small>
+                  </span>
+                  <span className={cn(s.chip, VERDICT[m.myVerdict].pill)}>{VERDICT[m.myVerdict].label}</span>
+                  {m.recordingLink ? (
+                    <a
+                      href={m.recordingLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(s.btn, s.btnWhite, s.btnSmall, s.recording)}
+                    >
+                      <Play aria-hidden="true" />
+                      Watch recording
+                      <span className={s.srOnly}> of {m.name} (opens in a new tab)</span>
+                    </a>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+            <Pagination
+              page={pastPage}
+              totalPages={pastPages}
+              onPageChange={setPage}
+              windowSize={3}
+              className={s.deskPager}
+            />
+          </>
+        )}
+      </div>
+
+      {later.length > 0 ? (
+        <div className={cn(s.card, s.pastCard)}>
+          <h3>Coming up later</h3>
+          <ul className={s.past}>
+            {later.map((m) => (
+              <li key={m.id}>
+                <span className={s.pastName}>
+                  <span className={s.clamp2} title={m.name}>{m.name}</span>
+                </span>
+                <span className={s.verdict}>
+                  {formatDate(m.startDateTime)}, {formatTime(m.startDateTime)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }

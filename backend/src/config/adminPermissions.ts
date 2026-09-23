@@ -97,11 +97,6 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
         href: "/admin/crm/analytics",
       },
       { key: "crm.team", label: "Team", href: "/admin/crm/team" },
-      { key: "crm.ca-leads", label: "CA leads", href: "/admin/crm/ca-leads" },
-      { key: "crm.ca-tasks", label: "CA tasks", href: "/admin/crm/ca-tasks" },
-      { key: "crm.ca-meetings", label: "CA meetings", href: "/admin/crm/ca-meetings" },
-      // Reuses the CA leads permission key: reviews are a queue over the same CAs.
-      { key: "crm.ca-leads", label: "CA reviews", href: "/admin/crm/ca-reviews" },
       // `roleOnly` pages belong to a marketer or sales person: they show that
       // person's own code, team and numbers, so they are meaningless for an
       // admin and are not grantable to one.
@@ -137,11 +132,20 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
         label: "Configure Enquiry Page",
         href: "/admin/enquiry-page",
       },
-      {
-        key: "leads.ca-page",
-        label: "Configure CA Page",
-        href: "/admin/ca-page",
-      },
+    ],
+  },
+  {
+    key: "campus-ambassadors",
+    label: "Campus Ambassadors",
+    pages: [
+      // Reuses the CA leads permission key: the directory is a read-only view over the same CAs.
+      { key: "crm.ca-leads", label: "All CAs", href: "/admin/crm/cas" },
+      { key: "crm.ca-leads", label: "CA leads", href: "/admin/crm/ca-leads" },
+      { key: "crm.ca-tasks", label: "CA tasks", href: "/admin/crm/ca-tasks" },
+      { key: "crm.ca-meetings", label: "CA meetings", href: "/admin/crm/ca-meetings" },
+      // Reuses the CA leads permission key: reviews are a queue over the same CAs.
+      { key: "crm.ca-leads", label: "CA reviews", href: "/admin/crm/ca-reviews" },
+      { key: "leads.ca-page", label: "Configure CA Page", href: "/admin/ca-page" },
     ],
   },
   {

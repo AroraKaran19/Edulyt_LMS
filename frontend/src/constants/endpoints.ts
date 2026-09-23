@@ -550,8 +550,18 @@ export const ENDPOINTS = {
    */
   caApplications: Object.assign("/ca-applications", {
     changeDuration: (id: string) => `/ca-applications/${encodeURIComponent(id)}/duration`,
-    forcePass: (id: string) => `/ca-applications/${encodeURIComponent(id)}/force-pass`,
+    certificateOverride: (id: string) => `/ca-applications/${encodeURIComponent(id)}/certificate-override`,
+    /** GET the signed-in ambassador's desk: tenure, designation and points. */
+    meDesk: "/ca-applications/me/desk",
+    /** GET every attached CA there has ever been, active or not (the All CAs directory). */
+    directory: "/ca-applications/directory",
   }),
+
+  /** The signed-in CRM member's own views. */
+  crm: {
+    /** GET `?page=&limit=`: enquiries that came through my link. */
+    myLeads: "/crm/me/leads",
+  },
 
   /** CA task programme: mine, one attempt, submit (all CA-facing). */
   caTasks: {

@@ -228,22 +228,6 @@ const AdminSidebar = ({
           href: "/admin/leads",
         },
         {
-          label: "CA leads",
-          href: "/admin/crm/ca-leads",
-        },
-        {
-          label: "CA tasks",
-          href: "/admin/crm/ca-tasks",
-        },
-        {
-          label: "CA meetings",
-          href: "/admin/crm/ca-meetings",
-        },
-        {
-          label: "CA reviews",
-          href: "/admin/crm/ca-reviews",
-        },
-        {
           label: "My leads",
           href: "/admin/crm/my-leads",
         },
@@ -258,14 +242,40 @@ const AdminSidebar = ({
       ],
     },
     {
+      icon: <Megaphone className="size-6" />,
+      label: "Campus Ambassadors",
+      href: "/admin/crm/cas",
+      submenu: [
+        {
+          label: "All CAs",
+          href: "/admin/crm/cas",
+        },
+        {
+          label: "Applications",
+          href: "/admin/crm/ca-leads",
+        },
+        {
+          label: "Tasks",
+          href: "/admin/crm/ca-tasks",
+        },
+        {
+          label: "Meetings",
+          href: "/admin/crm/ca-meetings",
+        },
+        {
+          label: "Reviews",
+          href: "/admin/crm/ca-reviews",
+        },
+        {
+          label: "Page settings",
+          href: "/admin/ca-page",
+        },
+      ],
+    },
+    {
       icon: <UserPlus className="size-6" />,
       label: "Enquiry Page",
       href: "/admin/enquiry-page",
-    },
-    {
-      icon: <Megaphone className="size-6" />,
-      label: "CA Page",
-      href: "/admin/ca-page",
     },
     {
       icon: <HelpCircle className="size-6" />,

@@ -64,7 +64,7 @@ export default function CaLeadDrawer({
   onDecline,
   onChanged,
 }: Props) {
-  const { detail, reveal, changeOwner, retryDocuments, changeDuration, forcePass } = useCaApplications();
+  const { detail, reveal, changeOwner, retryDocuments, changeDuration, setCertificateOverride } = useCaApplications();
   const [row, setRow] = useState<CaApplicationRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [payout, setPayout] = useState<{ method: "upi" | "details"; value: string } | null>(null);
@@ -75,7 +75,7 @@ export default function CaLeadDrawer({
   const [retrying, setRetrying] = useState(false);
   const [newDuration, setNewDuration] = useState("");
   const [changingDuration, setChangingDuration] = useState(false);
-  const [forcePassing, setForcePassing] = useState(false);
+  const [savingOverride, setSavingOverride] = useState<"pass" | "fail" | "clear" | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -145,13 +145,15 @@ export default function CaLeadDrawer({
     }
   };
 
-  const forcePassClick = async () => {
-    setForcePassing(true);
-    const updated = await forcePass(id);
-    setForcePassing(false);
+  const overrideClick = async (verdict: "pass" | "fail" | "clear") => {
+    setSavingOverride(verdict);
+    const updated = await setCertificateOverride(id, verdict === "clear" ? null : verdict);
+    setSavingOverride(null);
     if (updated) {
       setRow(updated);
-      toast.success("Force-passed");
+      toast.success(
+        verdict === "clear" ? "Override cleared" : verdict === "pass" ? "Marked as passed" : "Marked as failed",
+      );
       onChanged();
     }
   };
@@ -301,17 +303,43 @@ export default function CaLeadDrawer({
                         {changingDuration ? "Saving..." : "Save"}
                       </WhiteButton>
                     </div>
-                    {row.completion.outcome !== "eligible" && !row.completion.forcePassed ? (
-                      <WhiteButton
-                        type="button"
-                        glow={false}
-                        className="w-full justify-center"
-                        disabled={forcePassing}
-                        onClick={() => void forcePassClick()}
-                      >
-                        {forcePassing ? "Force-passing..." : "Force pass"}
-                      </WhiteButton>
-                    ) : null}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs font-medium text-gray-500">Certificate override</span>
+                      {row.completion.issuedAt ? (
+                        <p className="text-xs text-gray-500">
+                          Documents already issued; the override can no longer be changed.
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <WhiteButton
+                            type="button"
+                            glow={false}
+                            disabled={savingOverride !== null || row.completion.certificateOverride === "pass"}
+                            onClick={() => void overrideClick("pass")}
+                          >
+                            {savingOverride === "pass" ? "Saving..." : "Pass"}
+                          </WhiteButton>
+                          <WhiteButton
+                            type="button"
+                            glow={false}
+                            disabled={savingOverride !== null || row.completion.certificateOverride === "fail"}
+                            onClick={() => void overrideClick("fail")}
+                          >
+                            {savingOverride === "fail" ? "Saving..." : "Fail"}
+                          </WhiteButton>
+                          {row.completion.certificateOverride ? (
+                            <button
+                              type="button"
+                              disabled={savingOverride !== null}
+                              onClick={() => void overrideClick("clear")}
+                              className="ml-auto text-xs font-medium text-gray-500 underline underline-offset-2 hover:text-gray-700 disabled:opacity-40"
+                            >
+                              {savingOverride === "clear" ? "Clearing..." : "Clear"}
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : null}

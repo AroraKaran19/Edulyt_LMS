@@ -28,6 +28,7 @@ import {
   getLeaderboards,
   listCrmPeople,
   listLeadsForPerson,
+  listMyLeads,
   getCrmPerson,
   listAmbassadorsForPerson,
   type PersonLeadScope,
@@ -331,6 +332,19 @@ export const listPersonLeadsController = asyncHandler(
 );
 
 /**
+ * @route  GET /api/crm/me/leads?page=&limit=
+ * @desc   The caller's own leads, name-masked and stripped of contact fields
+ * @access Marketer, sales, campus ambassador
+ */
+export const getMyCrmLeadsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const page = Math.max(1, Number(req.query.page ?? 1));
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit ?? 20)));
+    sendSuccessResponse(res, await listMyLeads(actorId(req), page, limit), "Leads fetched", 200);
+  },
+);
+
+/**
  * @route  GET /api/crm/people/:id
  * @desc   One staff member's header row and counts
  * @access Admin with `crm.team`, super-admin
@@ -409,21 +423,9 @@ const cleanQuestion = (raw: unknown) => {
  * allows it, which is read at request time so revoking it takes effect on the
  * ambassador's next save without touching their roster.
  */
-const canSetOwnQuestions = async (req: Request): Promise<boolean> => {
-  if (canSetExtraQuestion(req.user?.userType)) return true;
-
-  const own = await CrmProfileModel.findOne(
-    { userId: actorId(req) },
-    { parentUserId: 1 },
-  ).lean();
-  if (!own?.parentUserId) return false;
-
-  const parent = await CrmProfileModel.findOne(
-    { userId: own.parentUserId },
-    { allowAmbassadorQuestions: 1 },
-  ).lean();
-  return Boolean(parent?.allowAmbassadorQuestions);
-};
+// Only marketers and sales set questions; ambassadors inherit their owner's.
+const canSetOwnQuestions = async (req: Request): Promise<boolean> =>
+  canSetExtraQuestion(req.user?.userType);
 
 /**
  * @route  PATCH /api/crm/me/questions

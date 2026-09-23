@@ -69,7 +69,7 @@ const completionSchema = new Schema(
     skippedAt: { type: Date, default: null },
     issuedAt: { type: Date, default: null },
     outcome: { type: String, enum: ["eligible", "not-eligible"], default: null },
-    forcePassed: { type: Boolean, default: false },
+    certificateOverride: { type: String, enum: ["pass", "fail"], default: null },
   },
   { _id: false },
 );
@@ -155,6 +155,9 @@ caApplicationSchema.index({
   endDate: 1,
 });
 caApplicationSchema.index({ ownerUserId: 1, status: 1 });
+// All CAs directory: owner-scoped and admin-wide active/ended lists.
+caApplicationSchema.index({ ownerUserId: 1, status: 1, endDate: 1 });
+caApplicationSchema.index({ status: 1, endDate: 1 });
 
 export const CaApplicationModel = mongoose.model<CaApplication>(
   "CaApplication",

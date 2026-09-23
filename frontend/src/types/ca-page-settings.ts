@@ -46,7 +46,8 @@ export interface CaSamples {
 export interface CaEnrollment {
   acceptingApplications: boolean;
   durations: number[];
-  minSuccessPoints: number;
+  /** 0 to 100. A CA needs this share of the points available in their own tenure. 0 = no gate. */
+  certificationThresholdPct: number;
 }
 
 /** Public payload of `GET /api/ca-page/settings`. Dates are IST `YYYY-MM-DD`. */

@@ -42,5 +42,4 @@ export interface CaMeetingMineItem {
   link1Clicked: boolean;
   link2Clicked: boolean;
   myVerdict: "present" | "absent" | "pending";
-  attendUrl: string | null;
 }

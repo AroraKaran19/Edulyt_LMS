@@ -220,14 +220,8 @@ export const resolveCrmCode = async (
       ? String(parent.ambassadorScholarshipTestId)
       : null;
 
-    // Their own questions only while the owner permits them. Otherwise the
-    // owner's questions apply across their whole roster, which is also what
-    // happens when the ambassador has simply not set any.
-    const own = enabled(profile.extraQuestions as CrmExtraQuestion[]);
-    questions =
-      parent?.allowAmbassadorQuestions && own.length > 0
-        ? own
-        : enabled(parent?.extraQuestions as CrmExtraQuestion[]);
+    // Ambassadors never set questions; their owner's apply to the whole roster.
+    questions = enabled(parent?.extraQuestions as CrmExtraQuestion[]);
   }
 
   return {

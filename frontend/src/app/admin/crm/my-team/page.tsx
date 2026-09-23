@@ -409,26 +409,9 @@ export default function MyTeamPage() {
           </OrangeButton>
         </div>
 
-        <label className="mt-5 flex cursor-pointer items-start gap-2.5 border-t border-gray-100 pt-4">
-          <input
-            type="checkbox"
-            checked={allowCaQuestions}
-            onChange={(e) =>
-              void saveSettings({
-                allowAmbassadorQuestions: e.target.checked,
-              })
-            }
-            className="mt-0.5 size-4 cursor-pointer accent-orange-500"
-          />
-          <span className="text-sm text-gray-700">
-            Let my ambassadors set their own questions
-            <span className="mt-0.5 block text-xs text-gray-500">
-              While this is off, their forms ask yours instead. Turning it off
-              again does not delete what they wrote; their links simply go back
-              to asking your questions.
-            </span>
-          </span>
-        </label>
+        <p className="mt-5 border-t border-gray-100 pt-4 text-xs text-gray-500">
+          Your ambassadors&apos; enquiry forms ask these questions too.
+        </p>
       </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white">

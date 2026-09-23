@@ -47,7 +47,12 @@ export interface CaApplicationRow {
     internshipCertificate: string | null;
     trainingCertificate: string | null;
   };
-  completion: { hold: boolean; issuedAt: string | null; outcome: "eligible" | "not-eligible" | null; forcePassed: boolean };
+  completion: {
+    hold: boolean;
+    issuedAt: string | null;
+    outcome: "eligible" | "not-eligible" | null;
+    certificateOverride: "pass" | "fail" | null;
+  };
   /** Admin detail only: document jobs that used up their automatic retries. */
   failedDocumentJobs?: { kind: "offer-letter" | "completion"; error: string | null }[];
 }
@@ -63,4 +68,39 @@ export interface CaApplicationsPage {
   total: number;
   page: number;
   totalPages: number;
+}
+
+export type CaDirectoryState = "active" | "ended" | "all";
+
+export type CaDirectoryOutcome =
+  | "active"
+  | "upcoming"
+  | "issued"
+  | "not-eligible"
+  | "on-hold"
+  | "awaiting-review";
+
+/** Mirrors `CaDirectoryRow` in `backend/src/services/caApplicationReview.services.ts`. */
+export interface CaDirectoryRow {
+  id: string;
+  name: string;
+  email: string;
+  internId: string | null;
+  kind: AmbassadorKind | null;
+  ownerName: string;
+  joiningDate: string | null;
+  endDate: string | null;
+  durationMonths: number;
+  caPoints: number;
+  migrated: boolean;
+  outcome: CaDirectoryOutcome;
+  certificateOverride: "pass" | "fail" | null;
+}
+
+export interface CaDirectoryPage {
+  rows: CaDirectoryRow[];
+  total: number;
+  page: number;
+  totalPages: number;
+  counts: { active: number; ended: number };
 }

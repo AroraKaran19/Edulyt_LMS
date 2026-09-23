@@ -3,6 +3,7 @@ import { LeadModel } from "../models/lead.schema";
 import { UserModel } from "../models/user.schema";
 import { CrmProfileModel } from "../models/crmProfile.schema";
 import { toAmbassadorKind, type AmbassadorKind } from "./crmProfile.services";
+import { toAmbassadorLeadRow, type AmbassadorLeadDoc } from "../lib/leadPrivacy";
 
 export interface DateRange {
   from?: Date;
@@ -535,4 +536,35 @@ export const listLeadsForPerson = async (
   ]);
 
   return { leads, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
+};
+
+// Projection only: contact fields, status and notes must never be read here,
+// let alone returned, since this powers the ambassador's own leads page.
+const MY_LEAD_PROJECTION = {
+  name: 1,
+  "source.title": 1,
+  "source.program.title": 1,
+  collegeName: 1,
+  createdAt: 1,
+} as const;
+
+/** The leads attributed to this user's own ambassador code, privacy-masked. */
+export const listMyLeads = async (userId: mongoose.Types.ObjectId, page = 1, limit = 20) => {
+  const filter = { "creator.userId": userId };
+
+  const [docs, total] = await Promise.all([
+    LeadModel.find(filter, MY_LEAD_PROJECTION)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    LeadModel.countDocuments(filter),
+  ]);
+
+  return {
+    leads: docs.map((doc) => toAmbassadorLeadRow(doc as unknown as AmbassadorLeadDoc)),
+    total,
+    page,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
 };
