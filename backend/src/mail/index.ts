@@ -7,6 +7,7 @@
  * machinery behind `defineMailTemplate` lives in `utils/mailTemplates.ts`.
  */
 
+export * from "./caApplication.mail";
 export * from "./courseCertificate.mail";
 export * from "./emailChangeVerification.mail";
 export * from "./entranceExam.mail";

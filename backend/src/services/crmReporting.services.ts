@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { LeadModel } from "../models/lead.schema";
 import { UserModel } from "../models/user.schema";
 import { CrmProfileModel } from "../models/crmProfile.schema";
+import { toAmbassadorKind, type AmbassadorKind } from "./crmProfile.services";
 
 export interface DateRange {
   from?: Date;
@@ -359,7 +360,7 @@ export interface CrmAmbassadorRow {
   name: string;
   email: string;
   code: string | null;
-  kind: "marketing" | "sales" | null;
+  kind: AmbassadorKind | null;
   active: boolean;
   addedAt: Date | null;
   generated: number;
@@ -490,7 +491,7 @@ export const listAmbassadorsForPerson = async (
           (u?.email ?? ""),
         email: u?.email ?? "",
         code: p.code ?? null,
-        kind: (p.ambassadorKind as "marketing" | "sales" | null) ?? null,
+        kind: toAmbassadorKind(p.ambassadorKind),
         active: p.codeActive !== false,
         addedAt: (p as { createdAt?: Date }).createdAt ?? null,
         generated: stat?.n ?? 0,

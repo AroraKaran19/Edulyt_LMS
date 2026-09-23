@@ -25,6 +25,10 @@ import {
   patchEnquiryPageSettingsController,
 } from "../controllers/enquiryPageSettings.controller";
 import {
+  getAdminCaPageSettingsController,
+  patchCaPageSettingsController,
+} from "../controllers/caPageSettings.controller";
+import {
   getAdminLegalSettingsController,
   patchLegalSettingsController,
 } from "../controllers/legalSettings.controller";
@@ -114,6 +118,9 @@ router.get("/enquiry-page-settings", requirePermission("leads.enquiry-page"), ge
 // becomes a back door onto the campaign list it does not otherwise grant.
 router.get("/enquiry-page-settings/scholarship-options", requirePermission("leads.enquiry-page"), getEnquiryScholarshipOptionsController);
 router.patch("/enquiry-page-settings", requirePermission("leads.enquiry-page"), patchEnquiryPageSettingsController);
+
+router.get("/ca-page-settings", requirePermission("leads.ca-page"), getAdminCaPageSettingsController);
+router.patch("/ca-page-settings", requirePermission("leads.ca-page"), patchCaPageSettingsController);
 
 // Legal documents per brand (course and internship T&C), edited under
 // /admin/settings/terms-and-conditions

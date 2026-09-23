@@ -10,6 +10,9 @@ export interface CrmExtraQuestion {
   required: boolean;
 }
 
+/** Which kind of intern a campus ambassador is. */
+export type AmbassadorKind = "marketing" | "social-media";
+
 /**
  * A CRM member's referral identity and form configuration.
  *
@@ -28,7 +31,7 @@ export interface CrmProfile {
   /** An ambassador's current marketer or sales owner. Null for staff. */
   parentUserId?: mongoose.Types.ObjectId | null;
   /** Which kind of intern a campus ambassador is. Unset for staff. */
-  ambassadorKind?: "marketing" | "sales";
+  ambassadorKind?: AmbassadorKind;
   /** Up to MAX_EXTRA_QUESTIONS, in the order they appear on the form. */
   extraQuestions?: CrmExtraQuestion[];
   /**

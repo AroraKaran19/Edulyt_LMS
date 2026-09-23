@@ -4,6 +4,7 @@ import {
   sendSuccessResponse,
 } from "../middlewares/error.middleware";
 import { CrmProfileModel, UserModel } from "../models";
+import { toAmbassadorKind } from "../services/crmProfile.services";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import {
@@ -131,7 +132,7 @@ const protectedUser = async (user: User) => {
        */
       crmAmbassadorKind:
         crmProfile?.code && crmProfile.codeActive !== false
-          ? crmProfile.ambassadorKind
+          ? toAmbassadorKind(crmProfile.ambassadorKind) ?? undefined
           : undefined,
     }),
   };

@@ -40,6 +40,8 @@ import internshipVoucherRoutes from "./internshipVoucher.routes";
 import internshipLiveMeetingRoutes from "./liveMeeting.routes";
 import homePageSettingsRoutes from "./homePageSettings.routes";
 import enquiryPageSettingsRoutes from "./enquiryPageSettings.routes";
+import caPageRoutes from "./caPage.routes";
+import caApplicationRoutes from "./caApplication.routes";
 import legalSettingsRoutes from "./legalSettings.routes";
 import announcementRoutes from "./announcement.routes";
 import referralRoutes from "./referral.routes";
@@ -95,6 +97,8 @@ export {
   internshipLiveMeetingRoutes,
   homePageSettingsRoutes,
   enquiryPageSettingsRoutes,
+  caPageRoutes,
+  caApplicationRoutes,
   legalSettingsRoutes,
   announcementRoutes,
   referralRoutes,

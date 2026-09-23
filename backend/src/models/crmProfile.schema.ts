@@ -52,7 +52,7 @@ const crmProfileSchema = new mongoose.Schema<CrmProfile>(
     ambassadorKind: {
       type: String,
       required: false,
-      enum: ["marketing", "sales"],
+      enum: ["marketing", "social-media"],
     },
     extraQuestions: { type: [crmExtraQuestionSchema], default: [] },
     /**

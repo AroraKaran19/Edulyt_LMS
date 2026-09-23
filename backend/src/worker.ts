@@ -12,6 +12,7 @@ import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
+import { startCaWorker } from "./workers/ca.worker";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import { startInvoiceWorker } from "./workers/invoice.worker";
 import { startRoleChangeWorker } from "./workers/roleChange.worker";
@@ -37,12 +38,13 @@ const startWorker = async () => {
     startCertificateWorker();
     startOfferLetterWorker();
     startCollaborationWorker();
+    startCaWorker();
     startTokenCleanupWorker();
     startInvoiceWorker();
     startRoleChangeWorker();
 
     console.log(
-      "✅ Worker process running (cron + certificate + offer-letter + collaboration + token-cleanup + invoice jobs)"
+      "✅ Worker process running (cron + certificate + offer-letter + collaboration + ca + token-cleanup + invoice jobs)"
     );
 
     process.on("SIGTERM", () => {

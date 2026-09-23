@@ -530,11 +530,19 @@ export const ENDPOINTS = {
   /** Public marketing home page CMS — read-only. */
   homePageSettings: "/home-page-settings",
   enquiryPageSettings: "/enquiry-page-settings",
+  /** Public Campus Ambassador page CMS, read-only. */
+  caPageSettings: "/ca-page/settings",
   /** Per-visit and uncached: the answer depends on the `?ref=` link. */
   enquiryScholarship: "/enquiry-page-settings/scholarship",
 
   /** Public legal documents (course + internship T&C) — read-only. */
   legalSettings: "/legal-settings",
+
+  /**
+   * Campus Ambassador applications: public submission plus staff review
+   * (list, detail, reveal, approve, decline, owner and hold changes, team).
+   */
+  caApplications: "/ca-applications",
 
   /** `/api/admin/*` — dashboard & global admin config */
   admin: {
@@ -544,5 +552,7 @@ export const ENDPOINTS = {
     /** The signed-in admin's own campaigns, for the attach picker. */
     enquiryScholarshipOptions: "/admin/enquiry-page-settings/scholarship-options",
     legalSettings: "/admin/legal-settings",
+    /** Batch and form configuration for the public CA page. */
+    caPageSettings: "/admin/ca-page-settings",
   },
 };

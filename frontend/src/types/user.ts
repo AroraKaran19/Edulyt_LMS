@@ -192,7 +192,7 @@ export interface User {
    * Set for a campus ambassador whose link is live. Sent in the auth payload so
    * the dashboard can show their tab without an extra request.
    */
-  crmAmbassadorKind?: "marketing" | "sales";
+  crmAmbassadorKind?: "marketing" | "social-media";
 
   refreshTokens: {
     token: string;

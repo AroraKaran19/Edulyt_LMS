@@ -8,6 +8,7 @@
 import { connectDB, disconnectDB } from "./config/database";
 import { initializeS3 } from "./config/s3";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
+import { startCaWorker } from "./workers/ca.worker";
 import {
   installWorkerCrashAlerts,
   reportWorkerStartupFailure,
@@ -27,8 +28,9 @@ const start = async () => {
 
     console.log("🕐 Starting collaboration worker...");
     startCollaborationWorker();
+    startCaWorker();
 
-    console.log("✅ Collaboration worker running");
+    console.log("✅ Collaboration worker running (collaboration and CA loops)");
 
     process.on("SIGTERM", () => {
       console.log("🔄 Shutting down collaboration worker...");

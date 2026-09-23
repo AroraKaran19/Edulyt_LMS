@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, Copy, Loader2, Trash2, UserPlus } from "lucide-react";
 import { toast } from "react-toastify";
 import Input from "@/components/ui/inputs/Input";
@@ -13,6 +13,9 @@ import useCrm, {
   type AmbassadorKind,
   type CrmProfile,
 } from "@/hooks/useCrm";
+import useCaApplications from "@/hooks/useCaApplications";
+import type { CaApplicationRow } from "@/types/ca-application";
+import { formatIstDate } from "@/lib/ist";
 import ScholarshipAttachSelect, {
   useOwnCampaigns,
 } from "@/components/admin/ScholarshipAttachSelect";
@@ -27,6 +30,20 @@ const shareUrl = (code: string) =>
     ? `/enquiry?ref=${code}`
     : `${window.location.origin}/enquiry?ref=${code}`;
 
+const caShareUrl = (code: string) =>
+  typeof window === "undefined"
+    ? `/campus-ambassador?ref=${code}`
+    : `${window.location.origin}/campus-ambassador?ref=${code}`;
+
+const formatTenureEnd = (value: string) => formatIstDate(value);
+
+const DOCUMENT_LINKS: { key: keyof CaApplicationRow["documents"]; label: string }[] = [
+  { key: "offerLetter", label: "Offer letter" },
+  { key: "lor", label: "LOR" },
+  { key: "internshipCertificate", label: "Internship" },
+  { key: "trainingCertificate", label: "Training" },
+];
+
 export default function MyTeamPage() {
   const {
     getProfile,
@@ -37,6 +54,7 @@ export default function MyTeamPage() {
     saveLinkSettings,
     isLoading,
   } = useCrm();
+  const { team, setHold, isLoading: caIsLoading } = useCaApplications();
 
   const [profile, setProfile] = useState<CrmProfile | null>(null);
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
@@ -46,7 +64,9 @@ export default function MyTeamPage() {
   const [email, setEmail] = useState("");
   const [kind, setKind] = useState<AmbassadorKind>("marketing");
   const [copied, setCopied] = useState(false);
+  const [copiedCa, setCopiedCa] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [caTeam, setCaTeam] = useState<CaApplicationRow[]>([]);
   const [hidePrices, setHidePrices] = useState(false);
   const [hideCaPrices, setHideCaPrices] = useState(false);
   const [campaignId, setCampaignId] = useState<string | null>(null);
@@ -87,6 +107,35 @@ export default function MyTeamPage() {
       cancelled = true;
     };
   }, [getProfile, listAmbassadors, page]);
+
+  // Not paginated on the backend, so one load covers every roster page.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rows = await team();
+      if (!cancelled) setCaTeam(rows ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [team]);
+
+  const caByEmail = useMemo(() => {
+    const map = new Map<string, CaApplicationRow>();
+    // `caTeam` is sorted newest-first, so keep only the first row per email:
+    // the one that re-applied after being removed from the roster.
+    for (const row of caTeam) {
+      const key = row.email.trim().toLowerCase();
+      if (!map.has(key)) map.set(key, row);
+    }
+    return map;
+  }, [caTeam]);
+
+  const onToggleHold = async (row: CaApplicationRow) => {
+    const updated = await setHold(row.id, !row.completion.hold);
+    if (!updated) return;
+    setCaTeam((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  };
 
   const reloadRoster = async (target = page) => {
     const list = await listAmbassadors(target);
@@ -142,6 +191,13 @@ export default function MyTeamPage() {
     await navigator.clipboard.writeText(shareUrl(profile.code));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copyCaLink = async () => {
+    if (!profile) return;
+    await navigator.clipboard.writeText(caShareUrl(profile.code));
+    setCopiedCa(true);
+    setTimeout(() => setCopiedCa(false), 2000);
   };
 
   const onAdd = async () => {
@@ -212,7 +268,7 @@ export default function MyTeamPage() {
         </h2>
         <div className="flex flex-wrap items-center gap-3">
           <code className="flex-1 overflow-x-auto rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-800">
-            {profile ? shareUrl(profile.code) : "—"}
+            {profile ? shareUrl(profile.code) : "-"}
           </code>
           <button
             type="button"
@@ -231,6 +287,33 @@ export default function MyTeamPage() {
           Every lead from this link is credited to you. Your code is{" "}
           <span className="font-semibold">{profile?.code}</span>.
         </p>
+
+        <div className="mt-4 border-t border-gray-100 pt-4">
+          <h3 className="mb-2 text-xs font-bold tracking-wide text-gray-500 uppercase">
+            Your CA link
+          </h3>
+          <div className="flex flex-wrap items-center gap-3">
+            <code className="flex-1 overflow-x-auto rounded-xl bg-gray-50 px-3.5 py-3 text-sm text-gray-800">
+              {profile ? caShareUrl(profile.code) : "-"}
+            </code>
+            <button
+              type="button"
+              onClick={copyCaLink}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-3.5 py-3 text-sm font-medium hover:bg-gray-50"
+            >
+              {copiedCa ? (
+                <Check className="size-4 text-green-600" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+              {copiedCa ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">
+            For students who want to become campus ambassadors. Their
+            applications land in CA leads.
+          </p>
+        </div>
 
         <label className="mt-4 flex cursor-pointer items-start gap-2.5 border-t border-gray-100 pt-4">
           <input
@@ -371,7 +454,7 @@ export default function MyTeamPage() {
               label="Their role"
               options={[
                 { value: "marketing", label: "Marketing intern" },
-                { value: "sales", label: "Sales intern" },
+                { value: "social-media", label: "Social media marketing intern" },
               ]}
               value={kind}
               onChange={(v) => setKind(v as AmbassadorKind)}
@@ -395,58 +478,113 @@ export default function MyTeamPage() {
                 <th className="px-5 py-3">Role</th>
                 <th className="px-5 py-3">Code</th>
                 <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">Tenure ends</th>
+                <th className="px-5 py-3">Documents</th>
+                <th className="px-5 py-3">Completion</th>
                 <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {ambassadors.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-10 text-center text-gray-500">
+                  <td colSpan={8} className="px-5 py-10 text-center text-gray-500">
                     No ambassadors yet. They need an account first.
                   </td>
                 </tr>
               ) : (
-                ambassadors.map((a) => (
-                  <tr key={a.userId}>
-                    <td className="px-5 py-3">
-                      <div className="font-medium text-gray-900">
-                        {a.name || "Unnamed"}
-                      </div>
-                      <div className="text-xs text-gray-500">{a.email}</div>
-                    </td>
-                    <td className="px-5 py-3 text-gray-700">
-                      {a.kind ? (
-                        AMBASSADOR_KIND_LABELS[a.kind]
-                      ) : (
-                        <span className="text-gray-400">Not set</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3 font-mono text-gray-700">
-                      {a.code ?? "—"}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          a.active
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-gray-200 text-gray-700"
-                        }`}
-                      >
-                        {a.active ? "Active" : "Inactive"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onRemove(a)}
-                        className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                        aria-label={`Remove ${a.name || a.email}`}
-                      >
-                        <Trash2 className="size-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                ambassadors.map((a) => {
+                  const caRow = caByEmail.get(a.email.trim().toLowerCase());
+                  const documentLinks = caRow
+                    ? DOCUMENT_LINKS.filter((d) => caRow.documents[d.key])
+                    : [];
+                  return (
+                    <tr key={a.userId}>
+                      <td className="px-5 py-3">
+                        <div className="font-medium text-gray-900">
+                          {a.name || "Unnamed"}
+                        </div>
+                        <div className="text-xs text-gray-500">{a.email}</div>
+                      </td>
+                      <td className="px-5 py-3 text-gray-700">
+                        {a.kind ? AMBASSADOR_KIND_LABELS[a.kind] : "Ambassador"}
+                      </td>
+                      <td className="px-5 py-3 font-mono text-gray-700">
+                        {a.code ?? "-"}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                            a.active
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-gray-200 text-gray-700"
+                          }`}
+                        >
+                          {a.active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-gray-700">
+                        {caRow?.endDate ? formatTenureEnd(caRow.endDate) : "-"}
+                      </td>
+                      <td className="px-5 py-3">
+                        {documentLinks.length > 0 ? (
+                          <div className="flex flex-col gap-0.5">
+                            {documentLinks.map((d) => (
+                              <a
+                                key={d.key}
+                                href={caRow?.documents[d.key] ?? undefined}
+                                target="_blank"
+                                rel="noreferrer noopener"
+                                className="text-xs text-orange-600 hover:underline"
+                              >
+                                {d.label}
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            {caRow ? "Not issued yet" : "-"}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {caRow ? (
+                          <button
+                            type="button"
+                            onClick={() => onToggleHold(caRow)}
+                            disabled={
+                              caIsLoading || Boolean(caRow.completion.issuedAt)
+                            }
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                              caRow.completion.issuedAt
+                                ? "bg-gray-100 text-gray-500"
+                                : caRow.completion.hold
+                                  ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                  : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                            }`}
+                          >
+                            {caRow.completion.issuedAt
+                              ? "Issued"
+                              : caRow.completion.hold
+                                ? "On hold"
+                                : "Hold"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onRemove(a)}
+                          className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                          aria-label={`Remove ${a.name || a.email}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

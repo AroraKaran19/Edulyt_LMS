@@ -97,6 +97,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
         href: "/admin/crm/analytics",
       },
       { key: "crm.team", label: "Team", href: "/admin/crm/team" },
+      { key: "crm.ca-leads", label: "CA leads", href: "/admin/crm/ca-leads" },
       // `roleOnly` pages belong to a marketer or sales person: they show that
       // person's own code, team and numbers, so they are meaningless for an
       // admin and are not grantable to one.
@@ -131,6 +132,11 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
         key: "leads.enquiry-page",
         label: "Configure Enquiry Page",
         href: "/admin/enquiry-page",
+      },
+      {
+        key: "leads.ca-page",
+        label: "Configure CA Page",
+        href: "/admin/ca-page",
       },
     ],
   },
@@ -253,13 +259,14 @@ export const hasPageAccess = (
  * Mirrored in `frontend/src/config/adminPermissions.ts`; keep the two in sync.
  */
 export const ROLE_PAGE_KEYS: Record<string, readonly string[]> = {
-  marketer: ["scholarship.tests", "crm.my-team", "crm.performance"],
+  marketer: ["scholarship.tests", "crm.my-team", "crm.performance", "crm.ca-leads"],
   // `crm.my-leads` is the inbox of assigned leads; a marketer has none.
   sales: [
     "scholarship.tests",
     "crm.my-team",
     "crm.performance",
     "crm.my-leads",
+    "crm.ca-leads",
   ],
 };
 

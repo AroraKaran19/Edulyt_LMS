@@ -1,24 +1,24 @@
 import { useCallback, useState } from "react";
 import apiClient from "@/configs/apiConfig";
 
-export type AmbassadorKind = "marketing" | "sales";
+export type AmbassadorKind = "marketing" | "social-media";
 
 export type CrmRole =
   | "marketer"
   | "sales"
   | "marketing-intern"
-  | "sales-intern"
+  | "social-media-intern"
   | "ambassador";
 
 export const AMBASSADOR_KIND_LABELS: Record<AmbassadorKind, string> = {
   marketing: "Marketing intern",
-  sales: "Sales intern",
+  "social-media": "Social media marketing intern",
 };
 
 /** Dashboard tab label for each intern kind. */
 export const AMBASSADOR_KIND_TAB_LABELS: Record<AmbassadorKind, string> = {
   marketing: "Marketing Intern",
-  sales: "Sales Intern",
+  "social-media": "Social Media Intern",
 };
 
 export interface CrmProfile {

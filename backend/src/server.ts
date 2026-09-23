@@ -5,6 +5,7 @@ import { initializeS3 } from "./config/s3";
 import { initializeCronJobs } from "./services/cron.services";
 import { startCertificateWorker } from "./workers/certificate.worker";
 import { startCollaborationWorker } from "./workers/collaboration.worker";
+import { startCaWorker } from "./workers/ca.worker";
 import { startOfferLetterWorker } from "./workers/offerLetter.worker";
 import { startTokenCleanupWorker } from "./workers/tokenCleanup.worker";
 import { startInternshipEvaluationWorker } from "./workers/internshipEvaluation.worker";
@@ -31,6 +32,7 @@ const startServer = async () => {
       initializeCronJobs();
       startCertificateWorker();
       startCollaborationWorker();
+      startCaWorker();
       startOfferLetterWorker();
       startTokenCleanupWorker();
       startInternshipEvaluationWorker();

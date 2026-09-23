@@ -41,6 +41,7 @@ export interface LeadCreator {
     | "marketer"
     | "sales"
     | "marketing-intern"
+    | "social-media-intern"
     | "sales-intern"
     | "ambassador";
 }

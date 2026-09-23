@@ -6,6 +6,7 @@ import {
   GraduationCap,
   HelpCircle,
   KeyRound,
+  Megaphone,
   MessageSquare,
   Settings,
   ShoppingCart,
@@ -227,6 +228,10 @@ const AdminSidebar = ({
           href: "/admin/leads",
         },
         {
+          label: "CA leads",
+          href: "/admin/crm/ca-leads",
+        },
+        {
           label: "My leads",
           href: "/admin/crm/my-leads",
         },
@@ -244,6 +249,11 @@ const AdminSidebar = ({
       icon: <UserPlus className="size-6" />,
       label: "Enquiry Page",
       href: "/admin/enquiry-page",
+    },
+    {
+      icon: <Megaphone className="size-6" />,
+      label: "CA Page",
+      href: "/admin/ca-page",
     },
     {
       icon: <HelpCircle className="size-6" />,

@@ -10,3 +10,9 @@
  * on one still attributes a lead captured by the other.
  */
 export const REF_STORAGE_KEY = "airkrit.enquiry.ref";
+
+/**
+ * The `?ref=` code a CA recruitment link arrived with. Separate from the enquiry
+ * key so a CA link never credits an unrelated enquiry, and the other way round.
+ */
+export const CA_REF_STORAGE_KEY = "airkrit.ca.ref";

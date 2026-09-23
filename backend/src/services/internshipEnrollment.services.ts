@@ -6,12 +6,15 @@ import { InternshipSubmissionModel } from "../models/internshipSubmission.schema
 import { OrderModel } from "../models/order.schema";
 import { UserModel } from "../models/user.schema";
 import { CertificateModel } from "../models/certificate.schema";
+import { CaApplicationModel } from "../models/caApplication.schema";
 import { AppError } from "../middlewares/error.middleware";
 import {
   isApplicationWindowOpenIst,
   isBatchSwitchWindowOpen,
   isPaidUpgradeWindowOpen,
 } from "../utils/applicationWindow";
+import { formatIstDate } from "../utils/ist";
+import { CA_PROGRAMME_NAME } from "../lib/caDocuments";
 import { getPointsSettings } from "./pointsSettings.services";
 import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
 import { computeInternshipEligibility } from "./internshipEligibility.services";
@@ -3009,7 +3012,7 @@ export async function getInternshipVerification(
     .lean();
 
   if (!doc) {
-    throw new AppError("Offer letter not found", 404);
+    return getCaOfferVerification(id);
   }
 
   const u = (doc as { user?: { firstName?: string; lastName?: string; name?: string } }).user;
@@ -3033,6 +3036,28 @@ export async function getInternshipVerification(
     offerLetterGeneratedAt: toIso(
       (doc as { offerLetterGeneratedAt?: Date }).offerLetterGeneratedAt,
     ),
+  };
+}
+
+/** CA offer letters share the intern ID series and the verify page, so they fall back here. */
+async function getCaOfferVerification(internId: string): Promise<InternshipVerification> {
+  // `$type` makes the equality imply the partial index's own filter, so the
+  // planner uses it instead of risking a collection scan on a public endpoint.
+  const ca = await CaApplicationModel.findOne(
+    { internId: { $eq: internId, $type: "string" } },
+    { internId: 1, name: 1, status: 1, joiningDate: 1, decidedAt: 1, documents: 1, completion: 1 },
+  ).lean();
+  if (!ca?.documents?.offerLetter?.url) {
+    throw new AppError("Offer letter not found", 404);
+  }
+  return {
+    internId,
+    learnerName: ca.name,
+    internshipTitle: CA_PROGRAMME_NAME,
+    batchName: `Joining ${formatIstDate(ca.joiningDate)}`,
+    status: ca.completion?.issuedAt ? "completed" : "enrolled",
+    enrolledAt: toIso(ca.decidedAt ?? undefined),
+    offerLetterGeneratedAt: toIso(ca.documents.offerLetter.generatedAt),
   };
 }
 

@@ -1,6 +1,7 @@
 import { revalidateTag } from "next/cache";
 import { HOME_PAGE_SETTINGS_TAG } from "@/lib/home-page/getHomePageSettings";
 import { ENQUIRY_PAGE_SETTINGS_TAG } from "@/lib/enquiry-page/getEnquiryPageSettings";
+import { CA_PAGE_SETTINGS_TAG } from "@/lib/ca-page/getCaPageSettings";
 
 /**
  * Cache bust, called by the backend after a CMS write.
@@ -14,6 +15,7 @@ import { ENQUIRY_PAGE_SETTINGS_TAG } from "@/lib/enquiry-page/getEnquiryPageSett
 const ALLOWED_TAGS = [
   HOME_PAGE_SETTINGS_TAG,
   ENQUIRY_PAGE_SETTINGS_TAG,
+  CA_PAGE_SETTINGS_TAG,
 ] as const;
 
 export async function POST(request: Request) {

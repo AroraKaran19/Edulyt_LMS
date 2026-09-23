@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Loader2, Mail, Phone, Users } from "lucide-react";
@@ -11,6 +11,18 @@ import LeadDetailsModal from "../../../leads/LeadDetailsModal";
 import { type Lead } from "../../../leads/types";
 import useLeadPipeline from "@/hooks/useLeadPipeline";
 import { stageLabel, stageStyle, subStatusLabel } from "@/lib/leadPipeline";
+import useAuth from "@/hooks/useAuth";
+import { canAccessPageAsRole } from "@/config/adminPermissions";
+import useCaApplications from "@/hooks/useCaApplications";
+import type { CaApplicationRow } from "@/types/ca-application";
+import { formatIstDate } from "@/lib/ist";
+
+const DOCUMENT_LINKS: { key: keyof CaApplicationRow["documents"]; label: string }[] = [
+  { key: "offerLetter", label: "Offer letter" },
+  { key: "lor", label: "LOR" },
+  { key: "internshipCertificate", label: "Internship" },
+  { key: "trainingCertificate", label: "Training" },
+];
 
 type Scope = "generated" | "team" | "assigned" | "converted";
 type Tab = "leads" | "ambassadors";
@@ -33,7 +45,7 @@ interface Ambassador {
   name: string;
   email: string;
   code: string | null;
-  kind: "marketing" | "sales" | null;
+  kind: "marketing" | "social-media" | null;
   active: boolean;
   addedAt: string | null;
   generated: number;
@@ -49,7 +61,7 @@ const SCOPES: { value: Scope; label: string; hint: string }[] = [
 
 const KIND_LABELS: Record<string, string> = {
   marketing: "Marketing intern",
-  sales: "Sales intern",
+  "social-media": "Social media marketing intern",
 };
 
 const formatDate = (value: string) =>
@@ -61,10 +73,16 @@ const formatDate = (value: string) =>
 const formatDay = (value: string | null) =>
   value
     ? new Date(value).toLocaleDateString("en-IN", { dateStyle: "medium" })
-    : "—";
+    : "-";
+
+/** Tenure end dates are IST calendar dates; formatting them in the browser's
+ *  own timezone can show a day early west of UTC. */
+const formatTenureEnd = (value: string) => formatIstDate(value);
 
 export default function CrmPersonPage() {
   const { pipeline } = useLeadPipeline();
+  const { user } = useAuth();
+  const canSeeCa = canAccessPageAsRole(user?.userType, user?.permissions ?? [], "crm.ca-leads");
   const params = useParams();
   const id = String(params?.id ?? "");
 
@@ -83,6 +101,9 @@ export default function CrmPersonPage() {
   const [rosterPage, setRosterPage] = useState(1);
   const [rosterTotalPages, setRosterTotalPages] = useState(1);
   const [rosterLoading, setRosterLoading] = useState(true);
+
+  const { team, setHold, isLoading: caLoading } = useCaApplications();
+  const [caTeam, setCaTeam] = useState<CaApplicationRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,6 +166,38 @@ export default function CrmPersonPage() {
     };
   }, [id, tab, rosterPage]);
 
+  // Not paginated on the backend, so one load covers every roster page.
+  // `GET /ca-applications/team` sits behind `crm.ca-leads`, which this page
+  // does not require, so an admin with only `crm.team` must not call it.
+  useEffect(() => {
+    if (tab !== "ambassadors" || !canSeeCa) return;
+    let cancelled = false;
+    (async () => {
+      const rows = await team(id);
+      if (!cancelled) setCaTeam(rows ?? []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, tab, team, canSeeCa]);
+
+  const caByEmail = useMemo(() => {
+    const map = new Map<string, CaApplicationRow>();
+    // `caTeam` is sorted newest-first, so keep only the first row per email:
+    // the one that re-applied after being removed from the roster.
+    for (const row of caTeam) {
+      const key = row.email.trim().toLowerCase();
+      if (!map.has(key)) map.set(key, row);
+    }
+    return map;
+  }, [caTeam]);
+
+  const onToggleHold = async (row: CaApplicationRow) => {
+    const updated = await setHold(row.id, !row.completion.hold);
+    if (!updated) return;
+    setCaTeam((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+  };
+
   const stats = [
     { label: "Ambassadors", value: person?.ambassadors ?? 0 },
     { label: "Generated", value: person?.generated ?? 0 },
@@ -195,7 +248,7 @@ export default function CrmPersonPage() {
               Code
             </div>
             <div className="font-mono text-sm font-semibold text-gray-900">
-              {person?.code ?? "—"}
+              {person?.code ?? "-"}
             </div>
           </div>
         </div>
@@ -308,7 +361,7 @@ export default function CrmPersonPage() {
                           </div>
                         </td>
                         <td className="px-3 py-2.5 text-gray-700 sm:px-4">
-                          {lead.collegeName ?? "—"}
+                          {lead.collegeName ?? "-"}
                           {lead.state ? (
                             <div className="text-[11px] text-gray-500">
                               {lead.state}
@@ -381,18 +434,25 @@ export default function CrmPersonPage() {
                   <th className="px-3 py-2.5 text-right sm:px-4">Generated</th>
                   <th className="px-3 py-2.5 text-right sm:px-4">Converted</th>
                   <th className="px-3 py-2.5 sm:px-4">Added</th>
+                  {canSeeCa ? (
+                    <>
+                      <th className="px-3 py-2.5 sm:px-4">Tenure ends</th>
+                      <th className="px-3 py-2.5 sm:px-4">Documents</th>
+                      <th className="px-3 py-2.5 sm:px-4">Completion</th>
+                    </>
+                  ) : null}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {rosterLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center">
+                    <td colSpan={canSeeCa ? 9 : 6} className="px-4 py-12 text-center">
                       <Loader2 className="mx-auto size-6 animate-spin text-gray-400" />
                     </td>
                   </tr>
                 ) : roster.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center">
+                    <td colSpan={canSeeCa ? 9 : 6} className="px-4 py-12 text-center">
                       <Users className="mx-auto size-6 text-gray-300" />
                       <p className="mt-2 text-gray-500">
                         They have not added anyone to their team yet.
@@ -400,41 +460,101 @@ export default function CrmPersonPage() {
                     </td>
                   </tr>
                 ) : (
-                  roster.map((a) => (
-                    <tr key={a.userId} className="hover:bg-gray-50">
-                      <td className="px-3 py-2.5 sm:px-4">
-                        <div className="font-medium text-gray-900">
-                          {a.name}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                          <Mail className="size-3" />
-                          {a.email}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 sm:px-4">
-                        <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 ring-inset">
-                          {KIND_LABELS[a.kind ?? ""] ?? "Ambassador"}
-                        </span>
-                        {!a.active ? (
-                          <span className="ml-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200 ring-inset">
-                            Link off
+                  roster.map((a) => {
+                    const caRow = caByEmail.get(a.email.trim().toLowerCase());
+                    const documentLinks = caRow
+                      ? DOCUMENT_LINKS.filter((d) => caRow.documents[d.key])
+                      : [];
+                    return (
+                      <tr key={a.userId} className="hover:bg-gray-50">
+                        <td className="px-3 py-2.5 sm:px-4">
+                          <div className="font-medium text-gray-900">
+                            {a.name}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                            <Mail className="size-3" />
+                            {a.email}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 sm:px-4">
+                          <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200 ring-inset">
+                            {KIND_LABELS[a.kind ?? ""] ?? "Ambassador"}
                           </span>
+                          {!a.active ? (
+                            <span className="ml-1 inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600 ring-1 ring-gray-200 ring-inset">
+                              Link off
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-gray-700 sm:px-4">
+                          {a.code ?? "-"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-gray-900 sm:px-4">
+                          {a.generated}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-gray-900 sm:px-4">
+                          {a.converted}
+                        </td>
+                        <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 sm:px-4">
+                          {formatDay(a.addedAt)}
+                        </td>
+                        {canSeeCa ? (
+                          <>
+                            <td className="px-3 py-2.5 whitespace-nowrap text-gray-700 sm:px-4">
+                              {caRow?.endDate ? formatTenureEnd(caRow.endDate) : "-"}
+                            </td>
+                            <td className="px-3 py-2.5 sm:px-4">
+                              {documentLinks.length > 0 ? (
+                                <div className="flex flex-col gap-0.5">
+                                  {documentLinks.map((d) => (
+                                    <a
+                                      key={d.key}
+                                      href={caRow?.documents[d.key] ?? undefined}
+                                      target="_blank"
+                                      rel="noreferrer noopener"
+                                      className="text-[11px] text-orange-600 hover:underline"
+                                    >
+                                      {d.label}
+                                    </a>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-gray-400">
+                                  {caRow ? "Not issued yet" : "-"}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 sm:px-4">
+                              {caRow ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onToggleHold(caRow)}
+                                  disabled={
+                                    caLoading || Boolean(caRow.completion.issuedAt)
+                                  }
+                                  className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                                    caRow.completion.issuedAt
+                                      ? "bg-gray-100 text-gray-500"
+                                      : caRow.completion.hold
+                                        ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                        : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                                  }`}
+                                >
+                                  {caRow.completion.issuedAt
+                                    ? "Issued"
+                                    : caRow.completion.hold
+                                      ? "On hold"
+                                      : "Hold"}
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-gray-400">-</span>
+                              )}
+                            </td>
+                          </>
                         ) : null}
-                      </td>
-                      <td className="px-3 py-2.5 font-mono text-gray-700 sm:px-4">
-                        {a.code ?? "—"}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-semibold text-gray-900 sm:px-4">
-                        {a.generated}
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-semibold text-gray-900 sm:px-4">
-                        {a.converted}
-                      </td>
-                      <td className="px-3 py-2.5 whitespace-nowrap text-gray-500 sm:px-4">
-                        {formatDay(a.addedAt)}
-                      </td>
-                    </tr>
-                  ))
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

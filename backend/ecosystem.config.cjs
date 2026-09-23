@@ -19,7 +19,10 @@
  * - worker-collab: fork — collaboration job queue (single instance):
  *   email-domain allotments, partnership-import (CSV) whitelist batching, and
  *   course-allotment jobs for import configs. There is no separate PM2 app
- *   for partnership; see dist/collaboration.worker.js.
+ *   for partnership; see dist/collaboration.worker.js. Also runs the CA worker
+ *   loop (offer letters, LORs, completion certificates), so this host is a
+ *   DOCX-to-PDF host too and needs the same Carlito font as worker-cert (see
+ *   DEPLOYMENT.md).
  * - worker-token-cleanup: fork — prunes expired refresh tokens from user docs
  *   on a slow poll (single instance). See dist/token-cleanup-worker.js.
  *

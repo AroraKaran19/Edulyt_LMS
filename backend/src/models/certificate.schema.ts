@@ -18,7 +18,7 @@ const certificateSchema = new mongoose.Schema<Certificate>(
     //   internship  → "InternshipEnrollment"
     enrollmentModel: {
       type: String,
-      enum: ["Enrollment", "InternshipEnrollment"],
+      enum: ["Enrollment", "InternshipEnrollment", "CaApplication"],
       default: "Enrollment",
       required: true,
     },

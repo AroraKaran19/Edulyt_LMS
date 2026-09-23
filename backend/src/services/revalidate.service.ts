@@ -25,6 +25,7 @@ function resolveRevalidateUrl(): string | null {
 export const REVALIDATE_TAGS = {
   homePage: "home-page-settings",
   enquiryPage: "enquiry-page-settings",
+  caPage: "ca-page-settings",
 } as const;
 
 export type RevalidateTag =

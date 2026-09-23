@@ -78,11 +78,12 @@ const leadCreatorSchema = new mongoose.Schema(
     name: { type: String, default: "" },
     role: {
       type: String,
-      // "ambassador" is kept for rows written before interns were split in two.
+      // "ambassador" and "sales-intern" stay for rows written under earlier kinds.
       enum: [
         "marketer",
         "sales",
         "marketing-intern",
+        "social-media-intern",
         "sales-intern",
         "ambassador",
       ],

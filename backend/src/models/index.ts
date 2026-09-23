@@ -47,6 +47,9 @@ import { CrmProfileModel } from "./crmProfile.schema";
 import { LeadPipelineSettingsModel } from "./leadPipelineSettings.schema";
 import { ContactEmailOtpModel } from "./contactEmailOtp.schema";
 import { ContactSessionModel } from "./contactSession.schema";
+import { CaApplicationModel } from "./caApplication.schema";
+import { CaPageSettingsModel } from "./caPageSettings.schema";
+import { CaDocumentJobModel } from "./caDocumentJob.schema";
 
 export {
   UserModel,
@@ -96,4 +99,7 @@ export {
   LeadPipelineSettingsModel,
   ContactEmailOtpModel,
   ContactSessionModel,
+  CaApplicationModel,
+  CaPageSettingsModel,
+  CaDocumentJobModel,
 };

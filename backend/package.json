@@ -70,6 +70,8 @@
     "scripts:repair-duration:apply": "ts-node src/scripts/repair-program-duration.ts --apply",
     "scripts:reset-premature-verdicts": "ts-node src/scripts/reset-premature-internship-verdicts.ts",
     "scripts:reset-premature-verdicts:apply": "ts-node src/scripts/reset-premature-internship-verdicts.ts --apply",
+    "scripts:migrate-ca-kind": "ts-node src/scripts/migrate-ca-kind-sales-to-marketing.ts",
+    "scripts:migrate-ca-kind:apply": "ts-node src/scripts/migrate-ca-kind-sales-to-marketing.ts --apply",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json"

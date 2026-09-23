@@ -75,17 +75,17 @@ const Footer = () => {
     },
     {
       label: "Telegram",
-      href: "https://t.me/+_XxzFosKYOg2M2I9",
+      href: "https://t.me/airkritindia",
       icon: TelegramIcon,
     },
     {
       label: "Instagram",
-      href: "https://www.instagram.com/edulyt_india/",
+      href: "https://www.instagram.com/airkrit_india/",
       icon: Instagram,
     },
     {
       label: "LinkedIn",
-      href: "https://www.linkedin.com/company/edulytindia/",
+      href: "https://www.linkedin.com/company/airkritindia/",
       icon: (
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -100,12 +100,12 @@ const Footer = () => {
     },
     {
       label: "Facebook",
-      href: "https://www.facebook.com/people/Edulyt-India/100066801796718/",
+      href: "https://www.facebook.com/profile.php?id=61593351510973",
       icon: Facebook,
     },
     {
       label: "YouTube",
-      href: "https://www.youtube.com/@EdulytIndia",
+      href: "https://www.youtube.com/@airkritIndia",
       icon: Youtube,
     },
   ];

@@ -1,29 +1,37 @@
 import mongoose from "mongoose";
-import { CrmProfileModel, UserModel } from "../models";
+import { CaApplicationModel, CrmProfileModel, UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { generateCrmCode } from "../lib/crmCode";
 import { isRolePageGated } from "../config/adminPermissions";
-import type { CrmExtraQuestion, CrmProfile } from "../types/crm";
+import type {
+  AmbassadorKind,
+  CrmExtraQuestion,
+  CrmProfile,
+} from "../types/crm";
 
-export type AmbassadorKind = "marketing" | "sales";
+export type { AmbassadorKind };
 
 export type CrmRole =
   | "marketer"
   | "sales"
   | "marketing-intern"
-  | "sales-intern"
+  | "social-media-intern"
   /** A campus ambassador attached before the two intern kinds existed. */
   | "ambassador";
 
 export const AMBASSADOR_KINDS: readonly AmbassadorKind[] = [
   "marketing",
-  "sales",
+  "social-media",
 ];
 
 export const AMBASSADOR_ROLE: Record<AmbassadorKind, CrmRole> = {
   marketing: "marketing-intern",
-  sales: "sales-intern",
+  "social-media": "social-media-intern",
 };
+
+/** Narrows any stored value to a live kind, or null for a retired one like "sales". */
+export const toAmbassadorKind = (value: unknown): AmbassadorKind | null =>
+  AMBASSADOR_KINDS.find((k) => k === value) ?? null;
 
 const CODE_MAX_RETRIES = 6;
 
@@ -48,7 +56,7 @@ export const crmRoleOf = (
   if (userType !== "student") return null;
   // A student attached before the split has no kind, so it stays "ambassador"
   // rather than being silently reported as one of the two.
-  const kind = AMBASSADOR_KINDS.find((k) => k === ambassadorKind);
+  const kind = toAmbassadorKind(ambassadorKind);
   return kind ? AMBASSADOR_ROLE[kind] : "ambassador";
 };
 
@@ -235,6 +243,55 @@ export const resolveCrmCode = async (
   };
 };
 
+/**
+ * Puts one student on an owner's roster. Mints the code first so they are never
+ * on a roster without a link to share.
+ */
+export const attachStudentToOwner = async (
+  ownerId: mongoose.Types.ObjectId,
+  studentId: mongoose.Types.ObjectId,
+  kind: AmbassadorKind,
+): Promise<string> => {
+  const otherOwner = () =>
+    new AppError(
+      "This student is already an ambassador under someone else",
+      409,
+      "CA_OTHER_OWNER",
+    );
+  const existing = await CrmProfileModel.findOne(
+    { userId: studentId },
+    { parentUserId: 1 },
+  ).lean();
+  if (existing?.parentUserId && String(existing.parentUserId) !== String(ownerId)) {
+    throw otherOwner();
+  }
+
+  // `ensureCrmCode` upserts the profile, so a no-match here can only mean a
+  // concurrent attach to another owner won since the read above.
+  const code = await ensureCrmCode(studentId);
+  const res = await CrmProfileModel.updateOne(
+    { userId: studentId, parentUserId: { $in: [null, ownerId] } },
+    { $set: { parentUserId: ownerId, codeActive: true, ambassadorKind: kind } },
+  );
+  if (res.matchedCount === 0) throw otherOwner();
+
+  // A CA application's `ownerUserId` mirrors the roster relationship, so hold
+  // rights and the team listing (both keyed on it) follow whoever currently
+  // owns the ambassador rather than whoever approved the application. A no-op
+  // unless this student already has an attached application.
+  const owner = await UserModel.findById(ownerId, { firstName: 1, lastName: 1 }).lean();
+  await CaApplicationModel.updateOne(
+    { userId: studentId, status: "attached" },
+    {
+      $set: {
+        ownerUserId: ownerId,
+        ownerName: [owner?.firstName, owner?.lastName].filter(Boolean).join(" ").trim(),
+      },
+    },
+  );
+  return code;
+};
+
 export const attachAmbassador = async (
   ownerId: mongoose.Types.ObjectId,
   studentEmail: string,
@@ -247,7 +304,10 @@ export const attachAmbassador = async (
 
   const cleanKind = AMBASSADOR_KINDS.find((k) => k === kind);
   if (!cleanKind) {
-    throw new AppError("Choose whether they are a marketing or sales intern", 400);
+    throw new AppError(
+      "Choose whether they are a marketing or social media marketing intern",
+      400,
+    );
   }
 
   // The student check and the display name are identity concerns, so they stay
@@ -261,38 +321,10 @@ export const attachAmbassador = async (
     throw new AppError("Only a student can be a campus ambassador", 400);
   }
 
-  const existing = await CrmProfileModel.findOne(
-    { userId: student._id },
-    { parentUserId: 1 },
-  ).lean();
-  if (
-    existing?.parentUserId &&
-    String(existing.parentUserId) !== String(ownerId)
-  ) {
-    throw new AppError(
-      "This student is already an ambassador under someone else",
-      409,
-    );
-  }
-
-  // Mint FIRST, attach second. The old version did the reverse, leaving a
-  // window where an ambassador sat on a roster with no code to share. Two
-  // writes is deliberate: a single upsert cannot cover "profile exists but has
-  // no code", because $setOnInsert does not fire on an update, so it would have
-  // to duplicate the retry-on-11000 loop ensureCrmCode already owns.
-  const code = await ensureCrmCode(
+  const code = await attachStudentToOwner(
+    ownerId,
     student._id as unknown as mongoose.Types.ObjectId,
-  );
-
-  await CrmProfileModel.updateOne(
-    { userId: student._id },
-    {
-      $set: {
-        parentUserId: ownerId,
-        codeActive: true,
-        ambassadorKind: cleanKind,
-      },
-    },
+    cleanKind,
   );
 
   return {
@@ -325,6 +357,13 @@ export const detachAmbassador = async (
   if (res.matchedCount === 0) {
     throw new AppError("Ambassador not found on your roster", 404);
   }
+
+  // Mirrors the roster removal: an ex-owner keeps neither hold rights nor a
+  // team-listing row for a CA they no longer manage.
+  await CaApplicationModel.updateOne(
+    { userId: ambassadorId, status: "attached", ownerUserId: ownerId },
+    { $set: { ownerUserId: null, ownerName: "" } },
+  );
 };
 
 export const listAmbassadors = async (
@@ -366,7 +405,7 @@ export const listAmbassadors = async (
         name: [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim() || "",
         email: u?.email ?? "",
         code: r.code ?? null,
-        kind: r.ambassadorKind ?? null,
+        kind: toAmbassadorKind(r.ambassadorKind),
         active: r.codeActive !== false,
       };
     }),
@@ -388,6 +427,12 @@ export const demoteAmbassadorsOf = async (
   const res = await CrmProfileModel.updateMany(
     { parentUserId: ownerId },
     { $set: { codeActive: false, parentUserId: null } },
+  );
+  // Same rule as a single detach, applied to the whole roster at once: none of
+  // them keep a hold-rights or team-listing link to the departed owner.
+  await CaApplicationModel.updateMany(
+    { ownerUserId: ownerId, status: "attached" },
+    { $set: { ownerUserId: null, ownerName: "" } },
   );
   return res.modifiedCount;
 };

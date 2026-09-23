@@ -7,7 +7,7 @@ export interface Certificate {
   brand?: Brand;
   _id?: string;
   certificateType: "course" | "internship" | "lor";
-  enrollmentModel: "Enrollment" | "InternshipEnrollment";
+  enrollmentModel: "Enrollment" | "InternshipEnrollment" | "CaApplication";
   enrollmentId: Enrollment["_id"]; // ObjectId — ref resolved via enrollmentModel (refPath)
   userId: User["_id"]; // Reference to user (for easier querying)
   courseId?: Course["_id"]; // Reference to course — null for internship certificates

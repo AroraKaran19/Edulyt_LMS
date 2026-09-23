@@ -86,10 +86,13 @@ zip -r backend-deploy.zip dist/ package.json package-lock.json Procfile .ebexten
 - Environment variables must be configured in Elastic Beanstalk
 - The server will run `npm install` automatically on deployment
 
-## Fonts required on the PDF host (worker-cert)
+## Fonts required on the PDF host (worker-cert, worker-offer-letter, worker-invoice, worker-collab)
 
-**Any host that runs `worker-cert` must have a Calibri-metric font installed.**
-This is not cosmetic — it silently corrupts issued documents.
+**Any host that renders a DOCX to PDF must have a Calibri-metric font installed.**
+This is not cosmetic: it silently corrupts issued documents. `worker-collab`
+is one of these hosts: it also runs the CA worker loop, which renders CA offer
+letters, letters of recommendation and completion certificates through the
+same LibreOffice path.
 
 The DOCX templates in `frontend/public/course-certificates/Airkrit Certificates`
 are authored in **Calibri**, and every text box is sized to its Calibri text. If
