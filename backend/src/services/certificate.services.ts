@@ -20,6 +20,7 @@ import fs from "fs";
 import os from "os";
 import { asBrand, type Brand } from "../constants/brands";
 import { verificationBaseUrl } from "../lib/verifyUrl";
+import { toNameCase } from "../lib/caDocuments";
 
 const MONTHS_SHORT = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -50,15 +51,15 @@ export function generateCertificateId(userId: string, enrollmentId: string): str
   return `AI-${combined.toString().padStart(5, "0")}`;
 }
 
-/**
- * Get the latest certificate for an enrollment
- */
+// An enrollment can have several "latest" certs at once (course + LOR); callers must pick a type.
 export const getLatestCertificateService = async (
-  enrollmentId: string
+  enrollmentId: string,
+  certificateType: "course" | "internship" | "lor" = "course",
 ): Promise<Certificate | null> => {
   try {
     const certificate = await CertificateModel.findOne({
       enrollmentId,
+      certificateType,
       isLatest: true,
       isActive: true,
     })
@@ -140,11 +141,12 @@ export const createCertificateService = async (
 
     // Generate verification code and URL before creating certificate
     // This matches the format used in the pre-save hook: VER-${certificateId}-${timestamp}
+    const courseBrand = asBrand(course.get("brand"));
     const verificationCode = `VER-${certificateId}-${Date.now()
       .toString(36)
       .toUpperCase()}`;
     const verificationUrl = `${verificationBaseUrl(
-      asBrand(course.get("brand")),
+      courseBrand,
     )}/verify-certificate/${verificationCode}`;
 
     // Generate certificate DOCX file
@@ -245,6 +247,21 @@ export const createCertificateService = async (
         await tryAwardCompletionSuccessPoints(data.enrollmentId.toString());
       } catch (e) {
         console.error("Completion success points award failed:", e);
+      }
+
+      // LOR alongside the training certificate; Airkrit only.
+      if (courseBrand === "airkrit") {
+        await issueLetterOfRecommendation({
+          enrollmentId: data.enrollmentId.toString(),
+          enrollmentModel: "Enrollment",
+          userId: enrollment.userId,
+          courseId: enrollment.courseId,
+          certificateId,
+          studentName: data.studentName,
+          courseName: data.courseName,
+          completionDate: data.completionDate,
+          brand: "airkrit",
+        });
       }
 
       // Clean up temporary files
@@ -497,6 +514,116 @@ export const internshipCertificateFileName = (
   return `Airkrit_Internship_${sanitize(internshipTitle)}_${sanitize(studentName)}.pdf`;
 };
 
+const LOR_TEMPLATE_PATH = path.join(
+  process.cwd(),
+  "../frontend/public/course-certificates/Airkrit Certificates",
+  "Airkrit India LOR - AI-01171 - Template.docx"
+);
+
+const sanitizeForFilename = (str: string): string =>
+  str
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "")
+    .substring(0, 100);
+
+// Best-effort (never throws) and upserts on {enrollmentId, certificateType: "lor"} so retries don't duplicate.
+export const issueLetterOfRecommendation = async (params: {
+  enrollmentId: string;
+  enrollmentModel: "Enrollment" | "InternshipEnrollment";
+  userId: unknown;
+  courseId: unknown;
+  certificateId: string;
+  studentName: string;
+  courseName: string;
+  completionDate: Date;
+  thumbnailUrl?: string | null;
+  brand: Brand;
+}): Promise<{ fileUrl: string; verificationUrl: string } | null> => {
+  const tempDir = path.join(os.tmpdir(), `lor-${Date.now()}`);
+  const docxPath = path.join(tempDir, `lor-${params.certificateId}.docx`);
+  const pdfPath = path.join(tempDir, `lor-${params.certificateId}.pdf`);
+
+  try {
+    if (!fs.existsSync(LOR_TEMPLATE_PATH)) {
+      throw new Error(`LOR template not found at ${LOR_TEMPLATE_PATH}`);
+    }
+
+    const studentName = toNameCase(params.studentName);
+    const verificationCode = `VER-${params.certificateId}-LOR-${Date.now()
+      .toString(36)
+      .toUpperCase()}`;
+    const verificationUrl = `${verificationBaseUrl(
+      params.brand,
+    )}/verify-certificate/${verificationCode}`;
+
+    fs.mkdirSync(tempDir, { recursive: true });
+
+    await generateCertificateFromDocx(LOR_TEMPLATE_PATH, docxPath, {
+      studentName,
+      courseName: params.courseName,
+      completionDate: params.completionDate.toISOString(),
+      certificateId: params.certificateId,
+      verificationUrl,
+    });
+    await convertDocxToPdf(docxPath, pdfPath);
+    const pdfBuffer = fs.readFileSync(pdfPath);
+
+    const fileName = `Airkrit_LOR_${sanitizeForFilename(
+      params.courseName,
+    )}_${sanitizeForFilename(studentName)}.pdf`;
+    const fileUrl = await uploadFileToS3(
+      pdfBuffer,
+      fileName,
+      "certificates",
+      "application/pdf",
+    );
+
+    await CertificateModel.updateOne(
+      { enrollmentId: params.enrollmentId, certificateType: "lor" },
+      {
+        $set: {
+          certificateType: "lor",
+          enrollmentModel: params.enrollmentModel,
+          enrollmentId: params.enrollmentId,
+          userId: params.userId,
+          courseId: params.courseId ?? null,
+          certificateId: params.certificateId,
+          studentName,
+          courseName: params.courseName,
+          thumbnailUrl: params.thumbnailUrl ?? null,
+          completionDate: params.completionDate,
+          issuedAt: new Date(),
+          fileUrl,
+          verificationCode,
+          verificationUrl,
+          isLatest: true,
+          version: 1,
+          isActive: true,
+        },
+      },
+      { upsert: true },
+    );
+
+    return { fileUrl, verificationUrl };
+  } catch (error) {
+    console.error(
+      `[Certificate] LOR generation failed for enrollment ${params.enrollmentId}:`,
+      error,
+    );
+    return null;
+  } finally {
+    try {
+      if (fs.existsSync(docxPath)) fs.unlinkSync(docxPath);
+      if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+      if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+    } catch (cleanupError) {
+      console.error("Error cleaning up LOR temporary files:", cleanupError);
+    }
+  }
+};
+
 /**
  * Generate an internship certificate PDF, upload to S3, save a CertificateModel
  * record (so the QR code verify endpoint works), and return the result.
@@ -597,6 +724,20 @@ export const createInternshipCertificateService = async (
       isActive: true,
     });
 
+    // LOR now that a pass certificate exists; courseName is the offer-letter designation, not the title.
+    await issueLetterOfRecommendation({
+      enrollmentId: enrollmentId.toString(),
+      enrollmentModel: "InternshipEnrollment",
+      userId: ctx.userId,
+      courseId: null,
+      certificateId,
+      studentName: ctx.studentName,
+      courseName: ctx.internRole,
+      completionDate: ctx.completionDate,
+      thumbnailUrl: ctx.thumbnailUrl,
+      brand: "edulyt",
+    });
+
     return { certificateId, fileUrl, verificationUrl };
   } catch (error) {
     if (error instanceof AppError) throw error;
@@ -615,9 +756,9 @@ export const regenerateCertificateService = async (
   reason: string = "name_change"
 ): Promise<Certificate> => {
   try {
-    // Get the latest certificate
     const oldCertificate = await CertificateModel.findOne({
       enrollmentId,
+      certificateType: "course",
       isLatest: true,
     });
 
@@ -901,8 +1042,7 @@ export const getCertificateByVerificationCodeService = async (
   verificationCode: string
 ): Promise<Certificate | null> => {
   try {
-    // Never brand-scoped: printed certificates carry airkrit.com links that
-    // must keep resolving whichever brand issued them.
+    // Never brand-scoped, and no certificateType filter: verificationCode is unique per row already.
     const certificate = await CertificateModel.findOne({
       verificationCode,
       isActive: true,

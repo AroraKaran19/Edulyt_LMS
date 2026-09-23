@@ -35,6 +35,17 @@ export const buildCourseReasonLine = (
     : `You have completed ${name} and met the requirements for certification.`;
 };
 
+// Names the LOR only when one was actually generated, so the email stays honest.
+export const buildCourseAttachmentNote = (
+  courseName: string,
+  hasLor: boolean,
+): string => {
+  const name = strong(courseName);
+  return hasLor
+    ? `PDF copies of your ${name} certificate and Letter of Recommendation are included with this email.`
+    : `A PDF copy of your ${name} certificate is included with this email.`;
+};
+
 /**
  * Post text seeded into LinkedIn's composer.
  *

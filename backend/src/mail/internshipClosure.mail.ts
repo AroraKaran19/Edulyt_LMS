@@ -20,6 +20,8 @@ export type InternshipCertificateIssuedVariables = {
   certificateUrl: string;
   /** LinkedIn share composer link. Built by `buildLinkedInShareUrl`. */
   linkedInUrl: string;
+  /** Attachment-box sentence. Built by `buildAttachmentNote`. */
+  attachmentNote: string;
   year: number;
 };
 

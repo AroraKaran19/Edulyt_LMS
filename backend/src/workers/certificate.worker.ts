@@ -7,6 +7,7 @@ import {
 import {
   createCertificateService,
   createInternshipCertificateService,
+  getLatestCertificateService,
 } from "../services/certificate.services";
 import { sendCourseCertificateEmail } from "../services/courseCertificateMail.services";
 import { sendInternshipClosureEmail } from "../services/internshipClosureMail.services";
@@ -79,6 +80,11 @@ async function processInternshipCertificateJob(job: any): Promise<void> {
 
     console.log(`[Certificate Worker] Internship job ${jobId} completed. Certificate: ${result.certificateId}`);
 
+    // Checks whether the best-effort LOR landed; its absence must not hold up this email.
+    const lor = await getLatestCertificateService(enrollmentId, "lor").catch(
+      () => null,
+    );
+
     // The learner's email is sent here rather than at verdict time because both
     // the download URL and the LinkedIn share link need a certificate that
     // exists. Sends at most once per enrollment, guarded on the enrollment.
@@ -86,6 +92,7 @@ async function processInternshipCertificateJob(job: any): Promise<void> {
       kind: "issued",
       certificateUrl: result.fileUrl,
       verificationUrl: result.verificationUrl,
+      lorUrl: lor?.fileUrl ?? undefined,
     });
   } catch (error: any) {
     console.error(`[Certificate Worker] Error processing internship job ${jobId}:`, error);
@@ -222,6 +229,12 @@ async function processCertificateJob(job: any): Promise<void> {
       `[Certificate Worker] Job ${jobId} completed successfully. Certificate ID: ${certificate.certificateId}`
     );
 
+    // Checks whether the best-effort LOR landed; its absence must not hold up this email.
+    const lor = await getLatestCertificateService(
+      enrollmentId.toString(),
+      "lor",
+    ).catch(() => null);
+
     // Sent from here rather than at course completion because the download URL
     // and the LinkedIn share link both need a certificate that exists. Sends at
     // most once per enrollment, guarded on the enrollment.
@@ -229,6 +242,7 @@ async function processCertificateJob(job: any): Promise<void> {
       kind: "issued",
       certificateUrl: certificate.fileUrl || "",
       verificationUrl: certificate.verificationUrl || "",
+      lorUrl: lor?.fileUrl ?? undefined,
     });
   } catch (error: any) {
     console.error(`[Certificate Worker] Error processing job ${jobId}:`, error);

@@ -1,30 +1,32 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import EmptyState from "../components/applications/EmptyState";
 import { Download, Search, FileX, Loader2 } from "lucide-react";
 import ImageComponent from "@/components/ui/ImageComponent";
-import useCertificates from "@/hooks/useCertificates";
-import WhiteButton from "@/components/ui/buttons/WhiteButton";
-import OrangeButton from "@/components/ui/buttons/OrangeButton";
+import useCertificateGroups from "@/hooks/useCertificateGroups";
+import type { CertificateGroup } from "@/types/certificateGroup";
+
+const RECENT_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+
+const PROGRAM_PILL_STYLES: Record<CertificateGroup["programType"], string> = {
+  course: "bg-[#FFF6F2] text-[#E25C12] border border-[#F66F221F]",
+  internship: "bg-indigo-50 text-[#4338CA] border border-indigo-100",
+};
+
+const PROGRAM_LABELS: Record<CertificateGroup["programType"], string> = {
+  course: "Course",
+  internship: "Internship",
+};
 
 const CertificatesPage = () => {
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const router = useRouter();
 
-  const {
-    certificates,
-    isLoading,
-    downloadCertificate,
-    total,
-    totalPages,
-    hasFetched,
-    fetchCertificates,
-  } = useCertificates();
+  const { groups, isLoading, hasFetched, fetchCertificateGroups } =
+    useCertificateGroups();
+  const [nowMs] = useState(() => Date.now());
 
   // Debounce search input
   useEffect(() => {
@@ -36,44 +38,45 @@ const CertificatesPage = () => {
 
   const tabs = [{ label: "All" }, { label: "Recent" }];
 
-  const handleCertificateClick = (certificateId: string) => {
-    router.push(`/dashboard/certificates/${certificateId}`);
-  };
-
-  // Fetch certificates with pagination (server-side filtering)
-  const loadCertificates = useCallback(() => {
-    fetchCertificates({
-      page: currentPage,
-      limit: 12,
-      search: debouncedSearch.trim() || undefined,
-      recent: activeTab === "Recent",
-    });
-  }, [currentPage, debouncedSearch, activeTab, fetchCertificates]);
-
   useEffect(() => {
-    loadCertificates();
-  }, [loadCertificates]);
+    fetchCertificateGroups();
+  }, [fetchCertificateGroups]);
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
-    setCurrentPage(1);
   }, []);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
-    setCurrentPage(1);
   }, []);
 
-  // Check if we're showing search results
   const isSearchActive = debouncedSearch.trim().length > 0;
-  const hasCertificates = total > 0;
-  const hasSearchResults = certificates.length > 0;
   const isSearching = search !== debouncedSearch && search.trim().length > 0;
+  const hasCertificates = groups.length > 0;
+
+  const displayedGroups = useMemo(() => {
+    let result = groups;
+
+    if (activeTab === "Recent") {
+      result = result.filter(
+        (group) => nowMs - new Date(group.latestIssuedAt).getTime() <= RECENT_WINDOW_MS,
+      );
+    }
+
+    const query = debouncedSearch.trim().toLowerCase();
+    if (query) {
+      result = result.filter((group) => group.title.toLowerCase().includes(query));
+    }
+
+    return result;
+  }, [groups, activeTab, debouncedSearch, nowMs]);
+
+  const hasSearchResults = displayedGroups.length > 0;
 
   return (
     <div className="flex flex-col min-h-[60vh]">
       <div className="py-4">
-        {!hasFetched || (isLoading && total === 0) ? (
+        {!hasFetched || (isLoading && groups.length === 0) ? (
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-gray-600">Loading certificates...</div>
           </div>
@@ -147,8 +150,9 @@ const CertificatesPage = () => {
                   No Certificates Found
                 </h2>
                 <p className="text-gray-600 text-center max-w-md mb-6">
-                  We couldn't find any certificates matching "{debouncedSearch}
-                  ". Try searching with a different term or check your spelling.
+                  We couldn&apos;t find any certificates matching &quot;
+                  {debouncedSearch}&quot;. Try searching with a different term
+                  or check your spelling.
                 </p>
                 <button
                   type="button"
@@ -159,132 +163,72 @@ const CertificatesPage = () => {
                 </button>
               </div>
             ) : (
-              <>
-                {/* Results Grid */}
-                <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
-                  {certificates.map((certificate, index: number) => (
-                    // certificate card
-                    <div
-                      key={`${index}`}
-                      className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() =>
-                        handleCertificateClick(certificate?._id || "")
-                      }
-                    >
-                      <div>
-                        <div className="relative w-full h-24 xs:h-28 sm:h-32 md:h-36 rounded-xl overflow-hidden mb-2 sm:mb-3 pt-2 sm:pt-4 px-2 sm:px-3 border border-[#00000017]">
-                          <ImageComponent
-                            src={
-                              (typeof certificate.courseId === "object" &&
-                                certificate.courseId?.thumbnail) ||
-                              certificate.thumbnailUrl ||
-                              "/certificates-user-icon.svg"
-                            }
-                            alt={
-                              (typeof certificate.courseId === "object" &&
-                                certificate.courseId?.title) ||
-                              certificate.courseName ||
-                              "certificate"
-                            }
-                            width={259}
-                            height={188}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2 leading-tight">
-                          {(typeof certificate.courseId === "object" &&
-                            certificate.courseId?.title) ||
-                            certificate.courseName}
-                        </div>
-                        <div className="text-xs text-gray-600 mb-2">
-                          Issued:{" "}
-                          {new Date(certificate.issuedAt).toLocaleDateString(
-                            "en-IN",
-                            { timeZone: "Asia/Kolkata" },
-                          )}
-                        </div>
+              <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+                {displayedGroups.map((group) => (
+                  <div
+                    key={`${group.programType}-${group.programId}`}
+                    className="bg-white border border-[#0000001F] rounded-xl flex flex-col justify-between p-3 sm:p-4 w-full shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div>
+                      <div className="relative w-full h-24 xs:h-28 sm:h-32 md:h-36 rounded-xl overflow-hidden mb-2 sm:mb-3 pt-2 sm:pt-4 px-2 sm:px-3 border border-[#00000017]">
+                        <ImageComponent
+                          src={group.thumbnail || "/certificates-user-icon.svg"}
+                          alt={group.title}
+                          width={259}
+                          height={188}
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-
-                      <button
-                        type="button"
-                        className="flex justify-center items-center gap-1 sm:gap-2 mt-2 sm:mt-3 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 md:px-4 py-2 sm:py-3 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset] disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (certificate.fileUrl) {
-                            downloadCertificate(certificate);
-                          }
-                        }}
-                        disabled={!certificate.fileUrl}
-                        title={
-                          certificate.fileUrl
-                            ? "Download certificate"
-                            : "Certificate file not available"
-                        }
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold mb-2 ${PROGRAM_PILL_STYLES[group.programType]}`}
                       >
-                        <Download size={14} className="sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">
-                          Download certificate
-                        </span>
-                        <span className="sm:hidden">Download</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Pagination */}
-                {totalPages > 1 &&
-                  !isSearching &&
-                  !(isSearchActive && !hasSearchResults) && (
-                    <div className="flex items-center justify-center gap-2 mt-8">
-                      <WhiteButton
-                        glow={false}
-                        onClick={() =>
-                          setCurrentPage((prev) => Math.max(prev - 1, 1))
-                        }
-                        disabled={currentPage === 1}
-                      >
-                        Previous
-                      </WhiteButton>
-                      <div className="flex items-center gap-1">
-                        {Array.from(
-                          { length: Math.min(totalPages, 5) },
-                          (_, i) => {
-                            let pageNum;
-                            if (totalPages <= 5) {
-                              pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                              pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                              pageNum = totalPages - 4 + i;
-                            } else {
-                              pageNum = currentPage - 2 + i;
-                            }
-                            return (
-                              <WhiteButton
-                                glow={false}
-                                onClick={() => setCurrentPage(pageNum)}
-                                key={pageNum}
-                              >
-                                {pageNum}
-                              </WhiteButton>
-                            );
-                          },
-                        )}
+                        {PROGRAM_LABELS[group.programType]}
+                      </span>
+                      <div className="font-extrabold text-xs sm:text-sm mb-2 text-black line-clamp-2 leading-tight">
+                        {group.title}
                       </div>
-                      <OrangeButton
-                        glow={false}
-                        onClick={() =>
-                          setCurrentPage((prev) =>
-                            Math.min(prev + 1, totalPages),
-                          )
-                        }
-                        disabled={currentPage === totalPages}
-                      >
-                        Next
-                      </OrangeButton>
                     </div>
-                  )}
-              </>
+
+                    <div className="flex flex-col gap-2 mt-1">
+                      {group.documents.map((doc) => (
+                        <div
+                          key={doc.kind}
+                          className="flex items-center justify-between gap-2 border-t border-[#00000012] pt-2"
+                        >
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-black truncate">
+                              {doc.label}
+                            </div>
+                            <div className="text-[11px] text-gray-600">
+                              Issued:{" "}
+                              {new Date(doc.issuedAt).toLocaleDateString("en-IN", {
+                                timeZone: "Asia/Kolkata",
+                              })}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="flex items-center justify-center gap-1 sm:gap-2 shrink-0 bg-white border border-[#00000021] text-[#656565] rounded-lg px-2 sm:px-3 py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer shadow-[0px_-3px_3.7px_0px_#0146E721_inset] disabled:opacity-50 disabled:cursor-not-allowed"
+                            onClick={() => {
+                              if (doc.fileUrl) {
+                                window.open(doc.fileUrl, "_blank", "noopener,noreferrer");
+                              }
+                            }}
+                            disabled={!doc.fileUrl}
+                            title={
+                              doc.fileUrl
+                                ? "Download certificate"
+                                : "Certificate file not available"
+                            }
+                          >
+                            <Download size={14} className="sm:w-4 sm:h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}

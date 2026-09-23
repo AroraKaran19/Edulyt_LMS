@@ -1613,6 +1613,7 @@ const buildPartnerInternshipFlatStudents = async (
 
   const certs = await CertificateModel.find({
     enrollmentModel: "InternshipEnrollment",
+    certificateType: "internship", // excludes the LOR, which can also be "latest"
     enrollmentId: { $in: enrollments.map((e) => e._id) },
     isLatest: true,
     isActive: true,

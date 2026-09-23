@@ -17,6 +17,7 @@ import {
   reclaimStuckCertificateJobsService,
 } from "../services/certificateJob.services";
 import { readableBrands } from "../lib/brandScope";
+import { getCertificateGroupsService } from "../services/certificateGroups.services";
 import { asBrand, isBrand } from "../constants/brands";
 
 /**
@@ -354,3 +355,11 @@ export const getCertificatesByUserId = asyncHandler(
     );
   }
 );
+
+/** @route GET /api/certificates/by-program */
+export const getCertificateGroups = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.user?._id;
+  if (!userId) throw new AppError("User ID is required", 400);
+  const groups = await getCertificateGroupsService(userId.toString(), readableBrands(req.brand));
+  sendSuccessResponse(res, { groups }, "Certificates retrieved successfully");
+});

@@ -527,6 +527,12 @@ export const ENDPOINTS = {
     delete: "/notes",
   },
 
+  /** Learner's own certificates and other issued documents. */
+  certificates: {
+    /** GET — one group per course/internship, every document, newest first. */
+    byProgram: "/certificates/by-program",
+  },
+
   /** Public marketing home page CMS — read-only. */
   homePageSettings: "/home-page-settings",
   enquiryPageSettings: "/enquiry-page-settings",

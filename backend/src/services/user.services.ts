@@ -52,6 +52,7 @@ export const getCurrentUserDashboardCountsService = async (
       }),
       CertificateModel.countDocuments({
         userId,
+        certificateType: { $ne: "lor" }, // LOR rides along, not a separate completion
         isActive: true,
         isLatest: true,
         brand,

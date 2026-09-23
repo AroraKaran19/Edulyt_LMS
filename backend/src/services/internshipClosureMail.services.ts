@@ -23,6 +23,7 @@ import {
 } from "../mail";
 import {
   CONTACT_PHONE,
+  buildAttachmentNote,
   buildHelpText,
   buildLinkedInShareUrl,
   buildReasonLine,
@@ -30,7 +31,13 @@ import {
 } from "../lib/internshipClosureMail";
 
 export type ClosureEmailPayload =
-  | { kind: "issued"; certificateUrl: string; verificationUrl: string }
+  | {
+      kind: "issued";
+      certificateUrl: string;
+      verificationUrl: string;
+      /** Set only when the Letter of Recommendation was actually generated. */
+      lorUrl?: string;
+    }
   | { kind: "pending" }
   | { kind: "withheld" };
 
@@ -203,6 +210,10 @@ export const sendInternshipClosureEmail = async (
               context.internshipName,
               payload.verificationUrl,
             ),
+            attachmentNote: buildAttachmentNote(
+              context.internshipName,
+              Boolean(payload.lorUrl),
+            ),
             year,
           },
           // MSG91 fetches the attachment from this URL at send time. It is a
@@ -213,6 +224,14 @@ export const sendInternshipClosureEmail = async (
                 file: payload.certificateUrl,
                 filename: `${context.internshipName} Certificate.pdf`,
               },
+              ...(payload.lorUrl
+                ? [
+                    {
+                      file: payload.lorUrl,
+                      filename: "Airkrit Letter of Recommendation.pdf",
+                    },
+                  ]
+                : []),
             ],
           },
         );

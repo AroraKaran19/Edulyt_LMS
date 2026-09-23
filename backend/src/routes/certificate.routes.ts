@@ -2,6 +2,7 @@ import express from "express";
 import {
   getUserCertificates,
   getCertificateById,
+  getCertificateGroups,
   verifyCertificate,
   createCertificateJob,
   getCertificateJobStatus,
@@ -45,6 +46,9 @@ router.get("/job/:jobId", verifyUser, getCertificateJobStatus);
  * @access  User
  */
 router.get("/job/enrollment/:enrollmentId", verifyUser, getCertificateJobByEnrollment);
+
+// Must stay above "/:certificateId".
+router.get("/by-program", verifyUser, getCertificateGroups);
 
 /**
  * @route   GET /api/certificates/:certificateId

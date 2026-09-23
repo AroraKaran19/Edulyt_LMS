@@ -23,6 +23,8 @@ export type CourseCertificateIssuedVariables = {
   certificateUrl: string;
   /** LinkedIn share composer link. Built by `buildCourseLinkedInShareUrl`. */
   linkedInUrl: string;
+  /** Attachment-box sentence. Built by `buildCourseAttachmentNote`. */
+  attachmentNote: string;
   year: number;
 };
 

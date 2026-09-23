@@ -1798,6 +1798,7 @@ export async function listMyInternshipEnrollments(
     const certDocs = await CertificateModel.find({
       enrollmentId: { $in: certLookupIds },
       enrollmentModel: "InternshipEnrollment",
+      certificateType: "internship", // excludes the LOR, which can also be "latest"
       isLatest: true,
       isActive: true,
     })

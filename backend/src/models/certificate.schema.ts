@@ -166,8 +166,34 @@ const certificateSchema = new mongoose.Schema<Certificate>(
 certificateSchema.index({ userId: 1, courseId: 1 });
 certificateSchema.index({ userId: 1, issuedAt: -1 });
 certificateSchema.index({ enrollmentId: 1, isLatest: 1 }); // For finding latest certificate per enrollment
+certificateSchema.index({ enrollmentId: 1, certificateType: 1, isLatest: 1 }); // Latest certificate per enrollment PER TYPE (course/internship/lor)
 certificateSchema.plugin(brandPlugin, { derive: certificateBrand });
 certificateSchema.index({ userId: 1, brand: 1, issuedAt: -1 });
+
+export const demoteSiblingLatestCertificates = async (doc: {
+  _id: unknown;
+  enrollmentId: unknown;
+  certificateType: string;
+}): Promise<number> => {
+  await mongoose.model("Certificate").updateMany(
+    {
+      enrollmentId: doc.enrollmentId,
+      certificateType: doc.certificateType,
+      _id: { $ne: doc._id },
+      isLatest: true,
+    },
+    {
+      isLatest: false,
+      replacedAt: new Date(),
+      replacedBy: doc._id,
+    }
+  );
+
+  return mongoose.model("Certificate").countDocuments({
+    enrollmentId: doc.enrollmentId,
+    certificateType: doc.certificateType,
+  });
+};
 
 // Pre-save hook to generate verification code if not provided
 certificateSchema.pre("save", async function (next) {
@@ -186,25 +212,9 @@ certificateSchema.pre("save", async function (next) {
     )}/verify-certificate/${this.verificationCode}`;
   }
 
-  // If this is a new certificate and isLatest is true, mark old certificates as not latest
+  // Mark old certificates of the same certificateType as not latest.
   if (this.isNew && this.isLatest && this.enrollmentId) {
-    await mongoose.model("Certificate").updateMany(
-      {
-        enrollmentId: this.enrollmentId,
-        _id: { $ne: this._id },
-        isLatest: true,
-      },
-      {
-        isLatest: false,
-        replacedAt: new Date(),
-        replacedBy: this._id,
-      }
-    );
-
-    // Set version number based on existing certificates
-    const existingCount = await mongoose.model("Certificate").countDocuments({
-      enrollmentId: this.enrollmentId,
-    });
+    const existingCount = await demoteSiblingLatestCertificates(this);
     this.version = existingCount + 1;
   }
 

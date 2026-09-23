@@ -20,12 +20,19 @@ import {
   courseCertificatePendingMail,
 } from "../mail";
 import {
+  buildCourseAttachmentNote,
   buildCourseLinkedInShareUrl,
   buildCourseReasonLine,
 } from "../lib/courseCertificateMail";
 
 export type CourseCertificateEmailPayload =
-  | { kind: "issued"; certificateUrl: string; verificationUrl: string }
+  | {
+      kind: "issued";
+      certificateUrl: string;
+      verificationUrl: string;
+      /** Set only when the Letter of Recommendation was actually generated. */
+      lorUrl?: string;
+    }
   | { kind: "pending" };
 
 const claimFieldFor = (kind: CourseCertificateEmailPayload["kind"]): string =>
@@ -191,6 +198,10 @@ export const sendCourseCertificateEmail = async (
           context.courseName,
           payload.verificationUrl,
         ),
+        attachmentNote: buildCourseAttachmentNote(
+          context.courseName,
+          Boolean(payload.lorUrl),
+        ),
         year,
       },
       // MSG91 fetches the attachment from this URL at send time. It is a permanent
@@ -202,6 +213,14 @@ export const sendCourseCertificateEmail = async (
             file: payload.certificateUrl,
             filename: `${context.courseName} Certificate.pdf`,
           },
+          ...(payload.lorUrl
+            ? [
+                {
+                  file: payload.lorUrl,
+                  filename: "Airkrit Letter of Recommendation.pdf",
+                },
+              ]
+            : []),
         ],
       },
     );

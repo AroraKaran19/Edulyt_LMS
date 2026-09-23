@@ -938,7 +938,7 @@ export const RecalculateEnrollmentProgressService = async (
         } else {
           // Check if certificate already exists
           const existingCertificate =
-            await getLatestCertificateService(enrollmentId);
+            await getLatestCertificateService(enrollmentId, "course");
 
           if (!existingCertificate) {
             // Get course details (already populated above)
@@ -1224,7 +1224,7 @@ export const UpdateEnrollmentProgressService = async (
 
         // Check if certificate already exists
         const existingCertificate =
-          await getLatestCertificateService(enrollmentId);
+          await getLatestCertificateService(enrollmentId, "course");
 
         if (existingCertificate) {
           console.log(
