@@ -76,7 +76,7 @@ export const getCertificateGroupsService = async (
       verificationUrl: 1,
     }).lean<CertRow[]>(),
     InternshipEnrollmentModel.find(
-      { user: userId, offerLetterUrl: { $exists: true, $nin: [null, ""] } },
+      { user: userId, offerLetterUrl: { $exists: true, $nin: [null, ""] }, ...(brands?.length ? { brand: { $in: brands } } : {}) },
       { internship: 1, offerLetterUrl: 1, offerLetterGeneratedAt: 1, createdAt: 1, internId: 1 },
     ).lean<EnrollmentRow[]>(),
   ]);

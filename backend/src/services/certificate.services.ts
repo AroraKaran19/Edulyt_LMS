@@ -601,6 +601,8 @@ export const issueLetterOfRecommendation = async (params: {
           isLatest: true,
           version: 1,
           isActive: true,
+          // updateOne skips the brand plugin's hook, so the brand is set explicitly.
+          brand: params.brand,
         },
       },
       { upsert: true },
