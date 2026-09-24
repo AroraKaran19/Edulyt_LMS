@@ -5,7 +5,7 @@ import { CaCourseVoucherModel, type CaCourseVoucherPlan } from "../models/caCour
 import { CourseModel } from "../models/course.schema";
 import { EnrollmentModel } from "../models/enrollment.schema";
 import { CreateEnrollmentService, revokeEnrollmentAdminService } from "./enrollment.services";
-import { coursePlanForVoucher, type CoursePlanFields } from "./caVoucher.services";
+import { coursePlanForVoucher, hasVoucherPlan, type CoursePlanFields } from "./caVoucher.services";
 
 export interface CaVoucherAdminActor {
   userId: mongoose.Types.ObjectId;
@@ -127,6 +127,10 @@ export const approveCaVoucherRequest = async (viewer: CaVoucherAdminActor, id: s
   }
 
   const course = await CourseModel.findById(voucher.courseId, { plans: 1 }).lean();
+  // Requests made while Elite was granted may name an Elite-only course.
+  if (course && !hasVoucherPlan(course as CoursePlanFields)) {
+    throw new AppError("This course has no Essential plan, so the voucher cannot unlock it", 409);
+  }
   const plan = course ? coursePlanForVoucher(course as CoursePlanFields) : voucher.plan;
 
   const previousState = {

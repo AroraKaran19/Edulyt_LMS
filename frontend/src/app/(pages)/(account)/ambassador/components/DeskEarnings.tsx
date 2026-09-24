@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import type { CaPageSettings } from "@/types/ca-page-settings";
 import { DEFAULT_KIT_ITEMS, inr, inrShort, kitList, money } from "@/app/campus-ambassador/content";
@@ -9,8 +10,21 @@ export default function DeskEarnings({ settings }: { settings: CaPageSettings })
   const m = money(settings);
   const kit = kitList(settings.kit.items.length ? settings.kit.items : DEFAULT_KIT_ITEMS);
 
-  const rows = [
-    { what: "Fixed stipend", note: "Paid to your UPI ID every month", credit: inr(m.stipend), unit: "per month" },
+  const rows: {
+    what: string;
+    note: string;
+    credit: string;
+    unit: string;
+    condition?: string;
+  }[] = [
+    {
+      what: "Fixed stipend",
+      note: "Paid to your UPI ID every month",
+      credit: inr(m.stipend),
+      unit: "per month",
+      condition:
+        "Promote Airkrit on college campuses to generate 10 qualified leads that successfully convert into sales.",
+    },
     {
       what: "Performance incentive",
       note: "For the admissions your link brings in",
@@ -38,7 +52,7 @@ export default function DeskEarnings({ settings }: { settings: CaPageSettings })
       <h2 id="desk-earnings-title" className={cn(s.display, s.h2)}>
         What you are earning
       </h2>
-      <p className={s.sub}>Everything that comes with being an Airkrit Campus Ambassador.</p>
+      <p className={s.sub}>Everything that comes with being an Airkrit Marketing Intern / Digital Marketing Intern.</p>
       <div className={s.sheet}>
         <div className={s.sheetHead}>
           <p className={s.sheetName}>How it works for YOU</p>
@@ -47,16 +61,25 @@ export default function DeskEarnings({ settings }: { settings: CaPageSettings })
         <table className={s.ledger}>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.what}>
-                <td className={s.what}>
-                  <b>{r.what}</b>
-                  <span>{r.note}</span>
-                </td>
-                <td className={s.credit}>
-                  {r.credit}
-                  <small>{r.unit}</small>
-                </td>
-              </tr>
+              <Fragment key={r.what}>
+                <tr>
+                  <td className={s.what}>
+                    <b>{r.what}</b>
+                    <span>{r.note}</span>
+                  </td>
+                  <td className={s.credit}>
+                    {r.credit}
+                    <small>{r.unit}</small>
+                  </td>
+                </tr>
+                {r.condition ? (
+                  <tr className={s.conditionRow}>
+                    <td colSpan={2}>
+                      <p className={s.condition}>{r.condition}</p>
+                    </td>
+                  </tr>
+                ) : null}
+              </Fragment>
             ))}
           </tbody>
         </table>

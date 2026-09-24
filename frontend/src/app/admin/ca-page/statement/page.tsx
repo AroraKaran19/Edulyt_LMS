@@ -1,6 +1,6 @@
 "use client";
 
-import type { CaStatementGet, CaStatementIcon, CaStatementRow } from "@/types/ca-page-settings";
+import type { CaStatementGet, CaStatementRow } from "@/types/ca-page-settings";
 import { useSectionState } from "../CaSettingsContext";
 import {
   FieldGroup,
@@ -9,8 +9,7 @@ import {
   TextAreaField,
   TextField,
 } from "@/app/admin/settings/home-page/components/fields";
-import Select from "@/components/ui/inputs/Select";
-import { ICON_NAMES } from "@/app/campus-ambassador/components/Icon";
+import IconPicker from "./IconPicker";
 import {
   DEFAULT_STATEMENT_FOOTER_AMOUNT,
   DEFAULT_STATEMENT_FOOTER_LABEL,
@@ -25,14 +24,6 @@ const withEditableCredit = (row: CaStatementRow): StatementRowState => ({
   ...row,
   credit: row.credit ?? { amount: "", prefix: "" },
 });
-
-const ICON_OPTIONS = [
-  { value: "none", label: "No icon (quiet note)" },
-  ...ICON_NAMES.map((name) => ({
-    value: name,
-    label: name.charAt(0).toUpperCase() + name.slice(1),
-  })),
-];
 
 const PLACEHOLDERS: ReadonlyArray<{ token: string; meaning: string }> = [
   { token: "{stipend}", meaning: "the monthly stipend amount" },
@@ -125,12 +116,7 @@ export default function StatementSectionPage() {
               itemTitle={(g, gi) => g.title || `Item ${gi + 1}`}
               renderItem={(g, updateGet) => (
                 <div className="flex flex-col gap-3">
-                  <Select
-                    label="Icon"
-                    options={ICON_OPTIONS}
-                    value={g.icon}
-                    onChange={(v) => updateGet({ ...g, icon: v as CaStatementIcon })}
-                  />
+                  <IconPicker value={g.icon} onChange={(icon) => updateGet({ ...g, icon })} />
                   <TextField
                     label="Title"
                     value={g.title}

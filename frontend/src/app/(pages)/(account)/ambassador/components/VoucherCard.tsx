@@ -124,10 +124,10 @@ export default function VoucherCard({ voucher, voucherNo, onChange }: Props) {
   } else if (eligible) {
     content = (
       <>
-        <p className={s.ticketSub}>Pick any Airkrit course. We&apos;ll unlock the Elite plan where available.</p>
+        <p className={s.ticketSub}>Pick any Airkrit course. We&apos;ll unlock its Essential plan.</p>
         <ul className={s.ticketMetaRow}>
           <li>Any Airkrit course</li>
-          <li>Elite plan where available</li>
+          <li>Essential plan</li>
           <li>One time</li>
         </ul>
       </>
@@ -153,7 +153,7 @@ export default function VoucherCard({ voucher, voucherNo, onChange }: Props) {
               </span>
             ) : null}
             <h2 id="desk-voucher-title" className={cn(s.display, s.ticketTitle)}>
-              Your ambassador course voucher
+              Your intern course voucher
             </h2>
             {content}
             {action || voucherNo ? (

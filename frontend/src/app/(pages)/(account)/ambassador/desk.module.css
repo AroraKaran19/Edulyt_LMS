@@ -1009,6 +1009,22 @@
   padding-right: 16px;
 }
 
+/* Sits under its row, so no divider and no top gap between them. */
+.ledger .conditionRow td {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.condition {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--line);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .what b {
   display: block;
   font-size: 16px;

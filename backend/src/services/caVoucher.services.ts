@@ -13,17 +13,13 @@ export type CoursePlanFields = {
   plans?: { elite?: { price?: number } | null; essential?: { price?: number } | null };
 };
 
-/** Every course grants elite when it offers one, essential otherwise. */
-export const coursePlanForVoucher = (course: CoursePlanFields): CaCourseVoucherPlan =>
-  course.plans?.elite ? "elite" : "essential";
+/** The voucher only ever grants Essential; courses without a paid Essential plan are not offered. */
+export const coursePlanForVoucher = (_course: CoursePlanFields): CaCourseVoucherPlan => "essential";
 
-/** Mongo $or clause: matches only courses whose grantable plan actually costs something. */
-const NOT_FREE_FILTER = {
-  $or: [
-    { "plans.elite": { $ne: null }, "plans.elite.price": { $gt: 0 } },
-    { "plans.elite": null, "plans.essential.price": { $gt: 0 } },
-  ],
-};
+export const hasVoucherPlan = (course: CoursePlanFields): boolean =>
+  (course.plans?.essential?.price ?? 0) > 0;
+
+const NOT_FREE_FILTER = { "plans.essential.price": { $gt: 0 } };
 
 interface CaVoucherEligibility {
   eligible: boolean;
