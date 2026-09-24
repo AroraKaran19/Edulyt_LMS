@@ -329,7 +329,7 @@ function EnrollmentsOverTimeGraph({
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value ?? 0}`, "Enrollments"]}
+                  formatter={(value) => [`${value ?? 0}`, "Enrollments"]}
                   labelFormatter={(label) => label}
                 />
                 <Bar

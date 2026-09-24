@@ -620,7 +620,7 @@ function TimeSpentGraph({
                   tickFormatter={(v) => `${v}m`}
                 />
                 <Tooltip
-                  formatter={(value: number) => [
+                  formatter={(value) => [
                     `${value ?? 0} min`,
                     "Time spent",
                   ]}
