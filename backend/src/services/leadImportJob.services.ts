@@ -6,7 +6,12 @@ import {
   type LeadImportIssue,
   type LeadImportJob,
 } from "../models/leadImportJob.schema";
-import { importLeads, type ImportActor, type ImportRow } from "./leadImport.services";
+import {
+  buildImportContext,
+  importLeads,
+  type ImportActor,
+  type ImportRow,
+} from "./leadImport.services";
 
 const CHUNK_SIZE = 500;
 const LEASE_MS = 5 * 60_000;
@@ -98,15 +103,22 @@ const runJob = async (job: LeadImportJob): Promise<void> => {
   }
 
   const importedBy = job.createdBy;
+  const context = await buildImportContext(rows.slice(job.processedRows) as ImportRow[]);
+  const resumed = job.attempts > 1;
   for (let cursor = job.processedRows; cursor < job.totalRows; cursor += CHUNK_SIZE) {
     const chunk = rows.slice(cursor, cursor + CHUNK_SIZE) as ImportRow[];
-    const result = await importLeads(chunk, {
-      fileName: job.fileName,
-      dryRun: false,
-      importedBy,
-      rowOffset: cursor,
-      jobId: job._id,
-    });
+    const result = await importLeads(
+      chunk,
+      {
+        fileName: job.fileName,
+        dryRun: false,
+        importedBy,
+        rowOffset: cursor,
+        jobId: job._id,
+        mayHavePartialInsert: resumed && cursor === job.processedRows,
+      },
+      context,
+    );
 
     const issues: LeadImportIssue[] = [];
     for (const r of result.results) {

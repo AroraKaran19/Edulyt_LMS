@@ -75,6 +75,8 @@ export interface ImportOptions {
   /** Row numbers in results continue from here, so a job's chunks report file rows. */
   rowOffset?: number;
   jobId?: mongoose.Types.ObjectId;
+  /** Only the first chunk of a resumed job can hold rows inserted before a crash. */
+  mayHavePartialInsert?: boolean;
 }
 
 /** A key for a plain-text `extras` label, so the stored answer matches the shape `answers` already uses. */
@@ -326,10 +328,70 @@ const resolveCreators = async (emails: string[]): Promise<Map<string, LeadAttrib
   return byEmail;
 };
 
+type ProgramRef = { refId: mongoose.Types.ObjectId; title: string };
+
+const programKey = (kind: LeadProgramKind, brand: Brand, slug: string) =>
+  `${kind}::${brand}::${slug}`;
+
+/** One query per (kind, brand) pair for every program the rows name. */
+const resolvePrograms = async (
+  requests: { kind: LeadProgramKind; brand: Brand; slug: string }[],
+): Promise<Map<string, ProgramRef>> => {
+  const found = new Map<string, ProgramRef>();
+  const slugsByKindBrand = new Map<string, { kind: LeadProgramKind; brand: Brand; slugs: Set<string> }>();
+  for (const req of requests) {
+    const key = `${req.kind}::${req.brand}`;
+    if (!slugsByKindBrand.has(key)) {
+      slugsByKindBrand.set(key, { kind: req.kind, brand: req.brand, slugs: new Set() });
+    }
+    slugsByKindBrand.get(key)!.slugs.add(req.slug);
+  }
+
+  await Promise.all(
+    [...slugsByKindBrand.values()].map(async ({ kind, brand, slugs }) => {
+      const Model = kind === "course" ? CourseModel : InternshipModel;
+      const docs = await (Model as typeof CourseModel)
+        .find({ brand, slug: { $in: [...slugs] } }, { slug: 1, title: 1 })
+        .lean();
+      for (const doc of docs as { _id: unknown; slug: string; title?: string }[]) {
+        found.set(programKey(kind, brand, doc.slug), {
+          refId: doc._id as mongoose.Types.ObjectId,
+          title: String(doc.title ?? ""),
+        });
+      }
+    }),
+  );
+  return found;
+};
+
+/** Lookups shared by every batch of one file, so a job resolves them once, not per batch. */
+export interface ImportContext {
+  programs: Map<string, ProgramRef>;
+  creators: Map<string, LeadAttribution>;
+}
+
+export const buildImportContext = async (rows: ImportRow[]): Promise<ImportContext> => {
+  const programRequests: { kind: LeadProgramKind; brand: Brand; slug: string }[] = [];
+  const creatorEmails = new Set<string>();
+  for (const row of rows) {
+    const fields = validateFields(row ?? {});
+    if (!fields.ok) continue;
+    if (fields.program) programRequests.push({ ...fields.program, brand: fields.brand });
+    if (fields.creatorEmail) creatorEmails.add(fields.creatorEmail);
+  }
+  const [programs, creators] = await Promise.all([
+    resolvePrograms(programRequests),
+    resolveCreators([...creatorEmails]),
+  ]);
+  return { programs, creators };
+};
+
 export const importLeads = async (
   rows: ImportRow[],
   options: ImportOptions,
+  sharedContext?: ImportContext,
 ): Promise<ImportResponse> => {
+  const context = sharedContext ?? (await buildImportContext(rows));
   const records: RowRecord[] = [];
   const programRequests: { index: number; kind: LeadProgramKind; slug: string; brand: Brand }[] = [];
 
@@ -375,81 +437,26 @@ export const importLeads = async (
     }
   }
 
-  // Pass 2: resolve every requested course/internship, one query per (kind, brand) pair.
-  if (programRequests.length > 0) {
-    const courseSlugsByBrand = new Map<Brand, Set<string>>();
-    const internshipSlugsByBrand = new Map<Brand, Set<string>>();
-    for (const req of programRequests) {
-      const map = req.kind === "course" ? courseSlugsByBrand : internshipSlugsByBrand;
-      if (!map.has(req.brand)) map.set(req.brand, new Set());
-      map.get(req.brand)!.add(req.slug);
-    }
-
-    const courseMap = new Map<string, { refId: mongoose.Types.ObjectId; title: string }>();
-    const internshipMap = new Map<string, { refId: mongoose.Types.ObjectId; title: string }>();
-
-    await Promise.all([
-      ...[...courseSlugsByBrand.entries()].map(async ([brand, slugs]) => {
-        const docs = await CourseModel.find(
-          { brand, slug: { $in: [...slugs] } },
-          { slug: 1, title: 1 },
-        ).lean();
-        for (const doc of docs as { _id: unknown; slug: string; title?: string }[]) {
-          courseMap.set(`${brand}::${doc.slug}`, {
-            refId: doc._id as mongoose.Types.ObjectId,
-            title: String(doc.title ?? ""),
-          });
-        }
-      }),
-      ...[...internshipSlugsByBrand.entries()].map(async ([brand, slugs]) => {
-        const docs = await InternshipModel.find(
-          { brand, slug: { $in: [...slugs] } },
-          { slug: 1, title: 1 },
-        ).lean();
-        for (const doc of docs as { _id: unknown; slug: string; title?: string }[]) {
-          internshipMap.set(`${brand}::${doc.slug}`, {
-            refId: doc._id as mongoose.Types.ObjectId,
-            title: String(doc.title ?? ""),
-          });
-        }
-      }),
-    ]);
-
-    for (const req of programRequests) {
-      const record = records[req.index];
-      if (record.outcome !== "ok" || !record.data) continue;
-      const map = req.kind === "course" ? courseMap : internshipMap;
-      const found = map.get(`${req.brand}::${req.slug}`);
-      if (!found) {
-        record.outcome = "error";
-        record.error = `No ${req.kind} found for that slug on ${req.brand}`;
-        record.data = undefined;
-        continue;
-      }
-      record.data.program = {
-        kind: req.kind,
-        refId: found.refId,
-        title: found.title,
-        slug: req.slug,
-      };
-    }
+  // Pass 2: programs and creators, from lookups made once for the whole file.
+  for (const req of programRequests) {
+    const record = records[req.index];
+    if (record.outcome !== "ok" || !record.data) continue;
+    // Never rejects, as on the enquiry form: an unknown slug is kept as typed, without a title.
+    const found = context.programs.get(programKey(req.kind, req.brand, req.slug));
+    record.data.program = found
+      ? { kind: req.kind, refId: found.refId, title: found.title, slug: req.slug }
+      : { kind: req.kind, title: "", slug: req.slug };
   }
 
   const okRecords = records.filter((r) => r.outcome === "ok" && r.data);
-
-  // Pass 3: creators, three batched lookups for the whole file.
-  const creatorEmails = [
-    ...new Set(okRecords.map((r) => r.creatorEmail).filter((e): e is string => Boolean(e))),
-  ];
-  const creators = await resolveCreators(creatorEmails);
   for (const record of okRecords) {
     if (!record.creatorEmail) continue;
-    const attribution = creators.get(record.creatorEmail);
+    const attribution = context.creators.get(record.creatorEmail);
     if (attribution) record.attribution = attribution;
     else record.creatorNotFound = true;
   }
 
-  // Pass 4 (preview only): repeats are imported like repeat enquiries, this only informs.
+  // Pass 3 (preview only): repeats are imported like repeat enquiries, this only informs.
   if (options.dryRun) {
     const okByBrand = new Map<Brand, RowRecord[]>();
     for (const record of okRecords) {
@@ -477,8 +484,8 @@ export const importLeads = async (
   let created = 0;
   if (!options.dryRun) {
     let toInsert = okRecords;
-    if (options.jobId && toInsert.length > 0) {
-      // A resumed job re-runs its last chunk; rows that already went in are not inserted twice.
+    if (options.jobId && options.mayHavePartialInsert && toInsert.length > 0) {
+      // A resumed job re-runs the chunk it died in; rows that already went in are skipped.
       const done = await LeadModel.find(
         {
           "source.importJobId": options.jobId,
