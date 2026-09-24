@@ -124,7 +124,10 @@ export default function VoucherCard({ voucher, voucherNo, onChange }: Props) {
   } else if (eligible) {
     content = (
       <>
-        <p className={s.ticketSub}>Pick any Airkrit course. We&apos;ll unlock its Essential plan.</p>
+        <p className={s.ticketSub}>
+          As promised, here is your Joining Bonus, worth ₹6,000. Motivation for you to start your
+          journey and spread the news.
+        </p>
         <ul className={s.ticketMetaRow}>
           <li>Any Airkrit course</li>
           <li>Essential plan</li>
