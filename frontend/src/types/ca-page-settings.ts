@@ -15,7 +15,7 @@ export interface CaFieldConfig {
   help: string;
 }
 
-/** Mirrors `IconName` in campus-ambassador/components/Icon.tsx. */
+/** Mirrors `IconName` in campus-ambassador/components/Icon.tsx, plus "none" for the quiet style. */
 export type CaStatementIcon =
   | "file"
   | "doc"
@@ -33,7 +33,8 @@ export type CaStatementIcon =
   | "play"
   | "chat"
   | "rupee"
-  | "trend";
+  | "trend"
+  | "none";
 
 export interface CaStatementGet {
   icon: CaStatementIcon;

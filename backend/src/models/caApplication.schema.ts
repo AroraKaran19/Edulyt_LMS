@@ -13,6 +13,15 @@ const payoutSchema = new Schema(
   { _id: false },
 );
 
+/** One entry per self-service payout change. No old values are ever stored here. */
+const payoutChangeSchema = new Schema(
+  {
+    at: { type: Date, required: true },
+    by: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const addressSchema = new Schema(
   {
     line: { type: String, default: "" },
@@ -98,6 +107,10 @@ const caApplicationSchema = new Schema<CaApplication>(
     languages: { type: [String], default: [] },
     whatsappJoined: { type: Boolean, default: false },
     payout: { type: payoutSchema, default: null },
+    /** Set only by the CA's own self-service change; admin reveal never touches these. */
+    payoutChangedAt: { type: Date, default: null },
+    payoutLockedUntil: { type: Date, default: null },
+    payoutChanges: { type: [payoutChangeSchema], default: [] },
     address: { type: addressSchema, default: null },
     joiningDate: { type: Date, default: null },
     durationMonths: { type: Number, required: true, min: 1, max: 6 },

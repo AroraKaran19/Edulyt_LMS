@@ -91,7 +91,7 @@ export const DEFAULT_STATEMENT_ROWS: CaStatementRow[] = [
   {
     when: "Today",
     what: "Fill in your details and verify your mobile number.",
-    gets: [{ icon: "check", title: "Your application goes to a counsellor", note: "" }],
+    gets: [{ icon: "none", title: "Your application goes to a counsellor", note: "" }],
     credit: null,
   },
   {

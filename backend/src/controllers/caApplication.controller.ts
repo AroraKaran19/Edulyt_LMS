@@ -7,6 +7,11 @@ import {
 } from "../middlewares/error.middleware";
 import { submitCaApplication } from "../services/caApplicationSubmit.services";
 import {
+  changeOwnCaPayout,
+  getOwnCaPayout,
+  requestOwnCaPayoutOtp,
+} from "../services/caPayoutSelfService.services";
+import {
   approveCaApplication,
   changeCaApplicationDuration,
   changeCaApplicationOwner,
@@ -54,6 +59,32 @@ const viewerOf = (req: Request): CaViewer => {
 export const getCaDeskController = asyncHandler(async (req: Request, res: Response) => {
   const { userId } = viewerOf(req);
   sendSuccessResponse(res, await getCaDeskSummary(userId), "Desk fetched", 200);
+});
+
+const requireUserId = (req: Request): string => {
+  const userId = req.user?._id;
+  if (!userId) throw new AppError("Authentication required", 401);
+  return String(userId);
+};
+
+/** @route GET /api/ca-applications/me/payout */
+export const getOwnCaPayoutController = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccessResponse(res, await getOwnCaPayout(requireUserId(req)), "Payout fetched", 200);
+});
+
+/** @route POST /api/ca-applications/me/payout/otp */
+export const requestOwnCaPayoutOtpController = asyncHandler(async (req: Request, res: Response) => {
+  sendSuccessResponse(res, await requestOwnCaPayoutOtp(requireUserId(req)), "Code sent", 200);
+});
+
+/** @route PATCH /api/ca-applications/me/payout  Body: `{ value, code }` */
+export const changeOwnCaPayoutController = asyncHandler(async (req: Request, res: Response) => {
+  res.set("Cache-Control", "no-store");
+  const result = await changeOwnCaPayout(requireUserId(req), {
+    value: req.body?.value,
+    code: req.body?.code,
+  });
+  sendSuccessResponse(res, result, "Payout details updated", 200);
 });
 
 /** @route GET /api/ca-applications?status=&referrer=&q=&page=&limit= */

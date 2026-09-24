@@ -61,15 +61,21 @@ export default function StatementSection({ settings }: { settings: CaPageSetting
                   <td className={styles.cWhat}>{t(row.what)}</td>
                   <td className={styles.cGet}>
                     <ul className={styles.gets}>
-                      {row.gets.map((get, gi) => (
-                        <li key={`${get.title}-${gi}`} className={styles.get}>
-                          <Icon name={get.icon} />
-                          <span>
+                      {row.gets.map((get, gi) =>
+                        get.icon === "none" ? (
+                          <li key={`${get.title}-${gi}`} className={cn(styles.get, styles.getQuiet)}>
                             {t(get.title)}
-                            {get.note && <small>{t(get.note)}</small>}
-                          </span>
-                        </li>
-                      ))}
+                          </li>
+                        ) : (
+                          <li key={`${get.title}-${gi}`} className={styles.get}>
+                            <Icon name={get.icon} />
+                            <span>
+                              {t(get.title)}
+                              {get.note && <small>{t(get.note)}</small>}
+                            </span>
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </td>
                   <td className={styles.cCredit}>

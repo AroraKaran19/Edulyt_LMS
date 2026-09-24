@@ -26,6 +26,8 @@ export interface CaApplicationRow {
   whatsappJoined: boolean;
   /** Only an admin's detail carries it. */
   address: CaAddress | null;
+  /** Set only once the CA has changed their own payout details. */
+  payoutChangedAt: string | null;
   joiningDate: string | null;
   durationMonths: number;
   endDate: string | null;

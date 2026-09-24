@@ -28,6 +28,7 @@ import DeskTiles from "./components/DeskTiles";
 import type { TileValue } from "./components/DeskTiles";
 import DeskLeads from "./components/DeskLeads";
 import DeskEarnings from "./components/DeskEarnings";
+import CaPayoutCard from "./components/CaPayoutCard";
 import DeskQuestions from "./components/DeskQuestions";
 import DeskSkeleton from "./components/DeskSkeleton";
 import VoucherCard from "./components/VoucherCard";
@@ -345,6 +346,8 @@ export default function AmbassadorPage() {
         />
 
         <DeskEarnings settings={settings} />
+
+        <CaPayoutCard />
 
         {canSetQuestions ? (
           <DeskQuestions drafts={drafts} onChange={setDrafts} onSave={onSaveQuestions} saving={isLoading} />

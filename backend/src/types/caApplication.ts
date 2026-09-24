@@ -30,6 +30,11 @@ export interface CaPayoutCiphertext extends FieldCiphertext {
   method: "upi" | "details";
 }
 
+export interface CaPayoutChange {
+  at: Date;
+  by: string;
+}
+
 export interface CaDocumentRef {
   url: string;
   generatedAt: Date;
@@ -80,6 +85,9 @@ export interface CaApplication {
   languages: string[];
   whatsappJoined: boolean;
   payout?: CaPayoutCiphertext | null;
+  payoutChangedAt?: Date | null;
+  payoutLockedUntil?: Date | null;
+  payoutChanges?: CaPayoutChange[];
   address?: CaAddress | null;
   joiningDate: Date | null;
   durationMonths: number;

@@ -422,6 +422,46 @@
   padding: 22px;
 }
 
+/* Payout */
+.payoutRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+
+.payoutMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.payoutLabel {
+  font-size: 12px;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.payoutValue {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.payoutChanged {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.payoutError {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13.5px;
+}
+
 /* Tasks */
 .taskList {
   list-style: none;

@@ -119,7 +119,9 @@ export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 /** `normalizePhone` keeps Indian numbers as bare 10 digits and everything else as E.164. */
 export const isIndianMobile = (phone: string): boolean => /^[6-9]\d{9}$/.test(phone);
 
-const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.-]{1,63}$/;
+export const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.-]{1,63}$/;
+/** Max length for free-text payout details, shared with the self-service change. */
+export const PAYOUT_DETAILS_MAX = 500;
 
 export type CaAddressInput = CaAddress;
 
@@ -201,7 +203,7 @@ export const cleanCaApplicationInput = (
   );
 
   const india = isIndianMobile(phone);
-  const payoutRaw = text(body.payout, 500);
+  const payoutRaw = text(body.payout, PAYOUT_DETAILS_MAX);
   const hasPayout = want(
     "payout",
     payoutRaw.length > 0,

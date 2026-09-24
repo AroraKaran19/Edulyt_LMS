@@ -68,6 +68,8 @@ export interface CaApplicationRow {
   whatsappJoined: boolean;
   /** Null unless an admin opened the detail. */
   address: CaAddress | null;
+  /** Set only once the CA has changed their own payout details. */
+  payoutChangedAt: string | null;
   joiningDate: string | null;
   durationMonths: number;
   endDate: string | null;
@@ -114,6 +116,7 @@ export const toCaApplicationRow = (doc: CaRowSource): CaApplicationRow => ({
   languages: doc.languages ?? [],
   whatsappJoined: Boolean(doc.whatsappJoined),
   address: doc.address ?? null,
+  payoutChangedAt: iso(doc.payoutChangedAt),
   joiningDate: ymdIst(doc.joiningDate),
   durationMonths: doc.durationMonths,
   endDate: ymdIst(doc.endDate),

@@ -7,13 +7,16 @@ import {
   approveCaApplicationController,
   changeCaApplicationDurationController,
   changeCaApplicationOwnerController,
+  changeOwnCaPayoutController,
   declineCaApplicationController,
   getCaApplicationController,
   getCaDeskController,
+  getOwnCaPayoutController,
   listCaApplicationsController,
   listCaDirectoryController,
   listCaOwnersController,
   listCaTeamApplicationsController,
+  requestOwnCaPayoutOtpController,
   revealCaApplicationController,
   retryCaDocumentsController,
   setCaCertificateOverrideController,
@@ -45,6 +48,28 @@ const staff = [verifyUser, requireStaffPageAccess("crm.ca-leads")];
  * @access  Any signed-in user
  */
 router.get("/me/desk", verifyUser, getCaDeskController);
+
+/**
+ * @route   GET /api/ca-applications/me/payout
+ * @desc    Masked payout details for the signed-in CA's own application
+ * @access  Any signed-in user with an approved or attached application
+ */
+router.get("/me/payout", verifyUser, getOwnCaPayoutController);
+
+/**
+ * @route   POST /api/ca-applications/me/payout/otp
+ * @desc    Sends a code to the application's verified phone
+ * @access  Any signed-in user with an approved or attached application
+ */
+router.post("/me/payout/otp", verifyUser, requestOwnCaPayoutOtpController);
+
+/**
+ * @route   PATCH /api/ca-applications/me/payout
+ * @desc    Changes the CA's own payout details, gated on the OTP
+ * @body    { value, code }
+ * @access  Any signed-in user with an approved or attached application
+ */
+router.patch("/me/payout", verifyUser, changeOwnCaPayoutController);
 
 /**
  * @route   GET /api/ca-applications

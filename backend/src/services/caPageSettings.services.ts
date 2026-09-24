@@ -50,7 +50,9 @@ export const STATEMENT_ICONS = [
   "file", "doc", "award", "gift", "box", "key", "book", "case",
   "lock", "check", "plus", "down", "left", "play", "chat", "rupee", "trend",
 ] as const;
-export type StatementIcon = (typeof STATEMENT_ICONS)[number];
+/** "none" renders the old quiet style: muted text, no icon. */
+export const STATEMENT_GET_ICONS = [...STATEMENT_ICONS, "none"] as const;
+export type StatementIcon = (typeof STATEMENT_GET_ICONS)[number];
 
 export interface CaStatementGet { icon: StatementIcon; title: string; note: string }
 export interface CaStatementRow {
@@ -287,7 +289,7 @@ const sanitizeSection = (
             title: str(g?.title, 80),
             note: str(g?.note, 120),
           }))
-          .filter((g) => g.title && (STATEMENT_ICONS as readonly string[]).includes(g.icon))
+          .filter((g) => g.title && (STATEMENT_GET_ICONS as readonly string[]).includes(g.icon))
           .slice(0, 4);
         const creditAmount = str(r?.credit?.amount, 40);
         const credit = creditAmount ? { amount: creditAmount, prefix: str(r?.credit?.prefix, 20) } : null;

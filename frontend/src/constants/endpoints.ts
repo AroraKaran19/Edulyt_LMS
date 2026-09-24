@@ -553,6 +553,9 @@ export const ENDPOINTS = {
     certificateOverride: (id: string) => `/ca-applications/${encodeURIComponent(id)}/certificate-override`,
     /** GET the signed-in ambassador's desk: tenure, designation and points. */
     meDesk: "/ca-applications/me/desk",
+    /** The signed-in CA's own payout details, OTP-gated. */
+    mePayout: "/ca-applications/me/payout",
+    mePayoutOtp: "/ca-applications/me/payout/otp",
     /** GET every attached CA there has ever been, active or not (the All CAs directory). */
     directory: "/ca-applications/directory",
   }),

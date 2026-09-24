@@ -407,6 +407,11 @@ export default function CaLeadDrawer({
                   <p className="mb-1.5 text-xs text-gray-500">
                     The UPI ID is encrypted. Only admins can reveal it.
                   </p>
+                  {row.payoutChangedAt ? (
+                    <p className="mb-1.5 text-xs text-amber-600">
+                      Changed by the CA on {formatIstDate(row.payoutChangedAt)}
+                    </p>
+                  ) : null}
                   <div className="space-y-3 rounded-xl bg-gray-50 px-3.5 py-3 text-sm">
                     <div className="text-gray-900">
                       {row.address ? (

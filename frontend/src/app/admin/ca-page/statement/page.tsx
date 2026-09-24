@@ -26,10 +26,13 @@ const withEditableCredit = (row: CaStatementRow): StatementRowState => ({
   credit: row.credit ?? { amount: "", prefix: "" },
 });
 
-const ICON_OPTIONS = ICON_NAMES.map((name) => ({
-  value: name,
-  label: name.charAt(0).toUpperCase() + name.slice(1),
-}));
+const ICON_OPTIONS = [
+  { value: "none", label: "No icon (quiet note)" },
+  ...ICON_NAMES.map((name) => ({
+    value: name,
+    label: name.charAt(0).toUpperCase() + name.slice(1),
+  })),
+];
 
 const PLACEHOLDERS: ReadonlyArray<{ token: string; meaning: string }> = [
   { token: "{stipend}", meaning: "the monthly stipend amount" },
