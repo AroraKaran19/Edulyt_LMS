@@ -156,3 +156,17 @@ export const adminGuard = (pageKey: string): RequestHandler[] => [
   verifyAdmin,
   requirePermission(pageKey),
 ];
+
+/** Like adminGuard, but a marketer or sales person with this page granted also passes. */
+export const staffGuard = (pageKey: string): RequestHandler[] => [
+  verifyUser,
+  (req: Request, _res: Response, next: NextFunction) => {
+    const user = req.user;
+    if (!user) return next(new AppError("Authentication required", 401));
+    if (user.userType === "super-admin") return next();
+    const staff = ["admin", "marketer", "sales"].includes(String(user.userType));
+    const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+    if (staff && hasPageAccess(permissions, pageKey)) return next();
+    return next(new AppError("You don't have access to this page", 403));
+  },
+];

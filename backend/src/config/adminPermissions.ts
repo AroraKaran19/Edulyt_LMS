@@ -124,9 +124,8 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
     key: "leads",
     label: "Leads",
     pages: [
-      // Keeps the `leads` key: grants already stored against it would otherwise
-      // silently lose access to the page they have today.
-      { key: "leads", label: "Leads submission", href: "/admin/leads" },
+      // Own key so granting the pool never grants the whole Leads section.
+      { key: "leads.all", label: "All leads", href: "/admin/leads" },
       {
         key: "leads.enquiry-page",
         label: "Configure Enquiry Page",

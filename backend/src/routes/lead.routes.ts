@@ -14,7 +14,7 @@ import {
   updateLeadPipelineController,
   updateMyAssignedLead,
 } from "../controllers/lead.controller";
-import { adminGuard, verifySuperAdmin } from "../middlewares/admin.middleware";
+import { adminGuard, staffGuard, verifySuperAdmin } from "../middlewares/admin.middleware";
 import {
   attachUserIfPresent,
   verifyUser,
@@ -79,14 +79,14 @@ router.patch("/mine/:id", verifyUser, updateMyAssignedLead);
  * @desc    Assign or unassign a batch of leads
  * @access  Admin
  */
-router.post("/admin/assign", ...adminGuard("leads"), assignLeadsController);
+router.post("/admin/assign", ...staffGuard("leads.all"), assignLeadsController);
 
 /**
  * @route   GET /api/leads/admin/assignees
  * @desc    Sales people an admin can assign leads to
  * @access  Admin
  */
-router.get("/admin/assignees", ...adminGuard("leads"), listAssigneesController);
+router.get("/admin/assignees", ...staffGuard("leads.all"), listAssigneesController);
 
 /**
  * @route   GET /api/leads/admin/campaigns
@@ -95,7 +95,7 @@ router.get("/admin/assignees", ...adminGuard("leads"), listAssigneesController);
  */
 router.get(
   "/admin/campaigns",
-  ...adminGuard("leads"),
+  ...staffGuard("leads.all"),
   listLeadCampaignsController
 );
 
@@ -117,21 +117,21 @@ router.put(
  * @desc    List leads, newest first, with search and status filters
  * @access  Admin
  */
-router.get("/admin", ...adminGuard("leads"), getLeads);
+router.get("/admin", ...staffGuard("leads.all"), getLeads);
 
 /**
  * @route   GET /api/leads/admin/:id
  * @desc    One lead with every answer it carried
  * @access  Admin
  */
-router.get("/admin/:id", ...adminGuard("leads"), getLeadById);
+router.get("/admin/:id", ...staffGuard("leads.all"), getLeadById);
 
 /**
  * @route   PATCH /api/leads/admin/:id
  * @desc    Update a lead's pipeline status or note
  * @access  Admin
  */
-router.patch("/admin/:id", ...adminGuard("leads"), updateLead);
+router.patch("/admin/:id", ...staffGuard("leads.all"), updateLead);
 
 /**
  * @route   DELETE /api/leads/admin/:id
