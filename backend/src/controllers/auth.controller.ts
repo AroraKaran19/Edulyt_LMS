@@ -120,6 +120,10 @@ const protectedUser = async (user: User) => {
     provider: user.provider,
     profilePicture: user.profilePicture,
     phone: user.phone,
+    // The admin panel's sidebar and page gate read grants from the session.
+    ...(["admin", "super-admin", "marketer", "sales"].includes(user.userType) && {
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
+    }),
     ...(user.userType === "student" && {
       enrollments: (user as Student).enrollments,
       collegeName: (user as Student).collegeName,
