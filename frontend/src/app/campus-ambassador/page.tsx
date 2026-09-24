@@ -2,16 +2,12 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import CaLanding from "./components/CaLanding";
 import { caBodyFont, caDisplayFont } from "./fonts";
-import { getCaPageSettings } from "@/lib/ca-page/getCaPageSettings";
+import { PHASE_PRODUCTION_BUILD } from "next/constants";
+import { fetchCaPageSettings, getCaPageSettings } from "@/lib/ca-page/getCaPageSettings";
 
-/*
- * `getCaPageSettings` never throws, so a dead API on a background ISR
- * regeneration would otherwise bake "Applications open soon" into the static
- * page for up to an hour. Rendering per request keeps that fallback scoped to
- * the one request that hit it; the tagged fetch below still caches a
- * successful response, so this costs nothing on the common path.
- */
-export const dynamic = "force-dynamic";
+// Throwing keeps the last good cached page; only the build falls back, so an API outage cannot fail it.
+const loadSettings = () =>
+  process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD ? getCaPageSettings() : fetchCaPageSettings();
 
 export const metadata: Metadata = {
   title: "Airkrit Campus Ambassador: your first salary starts on campus",
@@ -25,7 +21,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CampusAmbassadorPage() {
-  const settings = await getCaPageSettings();
+  const settings = await loadSettings();
   return (
     <div className={`${caDisplayFont.variable} ${caBodyFont.variable}`}>
       <Suspense fallback={<div className="min-h-dvh bg-[#2B1508]" />}>

@@ -76,6 +76,8 @@
     "scripts:migrate-existing-cas:apply": "ts-node src/scripts/migrate-existing-cas.ts --apply",
     "scripts:regenerate-ca-offer-letters": "ts-node src/scripts/regenerate-ca-offer-letters.ts",
     "scripts:regenerate-ca-offer-letters:apply": "ts-node src/scripts/regenerate-ca-offer-letters.ts --apply",
+    "scripts:clear-lead-import-history": "ts-node src/scripts/clear-lead-import-history.ts",
+    "scripts:clear-lead-import-history:apply": "ts-node src/scripts/clear-lead-import-history.ts --apply",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json"

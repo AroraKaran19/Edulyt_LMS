@@ -40,19 +40,24 @@ export const EMPTY_CA_SETTINGS: CaPageSettings = {
   samples: { offerLetter: "", lor: "", internshipCertificate: "", trainingCertificate: "" },
 };
 
-/** Never throws: a dead API renders the page with its shipped copy and the form closed. */
+/** Throws on a failed fetch, so a background ISR rebuild keeps the last good page. */
+export const fetchCaPageSettings = async (): Promise<CaPageSettings> => {
+  const res = await fetch(`${API_BASE_URL}${ENDPOINTS.caPageSettings}`, {
+    // Named explicitly rather than relying on the backend's brand default,
+    // which this page would silently render closed under if that default
+    // ever changed.
+    headers: { "X-Brand": "airkrit" },
+    next: { tags: [CA_PAGE_SETTINGS_TAG], revalidate: REVALIDATE_SECONDS },
+  });
+  if (!res.ok) throw new Error(`CA page settings fetch failed: ${res.status}`);
+  const body = (await res.json()) as { data?: Partial<CaPageSettings> };
+  return { ...EMPTY_CA_SETTINGS, ...(body.data ?? {}) } as CaPageSettings;
+};
+
+/** Never throws: a dead API renders with the shipped copy and the form closed. */
 export const getCaPageSettings = async (): Promise<CaPageSettings> => {
   try {
-    const res = await fetch(`${API_BASE_URL}${ENDPOINTS.caPageSettings}`, {
-      // Named explicitly rather than relying on the backend's brand default,
-      // which this page would silently render closed under if that default
-      // ever changed.
-      headers: { "X-Brand": "airkrit" },
-      next: { tags: [CA_PAGE_SETTINGS_TAG], revalidate: REVALIDATE_SECONDS },
-    });
-    if (!res.ok) throw new Error(`CA page settings fetch failed: ${res.status}`);
-    const body = (await res.json()) as { data?: Partial<CaPageSettings> };
-    return { ...EMPTY_CA_SETTINGS, ...(body.data ?? {}) } as CaPageSettings;
+    return await fetchCaPageSettings();
   } catch (error) {
     console.error("[ca-page-settings] Falling back to defaults:", error);
     return EMPTY_CA_SETTINGS;
