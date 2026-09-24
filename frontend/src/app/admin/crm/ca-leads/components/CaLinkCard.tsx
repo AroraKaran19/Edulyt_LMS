@@ -8,8 +8,8 @@ import useCrm from "@/hooks/useCrm";
 
 const shareUrl = (code: string) =>
   typeof window === "undefined"
-    ? `/campus-ambassador?ref=${code}`
-    : `${window.location.origin}/campus-ambassador?ref=${code}`;
+    ? `/digital-marketing-internship?ref=${code}`
+    : `${window.location.origin}/digital-marketing-internship?ref=${code}`;
 
 export default function CaLinkCard() {
   const { getProfile } = useCrm();

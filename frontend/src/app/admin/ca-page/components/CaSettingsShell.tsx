@@ -54,7 +54,7 @@ export default function CaSettingsShell({
             Configure CA Page
           </h2>
           <a
-            href="/campus-ambassador"
+            href="/digital-marketing-internship"
             target="_blank"
             rel="noopener noreferrer"
             className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-orange-600 hover:underline"

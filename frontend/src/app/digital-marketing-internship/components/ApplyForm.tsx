@@ -221,7 +221,7 @@ export default function ApplyForm({
   const handleGoogle = async () => {
     setOauthLoading(true);
     try {
-      const out = await signInWithOAuthProvider("google", "/campus-ambassador");
+      const out = await signInWithOAuthProvider("google", "/digital-marketing-internship");
       if (out.kind === "redirect_to_provider") {
         window.location.assign(out.url);
         return;

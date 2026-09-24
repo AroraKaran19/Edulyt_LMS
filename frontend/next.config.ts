@@ -25,6 +25,12 @@ const nextConfig: NextConfig = {
         destination: "/programs/:path*",
         permanent: true,
       },
+      // Already-shared referral links keep working; the ?ref query is carried over.
+      {
+        source: "/campus-ambassador",
+        destination: "/digital-marketing-internship",
+        permanent: true,
+      },
     ];
   },
   images: {

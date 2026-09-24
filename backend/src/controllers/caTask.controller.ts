@@ -45,7 +45,7 @@ export const deleteCaTaskAdminController = asyncHandler(async (req: Request, res
 const requireAttachedApplication = async (req: Request) => {
   const userId = new mongoose.Types.ObjectId(String(req.user!._id));
   const application = await getAttachedCaApplication(userId);
-  if (!application) throw new AppError("You are not on a Campus Ambassador team", 403);
+  if (!application) throw new AppError("You are not on a digital marketing internship team", 403);
   return { userId, application };
 };
 

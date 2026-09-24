@@ -14,7 +14,7 @@ import {
   DEFAULT_STATEMENT_FOOTER_AMOUNT,
   DEFAULT_STATEMENT_FOOTER_LABEL,
   DEFAULT_STATEMENT_ROWS,
-} from "@/app/campus-ambassador/content";
+} from "@/app/digital-marketing-internship/content";
 
 type StatementRowState = Omit<CaStatementRow, "credit"> & {
   credit: { amount: string; prefix: string };

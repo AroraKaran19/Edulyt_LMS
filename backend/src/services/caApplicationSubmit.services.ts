@@ -77,7 +77,7 @@ export const submitCaApplication = async (
       { _id: 1 },
     ).lean();
     if (onRoster) {
-      throw new AppError("You are already a campus ambassador", 409, "CA_ALREADY_AMBASSADOR");
+      throw new AppError("You are already a digital marketing intern", 409, "CA_ALREADY_AMBASSADOR");
     }
   }
 

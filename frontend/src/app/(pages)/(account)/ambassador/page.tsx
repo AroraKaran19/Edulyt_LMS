@@ -13,7 +13,7 @@ import { useCaVoucher } from "@/hooks/useCaVouchers";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { cn } from "@/lib/utils";
 import { EMPTY_CA_SETTINGS, getCaPageSettings } from "@/lib/ca-page/getCaPageSettings";
-import { caBodyFont, caDisplayFont } from "@/app/campus-ambassador/fonts";
+import { caBodyFont, caDisplayFont } from "@/app/digital-marketing-internship/fonts";
 import { toDrafts } from "@/components/admin/crm/ExtraQuestionsEditor";
 import type { QuestionDraft } from "@/components/admin/crm/ExtraQuestionsEditor";
 import type { CaTaskMineRow } from "@/types/ca-task";

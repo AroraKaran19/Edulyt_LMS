@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 /**
- * Singleton for the `/campus-ambassador` page, keyed `airkrit`. `form.fields` is
+ * Singleton for the `/digital-marketing-internship` page, keyed `airkrit`. `form.fields` is
  * Mixed because the service rebuilds it through `resolveCaFields` on every read
  * and write, so a schema per field would only duplicate that.
  */

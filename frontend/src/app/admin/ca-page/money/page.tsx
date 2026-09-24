@@ -6,7 +6,7 @@ import {
   SectionHeader,
   TextField,
 } from "@/app/admin/settings/home-page/components/fields";
-import { DEFAULT_MONEY, inr } from "@/app/campus-ambassador/content";
+import { DEFAULT_MONEY, inr } from "@/app/digital-marketing-internship/content";
 import type { CaMoney } from "@/types/ca-page-settings";
 
 const MONEY_ROWS: ReadonlyArray<{

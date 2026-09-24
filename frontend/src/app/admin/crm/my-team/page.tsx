@@ -32,8 +32,8 @@ const shareUrl = (code: string) =>
 
 const caShareUrl = (code: string) =>
   typeof window === "undefined"
-    ? `/campus-ambassador?ref=${code}`
-    : `${window.location.origin}/campus-ambassador?ref=${code}`;
+    ? `/digital-marketing-internship?ref=${code}`
+    : `${window.location.origin}/digital-marketing-internship?ref=${code}`;
 
 const formatTenureEnd = (value: string) => formatIstDate(value);
 

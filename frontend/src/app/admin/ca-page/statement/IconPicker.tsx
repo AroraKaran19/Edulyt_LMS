@@ -3,7 +3,7 @@
 import { Ban } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CaStatementIcon } from "@/types/ca-page-settings";
-import Icon, { ICON_NAMES } from "@/app/campus-ambassador/components/Icon";
+import Icon, { ICON_NAMES } from "@/app/digital-marketing-internship/components/Icon";
 
 const label = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 

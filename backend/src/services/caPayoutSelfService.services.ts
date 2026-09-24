@@ -51,7 +51,7 @@ const loadOwnApplication = async (userId: string): Promise<OwnApplication> => {
     { userId, status: { $in: ["approved", "attached"] } },
     { phone: 1, payout: 1, payoutChangedAt: 1, payoutLockedUntil: 1 },
   ).lean();
-  if (!doc) throw new AppError("You have no Campus Ambassador application", 404);
+  if (!doc) throw new AppError("You have no digital marketing internship application", 404);
   return doc as unknown as OwnApplication;
 };
 

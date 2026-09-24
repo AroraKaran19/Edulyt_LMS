@@ -30,6 +30,6 @@ export type InternalAlertVariables = {
 
 /** Subject in the dashboard: `[{{severity}}] Backend alert: {{alertTitle}}`. */
 export const internalAlertMail = defineMailTemplate<InternalAlertVariables>(
-  "internal-email",
+  "internal_email",
   "internal-alert",
 );

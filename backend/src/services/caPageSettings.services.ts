@@ -45,7 +45,7 @@ export interface CaVideo { url: string; role: string; college: string; duration:
 export interface CaFaq { question: string; answer: string }
 export interface CaSamples { offerLetter: string; lor: string; internshipCertificate: string; trainingCertificate: string }
 
-/** Mirrors `IconName` in frontend/src/app/campus-ambassador/components/Icon.tsx. */
+/** Mirrors `IconName` in frontend/src/app/digital-marketing-internship/components/Icon.tsx. */
 export const STATEMENT_ICONS = [
   "file", "doc", "award", "gift", "box", "key", "book", "case",
   "lock", "check", "plus", "down", "left", "play", "chat", "rupee", "trend",

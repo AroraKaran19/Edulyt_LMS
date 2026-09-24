@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import type { CaPageSettings } from "@/types/ca-page-settings";
-import { DEFAULT_KIT_ITEMS, inr, inrShort, kitList, money } from "@/app/campus-ambassador/content";
+import { DEFAULT_KIT_ITEMS, inr, inrShort, kitList, money } from "@/app/digital-marketing-internship/content";
 import s from "../desk.module.css";
 
 export default function DeskEarnings({ settings }: { settings: CaPageSettings }) {
