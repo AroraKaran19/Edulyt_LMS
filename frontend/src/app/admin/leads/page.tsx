@@ -76,6 +76,7 @@ export default function LeadsPage() {
   const [assigning, setAssigning] = useState(false);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -178,6 +179,25 @@ export default function LeadsPage() {
       toast.error("Could not assign these leads");
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const removeSelected = async () => {
+    const n = selected.length;
+    if (!confirm(`Delete ${n} lead${n === 1 ? "" : "s"}? This cannot be undone.`)) {
+      return;
+    }
+    setBulkDeleting(true);
+    try {
+      const res = await apiClient.post("/leads/admin/delete", { leadIds: selected });
+      const deleted: number = res.data?.data?.deleted ?? n;
+      toast.success(`Deleted ${deleted} lead${deleted === 1 ? "" : "s"}`);
+      setSelected([]);
+      await load();
+    } catch {
+      toast.error("Could not delete these leads");
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -345,6 +365,22 @@ export default function LeadsPage() {
           <UserCheck className="mr-2 size-4" />
           Assign
         </OrangeButton>
+        {isSuperAdmin && selected.length > 0 ? (
+          <WhiteButton
+            type="button"
+            glow={false}
+            disabled={bulkDeleting}
+            onClick={() => void removeSelected()}
+            className="text-red-600 hover:text-red-700"
+          >
+            {bulkDeleting ? (
+              <Loader2 className="mr-2 size-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 size-4" />
+            )}
+            Delete
+          </WhiteButton>
+        ) : null}
         {selected.length > 0 ? (
           <button
             type="button"

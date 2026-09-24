@@ -539,6 +539,27 @@ export const deleteLead = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * @desc  Delete a batch of leads
+ * @route POST /api/leads/admin/delete
+ * @access Super admin
+ */
+export const deleteLeadsController = asyncHandler(async (req: Request, res: Response) => {
+  const { leadIds } = req.body ?? {};
+  if (!Array.isArray(leadIds) || leadIds.length === 0) {
+    throw new AppError("Select at least one lead", 400);
+  }
+  if (leadIds.length > 500) {
+    throw new AppError("Delete at most 500 leads at a time", 400);
+  }
+  if (!leadIds.every((id) => mongoose.isValidObjectId(id))) {
+    throw new AppError("Invalid lead id", 400);
+  }
+
+  const { deletedCount } = await LeadModel.deleteMany({ _id: { $in: leadIds } });
+  sendSuccessResponse(res, { deleted: deletedCount }, "Leads deleted", 200);
+});
+
+/**
  * @desc  Assign or unassign a batch of leads
  * @route POST /api/leads/admin/assign
  * @access Admin with `leads`, super-admin

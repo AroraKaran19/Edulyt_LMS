@@ -3,6 +3,7 @@ import {
   assignLeadsController,
   createLead,
   deleteLead,
+  deleteLeadsController,
   getLeadById,
   getLeads,
   getLeadPipelineController,
@@ -139,5 +140,12 @@ router.patch("/admin/:id", ...staffGuard("leads.all"), updateLead);
  * @access  Super admin
  */
 router.delete("/admin/:id", verifyUser, verifySuperAdmin, deleteLead);
+
+/**
+ * @route   POST /api/leads/admin/delete
+ * @desc    Delete a batch of leads
+ * @access  Super admin
+ */
+router.post("/admin/delete", verifyUser, verifySuperAdmin, deleteLeadsController);
 
 export default router;
