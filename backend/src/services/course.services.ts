@@ -15,8 +15,8 @@ import {
   LiveClassAttendanceModel,
 } from "../models";
 import { Content, Course, CourseLesson, CourseModule } from "../types";
-import mongoose from "mongoose";
-import { createFuzzySearchOrFilter } from "../utils/lib/fuzzySearch";
+import mongoose, { type PipelineStage } from "mongoose";
+import { createWordSearchFilter, searchRelevanceStage } from "../utils/lib/fuzzySearch";
 import {
   normalizeInternshipOffer,
   planMirrorSync,
@@ -95,21 +95,12 @@ export const getAllCoursesService = async (
         });
       }
     } else {
-      // Public: use fuzzy search for discoverability
       const searchFields = searchTitleOnly
         ? ["title"]
         : ["title", "description", "shortDescription"];
-      const fuzzySearchFilter = createFuzzySearchOrFilter(search, searchFields);
-      if (fuzzySearchFilter?.$or) {
-        filters.$or = fuzzySearchFilter.$or;
-      } else {
-        filters.$or = searchTitleOnly
-          ? [{ title: phraseRegex }]
-          : [
-              { title: phraseRegex },
-              { description: phraseRegex },
-              { shortDescription: phraseRegex },
-            ];
+      const wordFilter = createWordSearchFilter(search, searchFields);
+      if (wordFilter) {
+        filters.$and = [...(filters.$and ?? []), wordFilter];
       }
     }
   }
@@ -150,7 +141,11 @@ export const getAllCoursesService = async (
   // - For other regular users, keep random sorting (discovery)
   // - For admin, sort by updatedAt
   if (!isAdmin) {
-    if (hasCategoryFilter && categoryObjectIds.length === 1) {
+    if (search?.trim()) {
+      // Relevance, then a stable order, so "load more" never repeats or skips a course.
+      pipeline.push(searchRelevanceStage(search));
+      pipeline.push({ $sort: { _searchScore: -1, title: 1, _id: 1 } });
+    } else if (hasCategoryFilter && categoryObjectIds.length === 1) {
       const singleCategoryId = categoryObjectIds[0];
       pipeline.push({
         $addFields: {
@@ -458,31 +453,18 @@ export const getFeaturedCoursesService = async (
   if (brands && brands.length > 0) {
     filters.brand = { $in: brands };
   }
-  if (search) {
-    // Use fuzzy search for better matching
-    const fuzzySearchFilter = createFuzzySearchOrFilter(search, [
-      "title",
-      "description",
-      "shortDescription",
-    ]);
+  const wordFilter = search
+    ? createWordSearchFilter(search, ["title", "description", "shortDescription"])
+    : null;
+  if (wordFilter) filters.$and = [wordFilter];
 
-    if (fuzzySearchFilter && fuzzySearchFilter.$or) {
-      filters.$or = fuzzySearchFilter.$or;
-    } else {
-      // Fallback to simple regex if fuzzy search fails
-      filters.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { shortDescription: { $regex: search, $options: "i" } },
-      ];
-    }
-  }
+  const order: PipelineStage[] = wordFilter
+    ? [searchRelevanceStage(search), { $sort: { _searchScore: -1, title: 1, _id: 1 } }]
+    : [{ $addFields: { randomSort: { $rand: {} } } }, { $sort: { randomSort: 1 } }];
 
-  // Use aggregation pipeline for random sorting
   const courses = await CourseModel.aggregate([
     { $match: filters },
-    { $addFields: { randomSort: { $rand: {} } } },
-    { $sort: { randomSort: 1 } },
+    ...order,
     { $skip: skip },
     { $limit: limit },
     {
