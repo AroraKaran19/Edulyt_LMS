@@ -53,9 +53,9 @@ export default function useCaPayout() {
   }, []);
 
   const changePayout = useCallback(
-    async (value: string, code: string): Promise<CaPayoutOutcome<{ payout: CaPayoutView }>> => {
+    async (value: string, msg91Token: string): Promise<CaPayoutOutcome<{ payout: CaPayoutView }>> => {
       try {
-        const data = (await apiClient.patch(ENDPOINTS.caApplications.mePayout, { value, code })).data
+        const data = (await apiClient.patch(ENDPOINTS.caApplications.mePayout, { value, msg91Token })).data
           ?.data as CaPayoutView;
         return { ok: true, payout: data };
       } catch (e) {

@@ -8,11 +8,11 @@ import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { cn } from "@/lib/utils";
 import { formatIstDate } from "@/lib/ist";
 import useCaPayout from "@/hooks/useCaPayout";
+import useMSG91OTP, { OTP_CHANNEL, OTP_LENGTH, type OtpChannel } from "@/hooks/useMSG91OTP";
 import OtpBoxes from "@/app/enquiry/components/OtpBoxes";
 import type { CaPayoutView } from "@/types/ca-payout";
 import s from "../desk.module.css";
 
-const OTP_LENGTH = 6;
 const RESEND_COOLDOWN_SECONDS = 60;
 const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.-]{1,63}$/;
 const DETAILS_MAX = 500;
@@ -141,10 +141,13 @@ type Step = "value" | "otp" | "success";
 
 function ModalBody({ method, onClose, onSaved }: Omit<ModalProps, "open">) {
   const { requestOtp, changePayout } = useCaPayout();
+  const { ready, loadError, sendOtp, retryOtp, verifyOtp } = useMSG91OTP();
   const [step, setStep] = useState<Step>("value");
   const [value, setValue] = useState("");
   const [valueError, setValueError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [reqId, setReqId] = useState<string | null>(null);
+  const [channel, setChannel] = useState<OtpChannel | null>(null);
   const [digits, setDigits] = useState<string[]>([]);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -157,29 +160,54 @@ function ModalBody({ method, onClose, onSaved }: Omit<ModalProps, "open">) {
     return () => clearInterval(id);
   }, [cooldown]);
 
-  const sendCode = async () => {
+  /** Claims the send on the server first, then has the widget dispatch it. */
+  const sendCode = async (via?: OtpChannel) => {
+    const showError = step === "otp" ? setCodeError : setValueError;
     const problem = validate(method, value);
     if (problem) {
       setValueError(problem);
       return;
     }
-    setValueError(null);
-    setBusy(true);
-    const result = await requestOtp();
-    setBusy(false);
-    if (!result.ok) {
-      setValueError(result.message);
+    if (!ready) {
+      showError(loadError || "Phone verification is still loading. Try again.");
       return;
     }
-    setSentTo(result.sentTo);
-    setCooldown(RESEND_COOLDOWN_SECONDS);
-    setStep("otp");
+    setValueError(null);
+    setCodeError(null);
+    setBusy(true);
+    try {
+      const result = await requestOtp();
+      if (!result.ok) {
+        showError(result.message);
+        return;
+      }
+      const nextReqId = reqId ? await retryOtp(reqId, via) : await sendOtp(result.identifier);
+      setReqId(nextReqId ?? reqId);
+      setSentTo(result.sentTo);
+      setChannel(via ?? null);
+      setDigits([]);
+      setCooldown(RESEND_COOLDOWN_SECONDS);
+      setStep("otp");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Could not send the code. Try again.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const confirmCode = async (code: string) => {
     setBusy(true);
     setCodeError(null);
-    const result = await changePayout(value.trim(), code);
+    let token: string;
+    try {
+      token = await verifyOtp(code, reqId);
+    } catch {
+      setBusy(false);
+      setCodeError("Incorrect code. Please check and try again.");
+      setDigits([]);
+      return;
+    }
+    const result = await changePayout(value.trim(), token);
     setBusy(false);
     if (!result.ok) {
       setCodeError(result.message);
@@ -205,7 +233,7 @@ function ModalBody({ method, onClose, onSaved }: Omit<ModalProps, "open">) {
         {step === "value" ? (
           <div className={s.confirm}>
             <p className={s.confirmNote}>
-              Enter your new {methodLabel(method).toLowerCase()}. We will text a code to your verified mobile
+              Enter your new {methodLabel(method).toLowerCase()}. We will send a code to your verified mobile
               number to confirm it is really you.
             </p>
             <input
@@ -217,10 +245,10 @@ function ModalBody({ method, onClose, onSaved }: Omit<ModalProps, "open">) {
               aria-label={methodLabel(method)}
               aria-invalid={Boolean(valueError)}
             />
-            {valueError ? <p className={s.payoutError}>{valueError}</p> : null}
+            {valueError || loadError ? <p className={s.payoutError}>{valueError || loadError}</p> : null}
             <div className={s.confirmActions}>
-              <OrangeButton className={cn(s.btn, s.btnOrange)} onClick={() => void sendCode()} disabled={busy}>
-                {busy ? "Sending..." : "Send code"}
+              <OrangeButton className={cn(s.btn, s.btnOrange)} onClick={() => void sendCode()} disabled={busy || !ready}>
+                {busy ? "Sending..." : ready || loadError ? "Send code" : "Loading..."}
               </OrangeButton>
             </div>
           </div>
@@ -229,7 +257,8 @@ function ModalBody({ method, onClose, onSaved }: Omit<ModalProps, "open">) {
         {step === "otp" ? (
           <div className={s.confirm}>
             <p className={s.confirmNote}>
-              We sent a {OTP_LENGTH}-digit code to <b>{sentTo}</b>.
+              We sent a {OTP_LENGTH}-digit code{channel === OTP_CHANNEL.whatsapp ? " on WhatsApp" : ""} to{" "}
+              <b>{sentTo}</b>.
             </p>
             <OtpBoxes
               length={OTP_LENGTH}
@@ -244,9 +273,16 @@ function ModalBody({ method, onClose, onSaved }: Omit<ModalProps, "open">) {
               <WhiteButton
                 className={cn(s.btn, s.btnWhite)}
                 disabled={cooldown > 0 || busy}
-                onClick={() => void sendCode()}
+                onClick={() => void sendCode(OTP_CHANNEL.sms)}
               >
-                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend by SMS"}
+              </WhiteButton>
+              <WhiteButton
+                className={cn(s.btn, s.btnWhite)}
+                disabled={cooldown > 0 || busy}
+                onClick={() => void sendCode(OTP_CHANNEL.whatsapp)}
+              >
+                Send on WhatsApp
               </WhiteButton>
             </div>
           </div>

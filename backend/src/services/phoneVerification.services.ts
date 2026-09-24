@@ -277,6 +277,8 @@ interface TokenCheck {
   ok: boolean;
   /** The number MSG91 says the token was issued for, when it tells us. */
   verifiedPhone: string | null;
+  /** That same echo as bare digits, country code included. */
+  echoedDigits: string | null;
   error?: string;
 }
 
@@ -304,6 +306,7 @@ const checkAccessToken = async (
       return {
         ok: false,
         verifiedPhone: null,
+        echoedDigits: null,
         error:
           response.data?.message ||
           response.data?.error ||
@@ -317,11 +320,13 @@ const checkAccessToken = async (
     return {
       ok: true,
       verifiedPhone: isValidPhone(echoed) ? echoed : null,
+      echoedDigits: String(response.data?.message ?? "").replace(/\D/g, "") || null,
     };
   } catch (error: any) {
     return {
       ok: false,
       verifiedPhone: null,
+      echoedDigits: null,
       error:
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -363,6 +368,36 @@ export const assertPhoneTokenValid = async (
 ): Promise<void> => {
   if (skipTokenCheck()) return;
 
+  const check = await requireGenuineToken(msg91Token);
+  // MSG91 does not echo the number on every widget config, so a mismatch is
+  // fatal but a missing echo is not.
+  if (check.verifiedPhone && check.verifiedPhone !== phone) {
+    throw new AppError(
+      PHONE_MESSAGES.PHONE_MISMATCH,
+      400,
+      PHONE_ERROR_CODES.PHONE_MISMATCH,
+    );
+  }
+};
+
+/** Strict form for a number the client never chose: a missing echo is fatal too. */
+export const assertTokenIssuedFor = async (
+  msg91Identifier: string,
+  msg91Token: unknown,
+): Promise<void> => {
+  if (skipTokenCheck()) return;
+
+  const check = await requireGenuineToken(msg91Token);
+  if (check.echoedDigits !== msg91Identifier) {
+    throw new AppError(
+      PHONE_MESSAGES.PHONE_MISMATCH,
+      400,
+      PHONE_ERROR_CODES.PHONE_MISMATCH,
+    );
+  }
+};
+
+const requireGenuineToken = async (msg91Token: unknown): Promise<TokenCheck> => {
   const authKey = process.env.MSG91_AUTHKEY?.trim();
   if (!authKey) {
     throw new AppError(
@@ -389,15 +424,7 @@ export const assertPhoneTokenValid = async (
       PHONE_ERROR_CODES.OTP_TOKEN_INVALID,
     );
   }
-  // MSG91 does not echo the number on every widget config, so a mismatch is
-  // fatal but a missing echo is not.
-  if (check.verifiedPhone && check.verifiedPhone !== phone) {
-    throw new AppError(
-      PHONE_MESSAGES.PHONE_MISMATCH,
-      400,
-      PHONE_ERROR_CODES.PHONE_MISMATCH,
-    );
-  }
+  return check;
 };
 
 export const verifyPhoneForUser = async (

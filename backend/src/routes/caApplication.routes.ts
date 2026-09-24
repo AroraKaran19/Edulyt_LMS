@@ -58,7 +58,7 @@ router.get("/me/payout", verifyUser, getOwnCaPayoutController);
 
 /**
  * @route   POST /api/ca-applications/me/payout/otp
- * @desc    Sends a code to the application's verified phone
+ * @desc    Claims a send for the application's verified phone; the widget sends it
  * @access  Any signed-in user with an approved or attached application
  */
 router.post("/me/payout/otp", verifyUser, requestOwnCaPayoutOtpController);
@@ -66,7 +66,7 @@ router.post("/me/payout/otp", verifyUser, requestOwnCaPayoutOtpController);
 /**
  * @route   PATCH /api/ca-applications/me/payout
  * @desc    Changes the CA's own payout details, gated on the OTP
- * @body    { value, code }
+ * @body    { value, msg91Token }
  * @access  Any signed-in user with an approved or attached application
  */
 router.patch("/me/payout", verifyUser, changeOwnCaPayoutController);

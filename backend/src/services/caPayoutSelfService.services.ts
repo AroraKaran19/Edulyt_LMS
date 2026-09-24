@@ -1,30 +1,21 @@
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import mongoose from "mongoose";
 import { CaApplicationModel, CaPayoutOtpModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { decryptCaText, encryptCaText } from "../lib/caPii";
 import { isIndianMobile, PAYOUT_DETAILS_MAX, UPI_RE } from "../lib/caApplication";
-import { sendCaPayoutOtpSms } from "../lib/caPayoutOtpSms";
 import { ACCOUNT_CHANGE_COOLDOWN_DAYS } from "../constants/accountChangeCooldown";
-import {
-  MAX_SENDS_PER_WINDOW,
-  MAX_VERIFY_ATTEMPTS,
-  OTP_EXPIRY_MINUTES,
-  OTP_LENGTH,
-  RESEND_COOLDOWN_SECONDS,
-} from "./emailChangeVerification.services";
+import { MAX_SENDS_PER_WINDOW, RESEND_COOLDOWN_SECONDS } from "./emailChangeVerification.services";
+import { assertTokenIssuedFor } from "./phoneVerification.services";
 import type { CaPayoutCiphertext } from "../types/caApplication";
 
 /**
  * Self-service payout change for an attached or approved Campus Ambassador,
  * gated on an OTP to the phone verified at application time.
  *
- * Deliberately the same shape as `emailChangeVerification.services.ts`: a
- * hashed code with its own send throttle, and a cooldown after a successful
- * change that mirrors `accountChangeCooldown.ts`. The plain and encrypted
- * payout value are never logged, and only a masked form ever leaves this
- * module.
+ * The MSG91 widget sends and checks the code, as every other phone OTP here
+ * does; this module owns the send budget and the final write. The plain and
+ * encrypted payout value are never logged, and only a masked form ever leaves
+ * this module.
  */
 
 export const CA_PAYOUT_ERROR_CODES = {
@@ -125,8 +116,8 @@ export const getOwnCaPayout = async (userId: string): Promise<CaPayoutView> => {
   return toView(app);
 };
 
-const generateOtp = (): string =>
-  String(crypto.randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, "0");
+const toMsg91Identifier = (phone: string): string =>
+  isIndianMobile(phone) ? `91${phone}` : phone.replace(/^\+/, "");
 
 const minutesFromNow = (minutes: number): Date => new Date(Date.now() + minutes * 60 * 1000);
 
@@ -179,34 +170,29 @@ const buildThrottleError = (doc: ThrottleState | null): AppError => {
 
 export interface RequestedPayoutOtp {
   sentTo: string;
+  /** What the widget's `sendOtp` needs. It is the CA's own number. */
+  identifier: string;
 }
 
+/** Spends one send from the budget; the client dispatches it through the widget only after this. */
 export const requestOwnCaPayoutOtp = async (userId: string): Promise<RequestedPayoutOtp> => {
   const app = await loadOwnApplication(userId);
   assertNotLocked(app.payoutLockedUntil);
 
-  const otp = generateOtp();
   const now = new Date();
   const cooldownCutoff = new Date(now.getTime() - RESEND_COOLDOWN_SECONDS * 1000);
 
-  let pending;
   try {
     // The guards live in the filter so the check and the write are one atomic
     // step, matching `requestEmailChange`.
-    pending = await CaPayoutOtpModel.findOneAndUpdate(
+    await CaPayoutOtpModel.findOneAndUpdate(
       {
         application: app._id,
         lastSentAt: { $lte: cooldownCutoff },
         sendCount: { $lt: MAX_SENDS_PER_WINDOW },
       },
       {
-        $set: {
-          otpHash: await bcrypt.hash(otp, 10),
-          otpExpiresAt: minutesFromNow(OTP_EXPIRY_MINUTES),
-          attempts: 0,
-          lastSentAt: now,
-          expiresAt: minutesFromNow(OTP_WINDOW_MINUTES),
-        },
+        $set: { lastSentAt: now, expiresAt: minutesFromNow(OTP_WINDOW_MINUTES) },
         $inc: { sendCount: 1 },
         $setOnInsert: { application: app._id },
       },
@@ -217,19 +203,7 @@ export const requestOwnCaPayoutOtp = async (userId: string): Promise<RequestedPa
     throw buildThrottleError(await loadThrottleState(app._id));
   }
 
-  try {
-    await sendCaPayoutOtpSms(app.phone, otp);
-  } catch (error) {
-    // The SMS never went out: undo the throttle bookkeeping so the CA is not
-    // charged a slot and a minute for a send that failed on our side.
-    await CaPayoutOtpModel.findOneAndUpdate(
-      { application: app._id },
-      { $set: { lastSentAt: new Date(0) }, $inc: { sendCount: -1 } },
-    );
-    throw error;
-  }
-
-  return { sentTo: maskPhone(app.phone) };
+  return { sentTo: maskPhone(app.phone), identifier: toMsg91Identifier(app.phone) };
 };
 
 /** Applies the same rules `cleanCaApplicationInput` uses at submission time. */
@@ -250,32 +224,22 @@ const validatePayoutValue = (method: "upi" | "details", raw: unknown): string =>
 
 export const changeOwnCaPayout = async (
   userId: string,
-  input: { value: unknown; code: unknown },
+  input: { value: unknown; msg91Token: unknown },
 ): Promise<CaPayoutView> => {
   const app = await loadOwnApplication(userId);
   assertNotLocked(app.payoutLockedUntil);
 
-  const pending = await CaPayoutOtpModel.findOne({ application: app._id });
+  const pending = await CaPayoutOtpModel.exists({ application: app._id });
   if (!pending) {
-    throw new AppError("Ask for a code first", 400, CA_PAYOUT_ERROR_CODES.INVALID_CODE);
-  }
-  if (pending.otpExpiresAt.getTime() < Date.now()) {
     throw new AppError("That code has expired. Ask for a new one.", 400, CA_PAYOUT_ERROR_CODES.INVALID_CODE);
-  }
-  if (pending.attempts >= MAX_VERIFY_ATTEMPTS) {
-    throw new AppError("Too many incorrect codes. Ask for a new one.", 429, CA_PAYOUT_ERROR_CODES.INVALID_CODE);
-  }
-
-  const matches = await bcrypt.compare(String(input.code ?? "").trim(), pending.otpHash);
-  if (!matches) {
-    await CaPayoutOtpModel.updateOne({ _id: pending._id }, { $inc: { attempts: 1 } });
-    throw new AppError("That code is incorrect", 400, CA_PAYOUT_ERROR_CODES.INVALID_CODE);
   }
 
   // No stored method yet (payout was never set): derive it the same way
   // `cleanCaApplicationInput` did at submission time.
   const method: "upi" | "details" = app.payout?.method ?? (isIndianMobile(app.phone) ? "upi" : "details");
   const value = validatePayoutValue(method, input.value);
+
+  await assertTokenIssuedFor(toMsg91Identifier(app.phone), input.msg91Token);
 
   const now = new Date();
   const lockedUntil = new Date(now.getTime() + ACCOUNT_CHANGE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000);

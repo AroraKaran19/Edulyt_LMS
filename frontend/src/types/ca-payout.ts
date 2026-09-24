@@ -8,4 +8,6 @@ export interface CaPayoutView {
 
 export interface CaPayoutOtpSent {
   sentTo: string;
+  /** Country code + number, no "+": what the MSG91 widget's `sendOtp` takes. */
+  identifier: string;
 }

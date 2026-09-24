@@ -74,15 +74,15 @@ export const getOwnCaPayoutController = asyncHandler(async (req: Request, res: R
 
 /** @route POST /api/ca-applications/me/payout/otp */
 export const requestOwnCaPayoutOtpController = asyncHandler(async (req: Request, res: Response) => {
-  sendSuccessResponse(res, await requestOwnCaPayoutOtp(requireUserId(req)), "Code sent", 200);
+  sendSuccessResponse(res, await requestOwnCaPayoutOtp(requireUserId(req)), "Send claimed", 200);
 });
 
-/** @route PATCH /api/ca-applications/me/payout  Body: `{ value, code }` */
+/** @route PATCH /api/ca-applications/me/payout  Body: `{ value, msg91Token }` */
 export const changeOwnCaPayoutController = asyncHandler(async (req: Request, res: Response) => {
   res.set("Cache-Control", "no-store");
   const result = await changeOwnCaPayout(requireUserId(req), {
     value: req.body?.value,
-    code: req.body?.code,
+    msg91Token: req.body?.msg91Token,
   });
   sendSuccessResponse(res, result, "Payout details updated", 200);
 });
