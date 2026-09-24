@@ -20,6 +20,7 @@ export const CA_PAGE_ADMIN_SECTION_KEYS = [
   "videos",
   "faqs",
   "samples",
+  "seo",
 ] as const satisfies ReadonlyArray<keyof CaPageAdminSettings>;
 
 export type CaPageAdminSectionKey = (typeof CA_PAGE_ADMIN_SECTION_KEYS)[number];

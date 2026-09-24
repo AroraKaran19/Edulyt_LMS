@@ -32,7 +32,15 @@ export const DEFAULT_HEADLINE = "Your first salary starts on campus.";
 export const defaultLede = (m: ReturnType<typeof money>) =>
   `Become an Airkrit Campus Ambassador. Promote Airkrit at your college, in hours that fit around your classes, and get paid a fixed ${inr(m.stipend)} every month plus up to ${inr(m.incentiveCap)} in incentives.`;
 
-export const DEFAULT_KIT_ITEMS = ["Bag", "Diary", "Pen", "T-shirt", "Cap"];
+export const DEFAULT_SEO = {
+  title: "Digital Marketing Internship for College Students | Airkrit",
+  description:
+    "Join Airkrit's paid digital marketing internship. Earn a fixed monthly stipend plus incentives, and finish with an LOR, an internship certificate and a training certificate.",
+  ogTitle: "Airkrit Digital Marketing Internship: your first salary starts on campus",
+  ogDescription: "A fixed monthly stipend, incentives, an offer letter in 24 hours and a shot at a full-time offer.",
+};
+
+export const DEFAULT_KIT_ITEMS =["Bag", "Diary", "Pen", "T-shirt", "Cap"];
 
 // Keeps "T-shirt" and acronyms as written.
 const lowerFirst = (s: string) => (/^[A-Z][A-Z-]/.test(s) ? s : s.charAt(0).toLowerCase() + s.slice(1));

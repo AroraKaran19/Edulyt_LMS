@@ -38,6 +38,7 @@ export const EMPTY_CA_SETTINGS: CaPageSettings = {
   videos: { items: [] },
   faqs: { items: [] },
   samples: { offerLetter: "", lor: "", internshipCertificate: "", trainingCertificate: "" },
+  seo: { title: "", description: "", keywords: [], ogTitle: "", ogDescription: "", ogImage: "" },
 };
 
 /** Throws on a failed fetch, so a background ISR rebuild keeps the last good page. */

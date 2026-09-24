@@ -69,6 +69,12 @@ export const CA_SECTIONS: ReadonlyArray<{
     title: "Sample documents",
     description: "The four letter images in the documents viewer.",
   },
+  {
+    slug: "seo",
+    key: "seo",
+    title: "SEO",
+    description: "Search title, description, keywords and the link preview when the page is shared.",
+  },
 ];
 
 export const findSectionIndex = (slug: string) =>

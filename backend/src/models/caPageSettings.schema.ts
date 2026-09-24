@@ -120,6 +120,18 @@ const statementSchema = new Schema(
   { _id: false },
 );
 
+const seoSchema = new Schema(
+  {
+    title: { type: String, default: "" },
+    description: { type: String, default: "" },
+    keywords: { type: [String], default: [] },
+    ogTitle: { type: String, default: "" },
+    ogDescription: { type: String, default: "" },
+    ogImage: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const caPageSettingsSchema = new Schema(
   {
     key: { type: String, required: true, unique: true },
@@ -133,6 +145,7 @@ const caPageSettingsSchema = new Schema(
     faqs: { type: new Schema({ items: { type: [faqSchema], default: [] } }, { _id: false }), default: () => ({}) },
     samples: { type: samplesSchema, default: () => ({}) },
     statement: { type: statementSchema, default: () => ({}) },
+    seo: { type: seoSchema, default: () => ({}) },
   },
   { timestamps: true, minimize: false },
 );

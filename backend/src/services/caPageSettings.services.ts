@@ -23,6 +23,7 @@ export const CA_PAGE_SECTION_KEYS = [
   "videos",
   "faqs",
   "samples",
+  "seo",
 ] as const;
 export type CaPageSectionKey = (typeof CA_PAGE_SECTION_KEYS)[number];
 
@@ -44,6 +45,14 @@ export interface CaMoney {
 export interface CaVideo { url: string; role: string; college: string; duration: string }
 export interface CaFaq { question: string; answer: string }
 export interface CaSamples { offerLetter: string; lor: string; internshipCertificate: string; trainingCertificate: string }
+export interface CaSeo {
+  title: string;
+  description: string;
+  keywords: string[];
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
+}
 
 /** Mirrors `IconName` in frontend/src/app/digital-marketing-internship/components/Icon.tsx. */
 export const STATEMENT_ICONS = [
@@ -74,6 +83,7 @@ export interface CaPageSettings {
   videos: { items: CaVideo[] };
   faqs: { items: CaFaq[] };
   samples: CaSamples;
+  seo: CaSeo;
 }
 
 let cache: { data: CaPageSettings; expiresAt: number } | null = null;
@@ -175,6 +185,14 @@ const toSettings = (doc: Record<string, any> | null): CaPageSettings => {
     samples: Object.fromEntries(
       SAMPLE_KEYS.map((k) => [k, String(doc?.samples?.[k] ?? "")]),
     ) as unknown as CaSamples,
+    seo: {
+      title: String(doc?.seo?.title ?? ""),
+      description: String(doc?.seo?.description ?? ""),
+      keywords: Array.isArray(doc?.seo?.keywords) ? doc.seo.keywords.map(String) : [],
+      ogTitle: String(doc?.seo?.ogTitle ?? ""),
+      ogDescription: String(doc?.seo?.ogDescription ?? ""),
+      ogImage: String(doc?.seo?.ogImage ?? ""),
+    },
   };
 };
 
@@ -279,6 +297,19 @@ const sanitizeSection = (
   if (section === "samples") {
     return Object.fromEntries(SAMPLE_KEYS.map((k) => [k, link(value[k], "Sample image")]));
   }
+  if (section === "seo") {
+    const keywords = Array.isArray(value.keywords)
+      ? [...new Set(value.keywords.map((k) => str(k, 60)).filter(Boolean))].slice(0, 20)
+      : [];
+    return {
+      title: str(value.title, 100),
+      description: str(value.description, 300),
+      keywords,
+      ogTitle: str(value.ogTitle, 100),
+      ogDescription: str(value.ogDescription, 300),
+      ogImage: link(value.ogImage, "Share image"),
+    };
+  }
   if (section === "statement") {
     const rawRows = Array.isArray(value.rows) ? value.rows : [];
     const rows = rawRows
@@ -350,4 +381,5 @@ export const serializeCaPageSettings = (s: CaPageSettings) => ({
   videos: s.videos,
   faqs: s.faqs,
   samples: s.samples,
+  seo: s.seo,
 });

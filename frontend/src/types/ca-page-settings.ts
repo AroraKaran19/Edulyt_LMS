@@ -83,6 +83,16 @@ export interface CaSamples {
   trainingCertificate: string;
 }
 
+/** Empty strings fall back to the page's shipped metadata. */
+export interface CaSeo {
+  title: string;
+  description: string;
+  keywords: string[];
+  ogTitle: string;
+  ogDescription: string;
+  ogImage: string;
+}
+
 export interface CaEnrollment {
   acceptingApplications: boolean;
   durations: number[];
@@ -105,4 +115,5 @@ export interface CaPageSettings {
   videos: { items: CaVideo[] };
   faqs: { items: CaFaq[] };
   samples: CaSamples;
+  seo: CaSeo;
 }
