@@ -40,6 +40,10 @@ export default function DeskEarnings({ settings }: { settings: CaPageSettings })
       </h2>
       <p className={s.sub}>Everything that comes with being an Airkrit Campus Ambassador.</p>
       <div className={s.sheet}>
+        <div className={s.sheetHead}>
+          <p className={s.sheetName}>How it works for YOU</p>
+          <p className={s.sheetRole}>Marketing Intern / Digital Marketing Intern</p>
+        </div>
         <table className={s.ledger}>
           <tbody>
             {rows.map((r) => (

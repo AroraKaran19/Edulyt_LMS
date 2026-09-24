@@ -37,7 +37,10 @@ export default function StatementSection({ settings }: { settings: CaPageSetting
           <div className={styles.sheetTop}>
             <div className={styles.sheetBrand}>
               <Image src="/logo.svg" alt="" width={133} height={38} />
-              <p className={styles.sheetName}>Campus Ambassador statement</p>
+              <div>
+                <p className={styles.sheetName}>How it works for YOU</p>
+                <p className={styles.sheetRole}>Marketing Intern / Digital Marketing Intern</p>
+              </div>
             </div>
           </div>
 

@@ -973,6 +973,23 @@
     linear-gradient(45deg, transparent 10px, var(--paper) 0) 0 0 / 20px 14px repeat-x;
 }
 
+.sheetHead {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sheetName {
+  margin: 0;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.sheetRole {
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
 .ledger {
   width: 100%;
   border-collapse: collapse;
