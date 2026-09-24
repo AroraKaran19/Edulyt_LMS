@@ -7,6 +7,8 @@ export interface LeadImportIssue {
   row: number;
   kind: LeadImportIssueKind;
   message: string;
+  /** The row as uploaded, so problem rows can be downloaded after the file is gone. */
+  data: Record<string, unknown>;
 }
 
 export interface LeadImportJob {
@@ -14,7 +16,6 @@ export interface LeadImportJob {
   fileName: string;
   createdBy: { userId: Types.ObjectId | null; name: string };
   status: LeadImportJobStatus;
-  rows: Record<string, unknown>[];
   totalRows: number;
   processedRows: number;
   created: number;
@@ -30,11 +31,17 @@ export interface LeadImportJob {
   updatedAt: Date;
 }
 
+export interface LeadImportPayload {
+  jobId: Types.ObjectId;
+  rows: Record<string, unknown>[];
+}
+
 const issueSchema = new Schema(
   {
     row: { type: Number, required: true },
     kind: { type: String, enum: ["error", "creator-not-found"], required: true },
     message: { type: String, default: "" },
+    data: { type: Schema.Types.Mixed, default: () => ({}) },
   },
   { _id: false },
 );
@@ -52,8 +59,6 @@ const leadImportJobSchema = new Schema<LeadImportJob>(
       required: true,
       default: "queued",
     },
-    // Kept after the run so error rows can be downloaded from the history page.
-    rows: { type: Schema.Types.Mixed, default: () => [] },
     totalRows: { type: Number, required: true },
     processedRows: { type: Number, default: 0 },
     created: { type: Number, default: 0 },
@@ -72,7 +77,20 @@ const leadImportJobSchema = new Schema<LeadImportJob>(
 leadImportJobSchema.index({ status: 1, createdAt: 1 });
 leadImportJobSchema.index({ createdAt: -1 });
 
+// Apart from the job so progress updates never rewrite the whole file; deleted when the job ends.
+const leadImportPayloadSchema = new Schema<LeadImportPayload>({
+  jobId: { type: Schema.Types.ObjectId, ref: "LeadImportJob", required: true },
+  rows: { type: Schema.Types.Mixed, default: () => [] },
+});
+
+leadImportPayloadSchema.index({ jobId: 1 }, { unique: true });
+
 export const LeadImportJobModel = mongoose.model<LeadImportJob>(
   "LeadImportJob",
   leadImportJobSchema,
+);
+
+export const LeadImportPayloadModel = mongoose.model<LeadImportPayload>(
+  "LeadImportPayload",
+  leadImportPayloadSchema,
 );

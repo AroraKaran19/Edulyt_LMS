@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { AppError } from "../middlewares/error.middleware";
 import {
   LeadImportJobModel,
+  LeadImportPayloadModel,
   type LeadImportIssue,
   type LeadImportJob,
 } from "../models/leadImportJob.schema";
@@ -17,16 +18,19 @@ export const createLeadImportJob = async (
   fileName: string,
   createdBy: ImportActor,
 ): Promise<{ jobId: string }> => {
-  const job = await LeadImportJobModel.create({
-    fileName,
-    createdBy,
-    rows,
-    totalRows: rows.length,
-  });
-  return { jobId: String(job._id) };
+  const jobId = new mongoose.Types.ObjectId();
+  // Payload first: the worker must never claim a job whose rows are not written yet.
+  await LeadImportPayloadModel.create({ jobId, rows });
+  try {
+    await LeadImportJobModel.create({ _id: jobId, fileName, createdBy, totalRows: rows.length });
+  } catch (error) {
+    await LeadImportPayloadModel.deleteOne({ jobId });
+    throw error;
+  }
+  return { jobId: String(jobId) };
 };
 
-const LIST_PROJECTION = { rows: 0, issues: 0 } as const;
+const LIST_PROJECTION = { issues: 0 } as const;
 
 export const listLeadImportJobs = async (page: number, limit: number) => {
   const [items, total] = await Promise.all([
@@ -40,16 +44,23 @@ export const listLeadImportJobs = async (page: number, limit: number) => {
   return { items, total, page, limit };
 };
 
-/** One job with its issues, each carrying the original row so errors can be re-downloaded. */
 export const getLeadImportJob = async (id: string) => {
   if (!mongoose.isValidObjectId(id)) throw new AppError("Import not found", 404);
   const job = await LeadImportJobModel.findById(id).lean();
   if (!job) throw new AppError("Import not found", 404);
-  const { rows, ...rest } = job;
-  return {
-    ...rest,
-    issues: job.issues.map((issue) => ({ ...issue, data: rows[issue.row - 1] ?? {} })),
-  };
+  return job;
+};
+
+const finishJob = async (
+  jobId: mongoose.Types.ObjectId,
+  status: "done" | "failed",
+  failureMessage = "",
+): Promise<void> => {
+  await LeadImportJobModel.updateOne(
+    { _id: jobId },
+    { $set: { status, finishedAt: new Date(), lockedUntil: null, failureMessage } },
+  );
+  await LeadImportPayloadModel.deleteOne({ jobId });
 };
 
 /** Claims the next job in upload order, or resumes one whose worker died mid-run. */
@@ -73,26 +84,22 @@ const claimNextJob = async (): Promise<LeadImportJob | null> => {
 
 const runJob = async (job: LeadImportJob): Promise<void> => {
   if (job.attempts > MAX_ATTEMPTS) {
-    await LeadImportJobModel.updateOne(
-      { _id: job._id },
-      {
-        $set: {
-          status: "failed",
-          finishedAt: new Date(),
-          lockedUntil: null,
-          failureMessage: "Stopped after repeated failures",
-        },
-      },
-    );
+    await finishJob(job._id, "failed", "Stopped after repeated failures");
     return;
   }
+  const payload = await LeadImportPayloadModel.findOne({ jobId: job._id }, { rows: 1 }).lean();
+  if (!payload) {
+    await finishJob(job._id, "failed", "The uploaded rows are missing");
+    return;
+  }
+  const rows = payload.rows;
   if (!job.startedAt) {
     await LeadImportJobModel.updateOne({ _id: job._id }, { $set: { startedAt: new Date() } });
   }
 
   const importedBy = job.createdBy;
   for (let cursor = job.processedRows; cursor < job.totalRows; cursor += CHUNK_SIZE) {
-    const chunk = job.rows.slice(cursor, cursor + CHUNK_SIZE) as ImportRow[];
+    const chunk = rows.slice(cursor, cursor + CHUNK_SIZE) as ImportRow[];
     const result = await importLeads(chunk, {
       fileName: job.fileName,
       dryRun: false,
@@ -103,10 +110,11 @@ const runJob = async (job: LeadImportJob): Promise<void> => {
 
     const issues: LeadImportIssue[] = [];
     for (const r of result.results) {
+      const data = (rows[r.row - 1] ?? {}) as Record<string, unknown>;
       if (r.outcome === "error") {
-        issues.push({ row: r.row, kind: "error", message: r.error ?? "Invalid row" });
+        issues.push({ row: r.row, kind: "error", message: r.error ?? "Invalid row", data });
       } else if (r.creatorNotFound) {
-        issues.push({ row: r.row, kind: "creator-not-found", message: "Creator not found" });
+        issues.push({ row: r.row, kind: "creator-not-found", message: "Creator not found", data });
       }
     }
 
@@ -128,10 +136,7 @@ const runJob = async (job: LeadImportJob): Promise<void> => {
     );
   }
 
-  await LeadImportJobModel.updateOne(
-    { _id: job._id },
-    { $set: { status: "done", finishedAt: new Date(), lockedUntil: null } },
-  );
+  await finishJob(job._id, "done");
 };
 
 /** Runs queued imports one after another, in upload order. Returns how many finished. */
