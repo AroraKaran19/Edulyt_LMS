@@ -78,8 +78,11 @@ import {
   revokeCaVoucherEnrollmentController,
 } from "../controllers/caVoucherAdmin.controller";
 import {
+  createLeadImportJobController,
   downloadLeadImportTemplateController,
-  importLeadsController,
+  getLeadImportJobController,
+  listLeadImportJobsController,
+  previewLeadImportController,
 } from "../controllers/leadImport.controller";
 
 const router = Router();
@@ -151,13 +154,16 @@ router.patch("/enquiry-page-settings", requirePermission("leads.enquiry-page"), 
 router.get("/ca-page-settings", requirePermission("leads.ca-page"), getAdminCaPageSettingsController);
 router.patch("/ca-page-settings", requirePermission("leads.ca-page"), patchCaPageSettingsController);
 
-// Excel lead import: the browser parses, the server validates and inserts.
+// Excel lead import: the browser parses, the server previews, the CA worker inserts.
 router.get(
   "/leads/import/template",
   requirePermission("leads.import"),
   downloadLeadImportTemplateController,
 );
-router.post("/leads/import", requirePermission("leads.import"), importLeadsController);
+router.post("/leads/import/preview", requirePermission("leads.import"), previewLeadImportController);
+router.post("/leads/import/jobs", requirePermission("leads.import"), createLeadImportJobController);
+router.get("/leads/import/jobs", requirePermission("leads.import"), listLeadImportJobsController);
+router.get("/leads/import/jobs/:id", requirePermission("leads.import"), getLeadImportJobController);
 
 // Legal documents per brand (course and internship T&C), edited under
 // /admin/settings/terms-and-conditions

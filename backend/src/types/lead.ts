@@ -41,6 +41,8 @@ export interface LeadSource {
   fileName?: string;
   /** Set for `kind: "import"`: the admin who ran the import. */
   importedBy?: { userId: Types.ObjectId | null; name: string };
+  importJobId?: Types.ObjectId;
+  importRow?: number;
 }
 
 /** Frozen at capture. `userId` is nulled if that user is later deleted. */

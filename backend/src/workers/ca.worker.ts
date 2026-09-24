@@ -2,6 +2,7 @@ import { sendOpsAlert } from "../services/opsAlert.services";
 import { runCaAttachSweep } from "../services/caApplicationAttach.services";
 import { reclaimStuckCaDocumentJobs } from "../services/caDocumentJob.services";
 import { runCaCompletionSweep, runCaDocumentJobs } from "../services/caDocumentWorker.services";
+import { runLeadImportJobs } from "../services/leadImportJob.services";
 
 const POLL_INTERVAL_MS = Math.max(
   5_000,
@@ -29,6 +30,10 @@ const runCaStage = async (name: string, fn: () => Promise<void>): Promise<void> 
 };
 
 export const runCaWorkerTick = async (): Promise<void> => {
+  await runCaStage("lead-imports", async () => {
+    const imports = await runLeadImportJobs();
+    if (imports > 0) console.log(`[CA Worker] Finished ${imports} lead import(s)`);
+  });
   await runCaStage("attach-sweep", async () => {
     const attach = await runCaAttachSweep();
     if (attach.attached > 0) {

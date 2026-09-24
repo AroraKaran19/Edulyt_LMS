@@ -131,16 +131,7 @@ export const ADMIN_PERMISSION_CATALOG: AdminSection[] = [
         label: "Configure Enquiry Page",
         href: "/admin/enquiry-page",
       },
-      // Not its own route: an action on the leads page, modelled like
-      // `ca.vouchers` so it stays independently grantable without a page of
-      // its own. Kept off `leads` itself so it can be handed out without
-      // giving the whole leads pool.
-      {
-        key: "leads.import",
-        label: "Import Leads",
-        // Action, not a page: the hash keeps it from ever claiming the /admin/leads route.
-        href: "/admin/leads#import",
-      },
+      { key: "leads.import", label: "Lead imports", href: "/admin/leads/imports" },
     ],
   },
   {

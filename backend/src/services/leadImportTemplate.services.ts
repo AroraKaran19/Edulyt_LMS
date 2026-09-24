@@ -18,6 +18,7 @@ export const LEAD_IMPORT_COLUMNS = [
   "status",
   "subStatus",
   "extras",
+  "creatorEmail",
 ] as const;
 
 const TEMPLATE_DATA_ROWS = 2000;
@@ -179,6 +180,7 @@ export const buildLeadImportTemplateWorkbook = (
     { key: "status", width: 18 },
     { key: "subStatus", width: 24 },
     { key: "extras", width: 34 },
+    { key: "creatorEmail", width: 30 },
   ];
   const phoneColLetter = "C";
   sheet.getColumn(3).numFmt = "@";
@@ -196,6 +198,7 @@ export const buildLeadImportTemplateWorkbook = (
       statusLabels[0] ?? "",
       "",
       '{"Year":"3rd"}',
+      "marketer@example.com",
     ],
     [
       "John Doe",
@@ -206,6 +209,7 @@ export const buildLeadImportTemplateWorkbook = (
       "",
       "internship",
       data.programSlugs[1] ?? data.programSlugs[0] ?? "sample-internship-slug",
+      "",
       "",
       "",
       "",
@@ -326,6 +330,12 @@ export const buildLeadImportTemplateWorkbook = (
       column: "extras",
       required: "No",
       allowed: 'A JSON object of simple values, for example {"Year":"3rd"}, shown in the lead\'s details',
+    },
+    {
+      column: "creatorEmail",
+      required: "No",
+      allowed:
+        "Email of the marketer, sales person or campus ambassador who generated the lead; credited like a lead from their link. An unknown email is imported without a creator and flagged.",
     },
   ]);
   instructions.addRow([]);

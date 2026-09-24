@@ -2,7 +2,10 @@ import mongoose from "mongoose";
 import { LeadModel } from "../models/lead.schema";
 import { CourseModel } from "../models/course.schema";
 import { InternshipModel } from "../models/internship.schema";
+import { CrmProfileModel, UserModel } from "../models";
 import { BRANDS, type Brand } from "../constants/brands";
+import { crmRoleOf } from "./crmProfile.services";
+import type { LeadAttribution } from "../lib/leadAttribution";
 import { normalizeState } from "../constants/indianStates";
 import { normalizePhone, isValidPhone } from "./phoneVerification.services";
 import {
@@ -32,20 +35,26 @@ export interface ImportRow {
   status?: unknown;
   subStatus?: unknown;
   extras?: unknown;
+  creatorEmail?: unknown;
 }
 
-export type ImportOutcome = "ok" | "duplicate" | "error";
+export type ImportOutcome = "ok" | "error";
 
 export interface ImportRowResult {
   row: number;
   outcome: ImportOutcome;
   error?: string;
+  /** Imported without a creator: the email matched no marketer, sales person or ambassador. */
+  creatorNotFound?: boolean;
+  /** Preview only: this email or phone is already a lead on the brand. */
+  existing?: boolean;
 }
 
 export interface ImportSummary {
   ok: number;
-  duplicate: number;
   error: number;
+  existing: number;
+  creatorNotFound: number;
 }
 
 export interface ImportResponse {
@@ -63,6 +72,9 @@ export interface ImportOptions {
   fileName: string;
   dryRun: boolean;
   importedBy: ImportActor;
+  /** Row numbers in results continue from here, so a job's chunks report file rows. */
+  rowOffset?: number;
+  jobId?: mongoose.Types.ObjectId;
 }
 
 /** A key for a plain-text `extras` label, so the stored answer matches the shape `answers` already uses. */
@@ -118,6 +130,7 @@ interface FieldsOk {
   status?: string;
   subStatus?: string;
   program?: { kind: LeadProgramKind; slug: string };
+  creatorEmail?: string;
 }
 
 interface FieldsErr {
@@ -171,6 +184,11 @@ const validateFields = (row: ImportRow): FieldsOk | FieldsErr => {
   const answers = parseExtras(row.extras);
   if (answers === null) return { ok: false, error: EXTRAS_ERROR };
 
+  const creatorEmail = String(row.creatorEmail ?? "").trim().toLowerCase();
+  if (creatorEmail && !EMAIL_RE.test(creatorEmail)) {
+    return { ok: false, error: "creatorEmail is not a valid email" };
+  }
+
   const statusRaw =
     row.status !== undefined && row.status !== null ? String(row.status).trim() : "";
   const subStatusRaw =
@@ -188,6 +206,7 @@ const validateFields = (row: ImportRow): FieldsOk | FieldsErr => {
     status: statusRaw || undefined,
     subStatus: subStatusRaw || undefined,
     program,
+    creatorEmail: creatorEmail || undefined,
   };
 };
 
@@ -195,6 +214,10 @@ interface RowRecord {
   row: number;
   outcome: ImportOutcome;
   error?: string;
+  creatorEmail?: string;
+  attribution?: LeadAttribution;
+  creatorNotFound?: boolean;
+  existing?: boolean;
   data?: {
     name: string;
     email: string;
@@ -248,6 +271,61 @@ const resolveStatusPair = async (
   return { status: stage.key, subStatus: sub.key };
 };
 
+const fullName = (u: { firstName?: string; lastName?: string } | null | undefined): string =>
+  [u?.firstName, u?.lastName].filter(Boolean).join(" ").trim();
+
+/** Creator email to the same creator/parent snapshot a lead from their link would carry. */
+const resolveCreators = async (emails: string[]): Promise<Map<string, LeadAttribution>> => {
+  const byEmail = new Map<string, LeadAttribution>();
+  if (emails.length === 0) return byEmail;
+
+  const users = await UserModel.find(
+    { email: { $in: emails }, userType: { $in: ["marketer", "sales", "student"] } },
+    { email: 1, userType: 1, firstName: 1, lastName: 1 },
+  ).lean();
+  if (users.length === 0) return byEmail;
+
+  const profiles = await CrmProfileModel.find(
+    { userId: { $in: users.map((u) => u._id) } },
+    { userId: 1, code: 1, codeActive: 1, parentUserId: 1, ambassadorKind: 1 },
+  ).lean();
+  const profileByUser = new Map(profiles.map((p) => [String(p.userId), p]));
+
+  const parentIds = [
+    ...new Set(profiles.map((p) => (p.parentUserId ? String(p.parentUserId) : "")).filter(Boolean)),
+  ];
+  const parents = parentIds.length
+    ? await UserModel.find({ _id: { $in: parentIds } }, { firstName: 1, lastName: 1 }).lean()
+    : [];
+  const parentName = new Map(parents.map((p) => [String(p._id), fullName(p)]));
+
+  for (const user of users) {
+    const profile = profileByUser.get(String(user._id));
+    const hasLiveCode = Boolean(profile?.code) && profile?.codeActive !== false;
+    // Staff are credited without a link; an ambassador needs a live one, as on the enquiry form.
+    const role = crmRoleOf(
+      user.userType,
+      user.userType === "student" ? hasLiveCode : true,
+      profile?.ambassadorKind ?? undefined,
+    );
+    if (!role) continue;
+
+    const parentId = profile?.parentUserId ? String(profile.parentUserId) : "";
+    byEmail.set(String(user.email).toLowerCase(), {
+      creator: {
+        userId: new mongoose.Types.ObjectId(String(user._id)),
+        code: profile?.code ?? "",
+        name: fullName(user),
+        role,
+      },
+      ...(parentId && {
+        parent: { userId: new mongoose.Types.ObjectId(parentId), name: parentName.get(parentId) ?? "" },
+      }),
+    });
+  }
+  return byEmail;
+};
+
 export const importLeads = async (
   rows: ImportRow[],
   options: ImportOptions,
@@ -257,7 +335,7 @@ export const importLeads = async (
 
   // Pass 1: pure field validation, plus the pipeline pair (in-memory cache, no per-row query).
   for (let i = 0; i < rows.length; i += 1) {
-    const rowNumber = i + 1;
+    const rowNumber = (options.rowOffset ?? 0) + i + 1;
     const fields = validateFields(rows[i] ?? {});
     if (!fields.ok) {
       records.push({ row: rowNumber, outcome: "error", error: fields.error });
@@ -273,6 +351,7 @@ export const importLeads = async (
     records.push({
       row: rowNumber,
       outcome: "ok",
+      creatorEmail: fields.creatorEmail,
       data: {
         name: fields.name,
         email: fields.email,
@@ -356,52 +435,62 @@ export const importLeads = async (
     }
   }
 
-  // Pass 3: duplicates, one batched query per brand plus an in-file check, in row order.
-  const okByBrand = new Map<Brand, RowRecord[]>();
-  for (const record of records) {
-    if (record.outcome !== "ok" || !record.data) continue;
-    if (!okByBrand.has(record.data.brand)) okByBrand.set(record.data.brand, []);
-    okByBrand.get(record.data.brand)!.push(record);
+  const okRecords = records.filter((r) => r.outcome === "ok" && r.data);
+
+  // Pass 3: creators, three batched lookups for the whole file.
+  const creatorEmails = [
+    ...new Set(okRecords.map((r) => r.creatorEmail).filter((e): e is string => Boolean(e))),
+  ];
+  const creators = await resolveCreators(creatorEmails);
+  for (const record of okRecords) {
+    if (!record.creatorEmail) continue;
+    const attribution = creators.get(record.creatorEmail);
+    if (attribution) record.attribution = attribution;
+    else record.creatorNotFound = true;
   }
 
-  await Promise.all(
-    [...okByBrand.entries()].map(async ([brand, brandRecords]) => {
-      const emails = [...new Set(brandRecords.map((r) => r.data!.email))];
-      const phones = [...new Set(brandRecords.map((r) => r.data!.phone))];
-
-      const existing = await LeadModel.find(
-        {
-          "source.brand": brand,
-          $or: [{ email: { $in: emails } }, { phone: { $in: phones } }],
-        },
-        { email: 1, phone: 1 },
-      ).lean();
-      const existingEmails = new Set(existing.map((l) => l.email));
-      const existingPhones = new Set(existing.map((l) => l.phone));
-
-      const seenEmails = new Set<string>();
-      const seenPhones = new Set<string>();
-      for (const record of brandRecords) {
-        const { email, phone } = record.data!;
-        if (
-          existingEmails.has(email) ||
-          existingPhones.has(phone) ||
-          seenEmails.has(email) ||
-          seenPhones.has(phone)
-        ) {
-          record.outcome = "duplicate";
-          continue;
+  // Pass 4 (preview only): repeats are imported like repeat enquiries, this only informs.
+  if (options.dryRun) {
+    const okByBrand = new Map<Brand, RowRecord[]>();
+    for (const record of okRecords) {
+      if (!okByBrand.has(record.data!.brand)) okByBrand.set(record.data!.brand, []);
+      okByBrand.get(record.data!.brand)!.push(record);
+    }
+    await Promise.all(
+      [...okByBrand.entries()].map(async ([brand, brandRecords]) => {
+        const emails = [...new Set(brandRecords.map((r) => r.data!.email))];
+        const phones = [...new Set(brandRecords.map((r) => r.data!.phone))];
+        const existing = await LeadModel.find(
+          { "source.brand": brand, $or: [{ email: { $in: emails } }, { phone: { $in: phones } }] },
+          { email: 1, phone: 1 },
+        ).lean();
+        const existingEmails = new Set(existing.map((l) => l.email));
+        const existingPhones = new Set(existing.map((l) => l.phone));
+        for (const record of brandRecords) {
+          const { email, phone } = record.data!;
+          if (existingEmails.has(email) || existingPhones.has(phone)) record.existing = true;
         }
-        seenEmails.add(email);
-        seenPhones.add(phone);
-      }
-    }),
-  );
+      }),
+    );
+  }
 
-  // Insert, unless this is a dry run.
   let created = 0;
   if (!options.dryRun) {
-    const toInsert = records.filter((r) => r.outcome === "ok" && r.data);
+    let toInsert = okRecords;
+    if (options.jobId && toInsert.length > 0) {
+      // A resumed job re-runs its last chunk; rows that already went in are not inserted twice.
+      const done = await LeadModel.find(
+        {
+          "source.importJobId": options.jobId,
+          "source.importRow": { $gte: toInsert[0].row, $lte: toInsert[toInsert.length - 1].row },
+        },
+        { "source.importRow": 1 },
+      ).lean();
+      const doneRows = new Set(done.map((l) => l.source?.importRow));
+      created += doneRows.size;
+      toInsert = toInsert.filter((r) => !doneRows.has(r.row));
+    }
+
     for (let i = 0; i < toInsert.length; i += INSERT_CHUNK_SIZE) {
       const chunk = toInsert.slice(i, i + INSERT_CHUNK_SIZE);
       const docs = chunk.map((r) => {
@@ -414,8 +503,10 @@ export const importLeads = async (
             brand: d.brand,
             fileName: options.fileName,
             importedBy: options.importedBy,
+            ...(options.jobId ? { importJobId: options.jobId, importRow: r.row } : {}),
             ...(d.program ? { program: d.program } : {}),
           },
+          ...(r.attribution ?? {}),
           name: d.name,
           email: d.email,
           phone: d.phone,
@@ -429,8 +520,7 @@ export const importLeads = async (
         const inserted = await LeadModel.insertMany(docs, { ordered: false });
         created += inserted.length;
       } catch (error) {
-        // ordered:false keeps going past a bad doc; salvage what went in and
-        // flag only the ones that actually failed, rather than the whole chunk.
+        // ordered:false keeps going past a bad doc; flag only the ones that failed.
         const bulkError = error as {
           insertedDocs?: unknown[];
           writeErrors?: { index: number; errmsg?: string }[];
@@ -451,10 +541,16 @@ export const importLeads = async (
     row: r.row,
     outcome: r.outcome,
     ...(r.error ? { error: r.error } : {}),
+    ...(r.outcome === "ok" && r.creatorNotFound ? { creatorNotFound: true } : {}),
+    ...(r.outcome === "ok" && r.existing ? { existing: true } : {}),
   }));
 
-  const summary: ImportSummary = { ok: 0, duplicate: 0, error: 0 };
-  for (const r of results) summary[r.outcome] += 1;
+  const summary: ImportSummary = { ok: 0, error: 0, existing: 0, creatorNotFound: 0 };
+  for (const r of results) {
+    summary[r.outcome] += 1;
+    if (r.existing) summary.existing += 1;
+    if (r.creatorNotFound) summary.creatorNotFound += 1;
+  }
 
   return { results, summary, created };
 };

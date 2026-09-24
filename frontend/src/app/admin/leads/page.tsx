@@ -7,7 +7,6 @@ import {
   Loader2,
   Search,
   Trash2,
-  Upload,
   UserCheck,
   UserPlus,
 } from "lucide-react";
@@ -23,10 +22,8 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { InfiniteScrollSelect } from "@/components/ui/dropdown/InfiniteScrollSelect";
 import useCrm from "@/hooks/useCrm";
-import { canAccessPageAsRole } from "@/config/adminPermissions";
 import LeadDetailsModal from "./LeadDetailsModal";
 import AssignLeadsModal from "./AssignLeadsModal";
-import ImportLeadsModal from "./ImportLeadsModal";
 import LeadContextCell from "./LeadContextCell";
 import BrandMark from "@/components/admin/BrandMark";
 import { BRANDS, BRAND_LABEL } from "@/constants/brands";
@@ -57,11 +54,6 @@ export default function LeadsPage() {
   const { user } = useAuth();
   const { fetchAssignees } = useCrm();
   const isSuperAdmin = user?.userType === "super-admin";
-  const canImport = canAccessPageAsRole(
-    user?.userType,
-    user?.permissions ?? [],
-    "leads.import",
-  );
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -84,7 +76,6 @@ export default function LeadsPage() {
   const [assigning, setAssigning] = useState(false);
   const [openLeadId, setOpenLeadId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -354,16 +345,6 @@ export default function LeadsPage() {
           <UserCheck className="mr-2 size-4" />
           Assign
         </OrangeButton>
-        {canImport ? (
-          <WhiteButton
-            type="button"
-            glow={false}
-            onClick={() => setImportOpen(true)}
-          >
-            <Upload className="mr-2 size-4" />
-            Import leads
-          </WhiteButton>
-        ) : null}
         {selected.length > 0 ? (
           <button
             type="button"
@@ -598,14 +579,6 @@ export default function LeadsPage() {
         />
       ) : null}
 
-      {importOpen ? (
-        <ImportLeadsModal
-          onClose={(imported) => {
-            setImportOpen(false);
-            if (imported) void load();
-          }}
-        />
-      ) : null}
     </div>
   );
 }

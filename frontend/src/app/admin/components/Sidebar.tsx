@@ -228,6 +228,10 @@ const AdminSidebar = ({
           href: "/admin/leads",
         },
         {
+          label: "Lead imports",
+          href: "/admin/leads/imports",
+        },
+        {
           label: "My leads",
           href: "/admin/crm/my-leads",
         },

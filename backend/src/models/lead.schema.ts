@@ -73,6 +73,9 @@ const leadSourceSchema = new mongoose.Schema(
     fileName: { type: String, required: false },
     /** Set for `kind: "import"`: the admin who ran the import. */
     importedBy: { type: actorSnapshotSchema, required: false },
+    importJobId: { type: mongoose.Schema.Types.ObjectId, ref: "LeadImportJob", required: false },
+    /** 1-based row in the job's file; lets a resumed job skip rows it already inserted. */
+    importRow: { type: Number, required: false },
   },
   { _id: false }
 );
@@ -263,10 +266,13 @@ leadSchema.index({ convertedAt: -1, "convertedBy.userId": 1 });
 leadSchema.index({ status: 1, createdAt: -1 });
 leadSchema.index({ email: 1 });
 leadSchema.index({ phone: 1 });
-// The import duplicate check is one batched query per brand; without these,
-// each falls back to the bare email/phone index and filters brand in memory.
+// The import preview's "already a lead" check is one batched query per brand.
 leadSchema.index({ "source.brand": 1, email: 1 });
 leadSchema.index({ "source.brand": 1, phone: 1 });
+leadSchema.index(
+  { "source.importJobId": 1, "source.importRow": 1 },
+  { partialFilterExpression: { "source.importJobId": { $type: "objectId" } } },
+);
 // Lets the staleness sweep find unresolved rows without a collection scan.
 leadSchema.index({ emailCheckedAt: 1 });
 

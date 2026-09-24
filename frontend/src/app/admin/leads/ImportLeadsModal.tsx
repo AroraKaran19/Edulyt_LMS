@@ -22,13 +22,13 @@ import {
   LEAD_IMPORT_COLUMNS,
   LEAD_IMPORT_MAX_ROWS,
   type LeadImportOutcome,
-  type LeadImportResponse,
+  type LeadImportPreview,
   type LeadImportRow,
   type LeadImportRowResult,
 } from "@/types";
 
 type Step = "upload" | "preview" | "done";
-type FilterTab = "all" | "error" | "duplicate";
+type FilterTab = "all" | "error" | "flagged";
 type ResultRow = LeadImportRowResult & { name: string; email: string };
 
 const PREVIEW_PAGE_SIZE = 200;
@@ -36,20 +36,18 @@ const LEADS_SHEET_NAME = "Leads";
 
 const OUTCOME_STYLE: Record<LeadImportOutcome, string> = {
   ok: "bg-green-50 text-green-700 ring-green-600/20",
-  duplicate: "bg-amber-50 text-amber-700 ring-amber-600/20",
   error: "bg-red-50 text-red-700 ring-red-600/20",
 };
 
 const OUTCOME_LABEL: Record<LeadImportOutcome, string> = {
   ok: "Ready",
-  duplicate: "Duplicate",
   error: "Error",
 };
 
 const TAB_LABEL: Record<FilterTab, string> = {
   all: "All",
   error: "Errors",
-  duplicate: "Duplicates",
+  flagged: "Creator not found",
 };
 
 /** Reads the server-supplied filename, falling back to a sensible default. */
@@ -122,8 +120,8 @@ const apiErrorMessage = (err: unknown): string | undefined =>
     ?.response?.data?.error?.message;
 
 interface Props {
-  /** `imported` is true only once the final (non-dry-run) call has created leads. */
-  onClose: (imported: boolean) => void;
+  /** `queued` is true once an import job has been created. */
+  onClose: (queued: boolean) => void;
 }
 
 export default function ImportLeadsModal({ onClose }: Props) {
@@ -134,11 +132,11 @@ export default function ImportLeadsModal({ onClose }: Props) {
   const [dragActive, setDragActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [templateBusy, setTemplateBusy] = useState(false);
-  const [preview, setPreview] = useState<LeadImportResponse | null>(null);
+  const [preview, setPreview] = useState<LeadImportPreview | null>(null);
   const [tab, setTab] = useState<FilterTab>("all");
   const [visibleCount, setVisibleCount] = useState(PREVIEW_PAGE_SIZE);
   const [importing, setImporting] = useState(false);
-  const [created, setCreated] = useState(0);
+  const [queuedCount, setQueuedCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const dismiss = () => onClose(step === "done");
@@ -180,12 +178,11 @@ export default function ImportLeadsModal({ onClose }: Props) {
         return;
       }
 
-      const res = await apiClient.post(ENDPOINTS.admin.leadsImport, {
+      const res = await apiClient.post(ENDPOINTS.admin.leadsImportPreview, {
         fileName: file.name,
-        dryRun: true,
         rows: parsedRows,
       });
-      const data: LeadImportResponse = res.data?.data;
+      const data: LeadImportPreview = res.data?.data;
       setFileName(file.name);
       setRows(parsedRows);
       setPreview(data);
@@ -245,7 +242,9 @@ export default function ImportLeadsModal({ onClose }: Props) {
     () =>
       tab === "all"
         ? combinedResults
-        : combinedResults.filter((r) => r.outcome === tab),
+        : tab === "flagged"
+          ? combinedResults.filter((r) => r.creatorNotFound)
+          : combinedResults.filter((r) => r.outcome === tab),
     [combinedResults, tab],
   );
   const visibleResults = filteredResults.slice(0, visibleCount);
@@ -273,16 +272,11 @@ export default function ImportLeadsModal({ onClose }: Props) {
     if (!preview || preview.summary.ok === 0) return;
     setImporting(true);
     try {
-      const res = await apiClient.post(ENDPOINTS.admin.leadsImport, {
-        fileName,
-        dryRun: false,
-        rows,
-      });
-      const data: LeadImportResponse = res.data?.data;
-      setCreated(data.created);
+      await apiClient.post(ENDPOINTS.admin.leadsImportJobs, { fileName, rows });
+      setQueuedCount(preview.summary.ok);
       setStep("done");
     } catch (err: unknown) {
-      toast.error(apiErrorMessage(err) || "Could not import these leads");
+      toast.error(apiErrorMessage(err) || "Could not queue this import");
     } finally {
       setImporting(false);
     }
@@ -293,7 +287,7 @@ export default function ImportLeadsModal({ onClose }: Props) {
       ? "Import leads from Excel"
       : step === "preview"
         ? "Review before import"
-        : "Import complete";
+        : "Import queued";
 
   return (
     <Modal
@@ -323,6 +317,10 @@ export default function ImportLeadsModal({ onClose }: Props) {
             <li>programKind: course or internship</li>
             <li>status and subStatus: leave blank for the default stage</li>
             <li>extras: a JSON object, shown in the lead&apos;s details</li>
+            <li>
+              creatorEmail: the marketer, sales person or CA who generated the lead; they
+              get the credit
+            </li>
           </ul>
 
           <div
@@ -372,8 +370,10 @@ export default function ImportLeadsModal({ onClose }: Props) {
         <div>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="inline-flex rounded-full bg-gray-50 px-3 py-1.5 text-sm font-medium text-gray-700 ring-1 ring-inset ring-gray-200">
-              {preview.summary.ok} ready · {preview.summary.duplicate} duplicates ·{" "}
-              {preview.summary.error} with errors
+              {preview.summary.ok} ready · {preview.summary.error} with errors
+              {preview.summary.creatorNotFound > 0
+                ? ` · ${preview.summary.creatorNotFound} creator not found`
+                : ""}
             </span>
             {preview.summary.error > 0 ? (
               <button
@@ -387,8 +387,15 @@ export default function ImportLeadsModal({ onClose }: Props) {
             ) : null}
           </div>
 
+          {preview.summary.existing > 0 ? (
+            <p className="mt-2 text-xs text-gray-500">
+              {preview.summary.existing} of these already exist as leads. They are still
+              imported, and the leads list marks them as repeats.
+            </p>
+          ) : null}
+
           <div className="mt-3 flex gap-1.5">
-            {(["all", "error", "duplicate"] as FilterTab[]).map((t) => (
+            {(["all", "error", "flagged"] as FilterTab[]).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -413,7 +420,7 @@ export default function ImportLeadsModal({ onClose }: Props) {
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Email</th>
                   <th className="px-3 py-2">Outcome</th>
-                  <th className="px-3 py-2">Error</th>
+                  <th className="px-3 py-2">Notes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -427,8 +434,8 @@ export default function ImportLeadsModal({ onClose }: Props) {
                   visibleResults.map((r) => (
                     <tr key={r.row}>
                       <td className="px-3 py-2 text-gray-500">{r.row}</td>
-                      <td className="px-3 py-2 text-gray-900">{r.name || "—"}</td>
-                      <td className="px-3 py-2 text-gray-600">{r.email || "—"}</td>
+                      <td className="px-3 py-2 text-gray-900">{r.name}</td>
+                      <td className="px-3 py-2 text-gray-600">{r.email}</td>
                       <td className="px-3 py-2">
                         <span
                           className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${OUTCOME_STYLE[r.outcome]}`}
@@ -436,7 +443,12 @@ export default function ImportLeadsModal({ onClose }: Props) {
                           {OUTCOME_LABEL[r.outcome]}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-gray-500">{r.error ?? ""}</td>
+                      <td className="px-3 py-2 text-gray-500">
+                        {r.error ??
+                          [r.creatorNotFound && "Creator not found", r.existing && "Already a lead"]
+                            .filter(Boolean)
+                            .join(" · ")}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -464,7 +476,7 @@ export default function ImportLeadsModal({ onClose }: Props) {
               disabled={importing || preview.summary.ok === 0}
               onClick={() => void handleImport()}
             >
-              {importing ? "Importing…" : `Import ${preview.summary.ok} leads`}
+              {importing ? "Queuing…" : `Import ${preview.summary.ok} leads`}
             </OrangeButton>
           </div>
         </div>
@@ -473,9 +485,12 @@ export default function ImportLeadsModal({ onClose }: Props) {
       {step === "done" ? (
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <CheckCircle2 className="size-10 text-green-500" />
-          <p className="text-lg font-bold text-gray-900">{created} leads imported</p>
-          <p className="text-sm text-gray-500">
-            The leads list will refresh once you close this.
+          <p className="text-lg font-bold text-gray-900">
+            {queuedCount.toLocaleString()} leads queued
+          </p>
+          <p className="max-w-sm text-sm text-gray-500">
+            They are added in the background, usually within a minute. You can close this or
+            refresh the page; progress shows in the import history.
           </p>
           <OrangeButton type="button" glow={false} onClick={dismiss} className="mt-1">
             Done

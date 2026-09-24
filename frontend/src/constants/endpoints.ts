@@ -624,8 +624,9 @@ export const ENDPOINTS = {
       enrollments: "/admin/ca-vouchers/enrollments",
       revoke: (id: string) => `/admin/ca-vouchers/enrollments/${encodeURIComponent(id)}/revoke`,
     },
-    /** POST body `{ fileName, dryRun, rows }` — bulk lead import from a parsed Excel upload (permission `leads.import`). */
-    leadsImport: "/admin/leads/import",
+    leadsImportPreview: "/admin/leads/import/preview",
+    leadsImportJobs: "/admin/leads/import/jobs",
+    leadsImportJob: (id: string) => `/admin/leads/import/jobs/${encodeURIComponent(id)}`,
     /** GET, `responseType: "blob"` — the .xlsx import template with dropdowns (permission `leads.import`). */
     leadsImportTemplate: "/admin/leads/import/template",
   },

@@ -102,8 +102,14 @@ const SidebarMenuItem = ({
       </Link>
       {isOpen && menuItem.submenu && !isCollapsed && (
         <div className="flex admin-sidebar-menu-item-submenu w-full flex-col gap-6 bg-white p-3 rounded-lg shadow-md animate-fade-from-top duration-300">
-          {menuItem.submenu.map((submenu, index) => {
-            const isSubmenuActive = matchesHref(submenu.href, pathname);
+          {menuItem.submenu.map((submenu, index, all) => {
+            // A nested sibling (/admin/leads/imports) outranks its parent (/admin/leads).
+            const isSubmenuActive =
+              matchesHref(submenu.href, pathname) &&
+              !all.some(
+                (other) =>
+                  other.href.length > submenu.href.length && matchesHref(other.href, pathname),
+              );
             return (
               <Link
                 key={index}
