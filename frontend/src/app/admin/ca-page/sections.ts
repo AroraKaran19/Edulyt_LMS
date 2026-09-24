@@ -34,6 +34,12 @@ export const CA_SECTIONS: ReadonlyArray<{
       "Stipend, incentives, bonus, kit, LMS and PPO figures used across the page.",
   },
   {
+    slug: "statement",
+    key: "statement",
+    title: "Statement",
+    description: "The rows of the Campus Ambassador statement table.",
+  },
+  {
     slug: "hero",
     key: "hero",
     title: "Hero",

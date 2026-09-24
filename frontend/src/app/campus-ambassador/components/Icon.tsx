@@ -21,6 +21,11 @@ export type IconName =
   | "rupee"
   | "trend";
 
+export const ICON_NAMES: readonly IconName[] = [
+  "file", "doc", "award", "gift", "box", "key", "book", "case",
+  "lock", "check", "plus", "down", "left", "play", "chat", "rupee", "trend",
+];
+
 const paths = (name: IconName): ReactNode => {
   switch (name) {
     case "file":

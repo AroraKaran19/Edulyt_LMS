@@ -14,6 +14,7 @@ export const CA_PAGE_ADMIN_SECTION_KEYS = [
   "form",
   "documents",
   "money",
+  "statement",
   "hero",
   "kit",
   "videos",

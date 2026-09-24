@@ -15,6 +15,45 @@ export interface CaFieldConfig {
   help: string;
 }
 
+/** Mirrors `IconName` in campus-ambassador/components/Icon.tsx. */
+export type CaStatementIcon =
+  | "file"
+  | "doc"
+  | "award"
+  | "gift"
+  | "box"
+  | "key"
+  | "book"
+  | "case"
+  | "lock"
+  | "check"
+  | "plus"
+  | "down"
+  | "left"
+  | "play"
+  | "chat"
+  | "rupee"
+  | "trend";
+
+export interface CaStatementGet {
+  icon: CaStatementIcon;
+  title: string;
+  note: string;
+}
+
+export interface CaStatementRow {
+  when: string;
+  what: string;
+  gets: CaStatementGet[];
+  credit: { amount: string; prefix: string } | null;
+}
+
+export interface CaStatement {
+  rows: CaStatementRow[];
+  footerLabel: string;
+  footerAmount: string;
+}
+
 export interface CaMoney {
   stipend: number | null;
   incentiveCap: number | null;
@@ -59,6 +98,7 @@ export interface CaPageSettings {
     whatsappLink: string;
   };
   money: CaMoney;
+  statement: CaStatement;
   hero: { headline: string; lede: string; jdUrl: string };
   kit: { photoUrl: string; items: string[] };
   videos: { items: CaVideo[] };

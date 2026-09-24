@@ -17,6 +17,7 @@ export const CA_PAGE_SECTION_KEYS = [
   "form",
   "documents",
   "money",
+  "statement",
   "hero",
   "kit",
   "videos",
@@ -44,11 +45,28 @@ export interface CaVideo { url: string; role: string; college: string; duration:
 export interface CaFaq { question: string; answer: string }
 export interface CaSamples { offerLetter: string; lor: string; internshipCertificate: string; trainingCertificate: string }
 
+/** Mirrors `IconName` in frontend/src/app/campus-ambassador/components/Icon.tsx. */
+export const STATEMENT_ICONS = [
+  "file", "doc", "award", "gift", "box", "key", "book", "case",
+  "lock", "check", "plus", "down", "left", "play", "chat", "rupee", "trend",
+] as const;
+export type StatementIcon = (typeof STATEMENT_ICONS)[number];
+
+export interface CaStatementGet { icon: StatementIcon; title: string; note: string }
+export interface CaStatementRow {
+  when: string;
+  what: string;
+  gets: CaStatementGet[];
+  credit: { amount: string; prefix: string } | null;
+}
+export interface CaStatement { rows: CaStatementRow[]; footerLabel: string; footerAmount: string }
+
 export interface CaPageSettings {
   enrollment: CaEnrollment;
   form: { fields: CaFieldConfigMap; languages: string[]; whatsappLink: string };
   documents: { designations: Record<AmbassadorKind, string> };
   money: CaMoney;
+  statement: CaStatement;
   hero: { headline: string; lede: string; jdUrl: string };
   kit: { photoUrl: string; items: string[] };
   videos: { items: CaVideo[] };
@@ -91,6 +109,28 @@ const readMoney = (raw: any): CaMoney =>
     MONEY_KEYS.map((k) => [k, typeof raw?.[k] === "number" ? raw[k] : null]),
   ) as unknown as CaMoney;
 
+const readStatement = (raw: any): CaStatement => ({
+  rows: Array.isArray(raw?.rows)
+    ? raw.rows.map((r: any) => ({
+        when: String(r?.when ?? ""),
+        what: String(r?.what ?? ""),
+        gets: Array.isArray(r?.gets)
+          ? r.gets.map((g: any) => ({
+              icon: String(g?.icon ?? "") as StatementIcon,
+              title: String(g?.title ?? ""),
+              note: String(g?.note ?? ""),
+            }))
+          : [],
+        credit:
+          r?.credit && typeof r.credit === "object"
+            ? { amount: String(r.credit.amount ?? ""), prefix: String(r.credit.prefix ?? "") }
+            : null,
+      }))
+    : [],
+  footerLabel: String(raw?.footerLabel ?? ""),
+  footerAmount: String(raw?.footerAmount ?? ""),
+});
+
 const toSettings = (doc: Record<string, any> | null): CaPageSettings => {
   const rawDurations: unknown[] = Array.isArray(doc?.enrollment?.durations) ? doc.enrollment.durations : [];
   const durations = [...new Set(rawDurations.filter(isValidDurationMonths))].sort((a: number, b: number) => a - b);
@@ -118,6 +158,7 @@ const toSettings = (doc: Record<string, any> | null): CaPageSettings => {
       },
     },
     money: readMoney(doc?.money),
+    statement: readStatement(doc?.statement),
     hero: {
       headline: String(doc?.hero?.headline ?? ""),
       lede: String(doc?.hero?.lede ?? ""),
@@ -236,6 +277,26 @@ const sanitizeSection = (
   if (section === "samples") {
     return Object.fromEntries(SAMPLE_KEYS.map((k) => [k, link(value[k], "Sample image")]));
   }
+  if (section === "statement") {
+    const rawRows = Array.isArray(value.rows) ? value.rows : [];
+    const rows = rawRows
+      .map((r: any) => {
+        const gets = (Array.isArray(r?.gets) ? r.gets : [])
+          .map((g: any) => ({
+            icon: String(g?.icon ?? ""),
+            title: str(g?.title, 80),
+            note: str(g?.note, 120),
+          }))
+          .filter((g) => g.title && (STATEMENT_ICONS as readonly string[]).includes(g.icon))
+          .slice(0, 4);
+        const creditAmount = str(r?.credit?.amount, 40);
+        const credit = creditAmount ? { amount: creditAmount, prefix: str(r?.credit?.prefix, 20) } : null;
+        return { when: str(r?.when, 40), what: str(r?.what, 300), gets, credit };
+      })
+      .filter((r) => r.when && r.what)
+      .slice(0, 12);
+    return { rows, footerLabel: str(value.footerLabel, 40), footerAmount: str(value.footerAmount, 40) };
+  }
 
   const d = (
     value.designations && typeof value.designations === "object" ? value.designations : {}
@@ -281,6 +342,7 @@ export const serializeCaPageSettings = (s: CaPageSettings) => ({
   form: s.form,
   documents: s.documents,
   money: s.money,
+  statement: s.statement,
   hero: s.hero,
   kit: s.kit,
   videos: s.videos,

@@ -2,12 +2,24 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type { CaPageSettings } from "@/types/ca-page-settings";
 import styles from "../ca.module.css";
-import { DEFAULT_KIT_ITEMS, inr, money, statementRows } from "../content";
+import {
+  DEFAULT_KIT_ITEMS,
+  DEFAULT_STATEMENT_FOOTER_AMOUNT,
+  DEFAULT_STATEMENT_FOOTER_LABEL,
+  DEFAULT_STATEMENT_ROWS,
+  inr,
+  money,
+  resolveStatementText,
+} from "../content";
 import Icon from "./Icon";
 
 export default function StatementSection({ settings }: { settings: CaPageSettings }) {
   const m = money(settings);
-  const rows = statementRows(m, settings.kit.items.length ? settings.kit.items : DEFAULT_KIT_ITEMS);
+  const kitItems = settings.kit.items.length ? settings.kit.items : DEFAULT_KIT_ITEMS;
+  const rows = settings.statement.rows.length ? settings.statement.rows : DEFAULT_STATEMENT_ROWS;
+  const footerLabel = settings.statement.footerLabel || DEFAULT_STATEMENT_FOOTER_LABEL;
+  const footerAmount = settings.statement.footerAmount || DEFAULT_STATEMENT_FOOTER_AMOUNT;
+  const t = (text: string) => resolveStatementText(text, m, kitItems);
 
   return (
     <section id="statement" className={styles.statement} aria-labelledby="ca-statement-title">
@@ -41,36 +53,30 @@ export default function StatementSection({ settings }: { settings: CaPageSetting
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.when}>
+              {rows.map((row, i) => (
+                <tr key={`${row.when}-${i}`}>
                   <td className={styles.cWhen}>
-                    <span className={styles.when}>{row.when}</span>
+                    <span className={styles.when}>{t(row.when)}</span>
                   </td>
-                  <td className={styles.cWhat}>{row.what}</td>
+                  <td className={styles.cWhat}>{t(row.what)}</td>
                   <td className={styles.cGet}>
                     <ul className={styles.gets}>
-                      {row.gets.map((get) =>
-                        get.kind === "quiet" ? (
-                          <li key={get.title} className={cn(styles.get, styles.getQuiet)}>
-                            {get.title}
-                          </li>
-                        ) : (
-                          <li key={get.title} className={styles.get}>
-                            <Icon name={get.icon} />
-                            <span>
-                              {get.title}
-                              {get.note && <small>{get.note}</small>}
-                            </span>
-                          </li>
-                        ),
-                      )}
+                      {row.gets.map((get, gi) => (
+                        <li key={`${get.title}-${gi}`} className={styles.get}>
+                          <Icon name={get.icon} />
+                          <span>
+                            {t(get.title)}
+                            {get.note && <small>{t(get.note)}</small>}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   </td>
                   <td className={styles.cCredit}>
                     {row.credit && (
                       <span className={cn(styles.num, styles.credit)}>
-                        {row.credit.prefix && <small>{row.credit.prefix}</small>}
-                        {row.credit.amount}
+                        {row.credit.prefix && <small>{t(row.credit.prefix)}</small>}
+                        {t(row.credit.amount)}
                       </span>
                     )}
                   </td>
@@ -80,14 +86,14 @@ export default function StatementSection({ settings }: { settings: CaPageSetting
             <tfoot>
               <tr>
                 <td colSpan={3}>
-                  <span className={styles.footLabel}>A top month</span>
+                  <span className={styles.footLabel}>{t(footerLabel)}</span>
                   <br />
                   <span className={styles.footSub}>
                     Your {inr(m.stipend)} stipend plus the full {inr(m.incentiveCap)} incentive
                   </span>
                 </td>
                 <td className={styles.footAmount}>
-                  <span className={styles.num}>{inr(m.stipend + m.incentiveCap)}</span>
+                  <span className={styles.num}>{t(footerAmount)}</span>
                 </td>
               </tr>
             </tfoot>

@@ -32,6 +32,7 @@ export const EMPTY_CA_SETTINGS: CaPageSettings = {
     lmsValue: null,
     ppoPackageLpa: null,
   },
+  statement: { rows: [], footerLabel: "", footerAmount: "" },
   hero: { headline: "", lede: "", jdUrl: "" },
   kit: { photoUrl: "", items: [] },
   videos: { items: [] },

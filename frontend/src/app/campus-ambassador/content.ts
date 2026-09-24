@@ -1,4 +1,4 @@
-import type { CaFaq, CaMoney, CaPageSettings, CaSamples } from "@/types/ca-page-settings";
+import type { CaFaq, CaMoney, CaPageSettings, CaSamples, CaStatementRow } from "@/types/ca-page-settings";
 
 export const DEFAULT_MONEY: Required<{ [K in keyof CaMoney]: number }> = {
   stipend: 5000,
@@ -83,69 +83,108 @@ export const defaultFaqs = (m: ReturnType<typeof money>): CaFaq[] => [
   },
 ];
 
-export type StatementGet =
-  | { kind: "item"; icon: "doc" | "gift" | "key" | "rupee" | "box" | "trend" | "award" | "book" | "case"; title: string; note?: string }
-  | { kind: "quiet"; title: string };
+export const DEFAULT_STATEMENT_FOOTER_LABEL = "A top month";
+export const DEFAULT_STATEMENT_FOOTER_AMOUNT = "{topMonth}";
 
-export interface StatementRow {
-  when: string;
-  what: string;
-  gets: StatementGet[];
-  credit?: { amount: string; prefix?: string };
-}
-
-export const statementRows = (m: ReturnType<typeof money>, kitItems: string[]): StatementRow[] => [
+/** Shipped statement rows; text holds placeholders resolved at render time. */
+export const DEFAULT_STATEMENT_ROWS: CaStatementRow[] = [
   {
     when: "Today",
     what: "Fill in your details and verify your mobile number.",
-    gets: [{ kind: "quiet", title: "Your application goes to a counsellor" }],
+    gets: [{ icon: "check", title: "Your application goes to a counsellor", note: "" }],
+    credit: null,
   },
   {
     when: "Within 24 hours",
     what: "Your counsellor calls you for onboarding and a formal discussion about the role.",
-    gets: [{ kind: "item", icon: "doc", title: "Offer letter", note: "emailed the moment you're approved" }],
+    gets: [{ icon: "doc", title: "Offer letter", note: "emailed the moment you're approved" }],
+    credit: null,
   },
   {
     when: "After you accept",
     what: "Attend leadership calls to learn how the work is done. Your tasks start showing up in your dashboard.",
     gets: [
-      { kind: "item", icon: "gift", title: "Joining bonus", note: `worth ${inr(m.joiningBonus)}` },
-      { kind: "item", icon: "key", title: "Access to the Airkrit work portal" },
+      { icon: "gift", title: "Joining bonus", note: "worth {joiningBonus}" },
+      { icon: "key", title: "Access to the Airkrit work portal", note: "" },
     ],
+    credit: null,
   },
   {
     when: "Month 1",
     what: "Promote Airkrit on campus and convert 2 sales, or 4 leads that turn into sales.",
     gets: [
-      { kind: "item", icon: "rupee", title: "Fixed stipend", note: "paid monthly, no deductions" },
-      { kind: "item", icon: "box", title: `Joining kit worth ${inr(m.kitValue)}`, note: kitList(kitItems) },
+      { icon: "rupee", title: "Fixed stipend", note: "paid monthly, no deductions" },
+      { icon: "box", title: "Joining kit worth {kitValue}", note: "{kitItems}" },
     ],
-    credit: { amount: `+ ${inr(m.stipend)}` },
+    credit: { amount: "+ {stipend}", prefix: "" },
   },
   {
     when: "Every month",
     what: "Keep bringing in sales. Your incentive grows with your performance.",
-    gets: [{ kind: "item", icon: "trend", title: "Performance incentive" }],
-    credit: { amount: `+ ${inr(m.incentiveCap)}`, prefix: "up to" },
+    gets: [{ icon: "trend", title: "Performance incentive", note: "" }],
+    credit: { amount: "+ {incentiveCap}", prefix: "up to" },
   },
   {
     when: "When you finish",
     what: "Complete your tenure as a Campus Ambassador.",
     gets: [
-      { kind: "item", icon: "doc", title: "Letter of recommendation" },
-      { kind: "item", icon: "award", title: "Internship certificate" },
-      { kind: "item", icon: "award", title: "Training certificate" },
+      { icon: "doc", title: "Letter of recommendation", note: "" },
+      { icon: "award", title: "Internship certificate", note: "" },
+      { icon: "award", title: "Training certificate", note: "" },
     ],
+    credit: null,
   },
   {
     when: "Top performers",
     what: "Stand out across your tenure.",
     gets: [
-      { kind: "item", icon: "book", title: "1 year of LMS access", note: `worth ${inrShort(m.lmsValue)}` },
-      { kind: "item", icon: "case", title: "A shot at a full-time offer", note: `${m.ppoPackageLpa} LPA placement` },
+      { icon: "book", title: "1 year of LMS access", note: "worth {lmsValue}" },
+      { icon: "case", title: "A shot at a full-time offer", note: "{ppoPackageLpa} LPA placement" },
     ],
+    credit: null,
   },
 ];
+
+const STATEMENT_PLACEHOLDERS = new Set([
+  "stipend",
+  "incentiveCap",
+  "joiningBonus",
+  "kitValue",
+  "lmsValue",
+  "ppoPackageLpa",
+  "topMonth",
+  "kitItems",
+]);
+
+/** Fills `{stipend}`, `{kitItems}` and friends; an unknown `{token}` renders as-is. */
+export const resolveStatementText = (
+  text: string,
+  m: ReturnType<typeof money>,
+  kitItems: string[],
+): string =>
+  text.replace(/\{(\w+)\}/g, (match, key: string) => {
+    if (!STATEMENT_PLACEHOLDERS.has(key)) return match;
+    switch (key) {
+      case "stipend":
+        return inr(m.stipend);
+      case "incentiveCap":
+        return inr(m.incentiveCap);
+      case "joiningBonus":
+        return inr(m.joiningBonus);
+      case "kitValue":
+        return inr(m.kitValue);
+      case "lmsValue":
+        return inrShort(m.lmsValue);
+      case "ppoPackageLpa":
+        return String(m.ppoPackageLpa);
+      case "topMonth":
+        return inr(m.stipend + m.incentiveCap);
+      case "kitItems":
+        return kitList(kitItems);
+      default:
+        return match;
+    }
+  });
 
 export const SUPPORT_PHONE = {
   display: "+91-8929252575",

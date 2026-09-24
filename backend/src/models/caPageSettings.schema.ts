@@ -84,6 +84,42 @@ const samplesSchema = new Schema(
   { _id: false },
 );
 
+const statementGetSchema = new Schema(
+  {
+    icon: { type: String, required: true },
+    title: { type: String, required: true },
+    note: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
+const statementCreditSchema = new Schema(
+  {
+    amount: { type: String, required: true },
+    prefix: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
+const statementRowSchema = new Schema(
+  {
+    when: { type: String, required: true },
+    what: { type: String, required: true },
+    gets: { type: [statementGetSchema], default: [] },
+    credit: { type: statementCreditSchema, default: null },
+  },
+  { _id: false },
+);
+
+const statementSchema = new Schema(
+  {
+    rows: { type: [statementRowSchema], default: [] },
+    footerLabel: { type: String, default: "" },
+    footerAmount: { type: String, default: "" },
+  },
+  { _id: false },
+);
+
 const caPageSettingsSchema = new Schema(
   {
     key: { type: String, required: true, unique: true },
@@ -96,6 +132,7 @@ const caPageSettingsSchema = new Schema(
     videos: { type: new Schema({ items: { type: [videoSchema], default: [] } }, { _id: false }), default: () => ({}) },
     faqs: { type: new Schema({ items: { type: [faqSchema], default: [] } }, { _id: false }), default: () => ({}) },
     samples: { type: samplesSchema, default: () => ({}) },
+    statement: { type: statementSchema, default: () => ({}) },
   },
   { timestamps: true, minimize: false },
 );
