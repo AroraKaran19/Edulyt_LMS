@@ -25,6 +25,7 @@ interface InputProps {
   error?: string;
   startAdornment?: React.ReactNode;
   endAdornment?: React.ReactNode;
+  showIndiaFlag?: boolean;
   [key: string]: any; // For other HTML input attributes
 }
 
@@ -48,6 +49,7 @@ const Input = ({
   error,
   startAdornment,
   endAdornment,
+  showIndiaFlag = true,
   ...props
 }: InputProps) => {
   // Calculate character count
@@ -91,7 +93,7 @@ const Input = ({
         </label>
       )}
       <div className="relative flex gap-2 items-center">
-        {type === "tel" && (
+        {type === "tel" && showIndiaFlag && (
           <div className="rounded-md border border-gray-300 bg-primary-500 flex items-center justify-center p-2">
             <IndianFlagIcon className="size-7.5" />
           </div>

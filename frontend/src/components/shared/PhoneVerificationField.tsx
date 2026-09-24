@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import { CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import apiClient from "@/configs/apiConfig";
@@ -31,6 +32,11 @@ import { cn } from "@/lib/utils";
  * actually holds. A parent form should treat `savedPhone` as the only phone
  * number it may submit, and gate its own save on `savedPhone` being present.
  */
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 const RESEND_FALLBACK_SECONDS = 60;
 
@@ -361,6 +367,18 @@ const PhoneVerificationField = ({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
+      {label && (
+        <label
+          htmlFor="phone-verification-number"
+          className={cn(
+            "block text-sm font-medium text-black",
+            plusJakartaSans.className,
+            labelClassName,
+          )}
+        >
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         {/* Valued by ISO, not dial code: +1 is both the US and Canada. */}
         <select
@@ -373,7 +391,7 @@ const PhoneVerificationField = ({
             setPhone(sanitizePhoneInput(e.target.value, phone));
             setFieldError("");
           }}
-          className="h-[46px] w-full shrink-0 rounded-xl border border-gray-300 bg-white px-3 text-sm outline-none focus:border-orange-500 disabled:opacity-60 sm:w-44"
+          className="h-[50px] w-full shrink-0 rounded-xl border border-gray-300 bg-white px-3 text-sm shadow-sm outline-none focus:border-orange-500 disabled:opacity-60 max-sm:text-base sm:w-48"
         >
           {COUNTRY_CODES.map((country) => (
             <option key={country.iso} value={country.iso}>
@@ -384,10 +402,11 @@ const PhoneVerificationField = ({
 
         <div className="min-w-0 flex-1">
           <Input
-            label={label}
-            labelClassName={labelClassName}
+            id="phone-verification-number"
+            className="max-sm:text-base"
             placeholder="Enter your phone number"
             type="tel"
+            showIndiaFlag={false}
             required={required}
             inputMode="tel"
             value={phone}
@@ -457,7 +476,9 @@ const PhoneVerificationField = ({
         <div className="flex flex-col gap-3 rounded-xl border border-orange-200 bg-orange-50/60 p-4">
           <p className="text-sm text-gray-700">
             Enter the {OTP_LENGTH}-digit code sent to{" "}
-            <span className="font-bold">+91 {phone}</span>
+            <span className="font-bold">
+              {dialFor(countryIso)} {phone}
+            </span>
           </p>
 
           <div className="flex gap-2" onPaste={handleDigitPaste}>
