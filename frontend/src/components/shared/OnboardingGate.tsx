@@ -19,6 +19,7 @@ const EXCLUDED_PREFIXES = [
   "/auth-redirect",
   "/payment/status",
   "/enquiry",
+  "/digital-marketing-internship",
 ];
 
 const isExcluded = (pathname: string) =>
