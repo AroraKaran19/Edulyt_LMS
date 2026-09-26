@@ -79,6 +79,14 @@ export function istDateOnlyToUtcIso(dateStr: string | null | undefined): string 
   return istWallClockToUtc(+m[1], +m[2], +m[3], 0, 0, 0, 0).toISOString();
 }
 
+/** Parse a date-only value ("YYYY-MM-DD") as IST 23:59:59.999 → UTC ISO string. */
+export function istEndOfDayToUtcIso(dateStr: string | null | undefined): string | null {
+  if (!dateStr) return null;
+  const m = String(dateStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  return istWallClockToUtc(+m[1], +m[2], +m[3], 23, 59, 59, 999).toISOString();
+}
+
 /** Format an instant in IST for display (default: "20 Jun 2025, 11:00 am"). */
 export function formatIst(
   value: DateInput,

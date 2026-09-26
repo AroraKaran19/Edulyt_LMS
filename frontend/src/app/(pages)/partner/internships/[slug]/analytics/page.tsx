@@ -37,30 +37,62 @@ function studentStatusLabel(s: PartnerInternshipStudentRow): string {
   return "Enrolled";
 }
 
-/** Single badge for the furthest funnel stage the student has reached. */
-function StatusBadges({ student }: { student: PartnerInternshipStudentRow }) {
-  let label = "Enrolled";
-  let className = "bg-gray-100 text-gray-600";
-  if (student.certified) {
-    label = "Certified";
-    className = "bg-emerald-50 text-emerald-700";
-  } else if (student.selected) {
-    label = "Selected";
-    className = "bg-violet-50 text-violet-700";
-  } else if (student.appearedInExam) {
-    label = "Exam Appeared";
-    className = "bg-amber-50 text-amber-700";
-  }
+// Same wording as the stat cards above the table.
+const CHECKPOINTS = [
+  "Enrolled",
+  "Appeared in Exam",
+  "Selected / Offer Letter",
+  "Cleared with Certificate",
+] as const;
+
+/** Index of the furthest checkpoint reached; earlier ones count as reached too. */
+const checkpointIndex = (s: PartnerInternshipStudentRow): number =>
+  s.certified ? 3 : s.selected ? 2 : s.appearedInExam ? 1 : 0;
+
+function CheckpointDots({ student }: { student: PartnerInternshipStudentRow }) {
+  const reached = checkpointIndex(student);
 
   return (
-    <span
-      className={cn(
-        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-        className,
-      )}
+    <div
+      role="img"
+      aria-label={`Checkpoint ${reached + 1} of ${CHECKPOINTS.length}: ${CHECKPOINTS[reached]}`}
+      className="flex items-center"
     >
-      {label}
-    </span>
+      {CHECKPOINTS.map((name, i) => (
+        <div key={name} className="flex items-center" aria-hidden="true">
+          {i > 0 && (
+            <span
+              className={cn(
+                "h-0.5 w-3",
+                i <= reached ? "bg-[#F77124]" : "bg-gray-200",
+              )}
+            />
+          )}
+          <span className="group relative flex size-4 items-center justify-center">
+            <span
+              className={cn(
+                "size-2.5 rounded-full border-2 transition-transform group-hover:scale-125",
+                i <= reached
+                  ? "border-[#F77124] bg-[#F77124]"
+                  : "border-gray-300 bg-white",
+              )}
+            />
+            <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#1D2939] px-2 py-1 text-[11px] leading-tight font-medium text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+              {name}
+              <span
+                className={cn(
+                  "block text-[10px] font-normal",
+                  i <= reached ? "text-[#FDBA8C]" : "text-gray-400",
+                )}
+              >
+                {i <= reached ? "Reached" : "Not yet"}
+              </span>
+              <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#1D2939]" />
+            </span>
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -433,7 +465,9 @@ export default function PartnerInternshipAnalyticsPage() {
                     </th>
                     <th className="pb-3 font-semibold text-black">Email</th>
                     <th className="pb-3 font-semibold text-black">Batch</th>
-                    <th className="pb-3 font-semibold text-black">Status</th>
+                    <th className="pb-3 font-semibold text-black">
+                      Checkpoints
+                    </th>
                     <th className="pb-3 font-semibold text-black">
                       Offer Letter
                     </th>
@@ -472,7 +506,7 @@ export default function PartnerInternshipAnalyticsPage() {
                         <td className="py-3 text-[#344054]">{s.email}</td>
                         <td className="py-3 text-[#475467]">{s.batchName}</td>
                         <td className="py-3">
-                          <StatusBadges student={s} />
+                          <CheckpointDots student={s} />
                         </td>
                         <td className="py-3">
                           {s.offerLetterUrl ? (

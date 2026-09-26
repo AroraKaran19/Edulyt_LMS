@@ -13,10 +13,14 @@ type PendingQuestion = CaReviewQueueRow["pendingQuestions"][number];
 export default function ReviewAnswerCard({
   row,
   question,
+  selected,
+  onToggleSelect,
   onReview,
 }: {
   row: CaReviewQueueRow;
   question: PendingQuestion;
+  selected: boolean;
+  onToggleSelect: () => void;
   onReview: (
     submissionId: string,
     questionId: string,
@@ -29,7 +33,9 @@ export default function ReviewAnswerCard({
 
   const approve = async () => {
     const parsed = Number(score);
-    if (score.trim() === "" || Number.isNaN(parsed) || parsed < 0) return;
+    if (score.trim() === "" || Number.isNaN(parsed) || parsed < 0 || parsed > question.maxScore) {
+      return;
+    }
     setBusy("approve");
     await onReview(row.submissionId, question.questionId, { verdict: "approved", awardedScore: parsed, note });
     setBusy(null);
@@ -43,12 +49,27 @@ export default function ReviewAnswerCard({
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
+    <div
+      className={
+        selected
+          ? "rounded-xl border border-orange-300 bg-orange-50/40 p-4"
+          : "rounded-xl border border-gray-200 bg-white p-4"
+      }
+    >
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-gray-900">{row.applicantName}</p>
-          <p className="text-xs text-gray-500">{row.taskTitle}</p>
-        </div>
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={onToggleSelect}
+            aria-label={`Select ${row.applicantName}'s answer`}
+            className="mt-0.5 size-4 accent-orange-500"
+          />
+          <span>
+            <span className="block text-sm font-semibold text-gray-900">{row.applicantName}</span>
+            <span className="block text-xs text-gray-500">{row.taskTitle}</span>
+          </span>
+        </label>
         {question.currentFile ? (
           <a
             href={question.currentFile}
@@ -66,7 +87,15 @@ export default function ReviewAnswerCard({
       ) : null}
 
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[140px_1fr]">
-        <Input label="Score" type="number" min={0} className="max-sm:text-base" value={score} onChange={(e) => setScore(e.target.value)} />
+        <Input
+          label={`Score (out of ${question.maxScore})`}
+          type="number"
+          min={0}
+          max={question.maxScore}
+          className="max-sm:text-base"
+          value={score}
+          onChange={(e) => setScore(e.target.value)}
+        />
         <TextArea label="Note (required to reject)" className="max-sm:text-base" value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
       </div>
       <div className="mt-3 flex justify-end gap-2">

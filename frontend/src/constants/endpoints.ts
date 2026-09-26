@@ -283,6 +283,8 @@ export const ENDPOINTS = {
     /** PATCH — reviewer scores / accepts / requests re-upload of one file answer. */
     adminReviewFile: (id: string, questionId: string) =>
       `/internship-submissions/admin/${encodeURIComponent(id)}/review/${encodeURIComponent(questionId)}`,
+    /** POST — one verdict for every waiting file answer of the selected task submissions. */
+    adminBulkReview: "/internship-submissions/admin/bulk-review",
     byId: (id: string) => `/internship-submissions/${id}`,
     saveMcq: (id: string) => `/internship-submissions/${id}/answers/mcq`,
     saveFile: (id: string) => `/internship-submissions/${id}/answers/file`,
@@ -591,6 +593,7 @@ export const ENDPOINTS = {
     list: "/ca-reviews",
     review: (submissionId: string, questionId: string) =>
       `/ca-reviews/${encodeURIComponent(submissionId)}/answers/${encodeURIComponent(questionId)}`,
+    bulk: "/ca-reviews/bulk",
   },
 
   /** `/api/admin/*` — dashboard & global admin config */

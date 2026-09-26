@@ -4,6 +4,7 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Gift,
+  Hourglass,
   ShieldCheck,
   ShoppingCart,
   Sparkles,
@@ -21,6 +22,19 @@ export function formatSuccessPointDateTime(iso: string): string {
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+export function formatSuccessPointDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
   } catch {
     return iso;
@@ -86,8 +100,23 @@ function describe(
         amount: `-${tx.points}`,
         amountColor: "text-rose-500",
       };
+    case "expired":
+      return {
+        Icon: Hourglass,
+        iconBg: "bg-gray-100",
+        iconColor: "text-gray-500",
+        title: "Points expired",
+        amount: `-${tx.points}`,
+        amountColor: "text-gray-500",
+      };
     case "admin_adjustment": {
       const credited = tx.points >= 0;
+      const expiry =
+        credited && tx.expiresAt !== undefined
+          ? tx.expiresAt
+            ? ` · expires ${formatSuccessPointDate(tx.expiresAt)}`
+            : " · never expires"
+          : "";
       return {
         Icon: ShieldCheck,
         iconBg: credited ? "bg-emerald-50" : "bg-red-50",
@@ -96,7 +125,7 @@ function describe(
         detail: showActor
           ? `${credited ? "Granted" : "Deducted"} by ${
               tx.adjustedByName || "an admin"
-            }`
+            }${expiry}`
           : undefined,
         amount: credited ? `+${tx.points}` : String(tx.points),
         amountColor: credited ? "text-emerald-600" : "text-red-500",

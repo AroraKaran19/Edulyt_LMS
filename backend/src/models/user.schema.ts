@@ -87,7 +87,7 @@ const successPointTransactionSchema = new mongoose.Schema(
   {
     transactionId: { type: String, required: true }, // uuid generated at award time
     earnedAt:  { type: Date,   required: true },
-    type:      { type: String, required: true, enum: ["earned", "transferred_in", "transferred_out", "admin_adjustment", "redeemed", "reward"] },
+    type:      { type: String, required: true, enum: ["earned", "transferred_in", "transferred_out", "admin_adjustment", "redeemed", "reward", "expired"] },
     // Signed for "admin_adjustment" (negative = deduction); a positive
     // magnitude for every other type.
     points:    { type: Number, required: true },
@@ -107,12 +107,22 @@ const successPointTransactionSchema = new mongoose.Schema(
     // "admin_adjustment" fields
     adjustedByUserId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
     adjustedByName:   { type: String, required: false },
+    // Expiry the admin chose on a grant; null means never.
+    expiresAt: { type: Date, required: false },
     // "redeemed" field — orderId is what links a redemption to its purchase
     orderId: { type: mongoose.Schema.Types.ObjectId, ref: "Order", required: false },
     // "reward" field — which milestone event granted the points
     rewardSource: { type: String, required: false },
   },
   { _id: false } // transactionId is the explicit identifier; no auto _id needed
+);
+
+const successPointLotSchema = new mongoose.Schema(
+  {
+    points: { type: Number, required: true, min: 1 },
+    expiresAt: { type: Date, required: false, default: null },
+  },
+  { _id: false }
 );
 
 const userSchema = new mongoose.Schema<User>(
@@ -461,6 +471,11 @@ const studentSchema = new mongoose.Schema<Student>({
     type: [successPointTransactionSchema],
     default: [],
   },
+  successPointsLots: { type: [successPointLotSchema], default: undefined },
+  // Compare-and-set guard: every wallet write rewrites the lots array.
+  successPointsVersion: { type: Number, required: false, default: 0 },
+  successPointsTransferMonth: { type: String, required: false },
+  successPointsTransferredThisMonth: { type: Number, required: false, default: 0 },
   /** One-shot idempotency flag for the first-login wallet bonus. */
   firstLoginBonusAwarded: { type: Boolean, required: false, default: false },
 });
@@ -471,6 +486,7 @@ const studentSchema = new mongoose.Schema<Student>({
 // students collection. Sparse: students who never transacted carry an empty
 // array and are not worth indexing.
 studentSchema.index({ "successPointsHistory.earnedAt": 1 }, { sparse: true });
+studentSchema.index({ "successPointsLots.expiresAt": 1 }, { sparse: true });
 
 // Collaborator discriminator schema
 const collaboratorSchema = new mongoose.Schema<Collaborator>({

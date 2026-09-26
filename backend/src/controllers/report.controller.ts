@@ -55,6 +55,7 @@ const PLATFORM_COLUMNS: CsvColumn<PlatformPointsRow>[] = [
     header: "Spent: Admin Deductions",
     pick: (r) => r.spentBreakdown.adminDeductions,
   },
+  { header: "Spent: Expired", pick: (r) => r.spentBreakdown.expired },
 ];
 
 export const getPlatformSuccessPointsReportController = asyncHandler(

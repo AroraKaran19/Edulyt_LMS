@@ -17,6 +17,12 @@ import AsyncSelect from "@/components/ui/inputs/AsyncSelect";
 import Pagination from "@/components/admin/Pagination";
 import InternshipAdminListShell from "../components/InternshipAdminListShell";
 import type { InternshipEnrollmentListRow } from "@/types";
+import EnrollmentExport, {
+  type ExportDateRange,
+  type ExportStatusOption,
+} from "@/components/admin/EnrollmentExport";
+import type { ExcelRow } from "@/lib/exportToExcel";
+import { istDateOnlyToUtcIso, istEndOfDayToUtcIso } from "@/lib/ist";
 import InternshipEnrollmentDetailModal from "./InternshipEnrollmentDetailModal";
 
 /**
@@ -174,6 +180,67 @@ function formatStatus(status: string) {
   return status.replace(/_/g, " ");
 }
 
+const EXPORT_STATUS_OPTIONS: ExportStatusOption[] = [
+  { value: "pending_documentation", label: "Pending documentation", group: "In program" },
+  { value: "docs_under_review", label: "Docs under review", group: "In program" },
+  { value: "re_pending_documentation", label: "Docs resubmission", group: "In program" },
+  { value: "offer_letter_pending", label: "Offer letter pending", group: "In program" },
+  { value: "enrolled", label: "Enrolled", group: "In program" },
+  { value: "completed", label: "Completed", group: "In program" },
+  { value: "paused", label: "Paused", group: "In program" },
+  { value: "dropped", label: "Dropped", group: "In program" },
+  { value: "revoked", label: "Revoked", group: "In program" },
+  { value: "exam_registered", label: "Exam registered", group: "Exam & selection" },
+  { value: "exam_attempted", label: "Exam attempted", group: "Exam & selection" },
+  { value: "in_merit_pool", label: "In merit pool", group: "Exam & selection" },
+  { value: "payment_pending", label: "Payment pending", group: "Exam & selection" },
+  { value: "admin_rejected", label: "Rejected", group: "Exam & selection" },
+];
+
+const PROGRAM_STATUSES = EXPORT_STATUS_OPTIONS.filter(
+  (o) => o.group === "In program",
+).map((o) => o.value);
+const PIPELINE_STATUSES = EXPORT_STATUS_OPTIONS.filter(
+  (o) => o.group === "Exam & selection",
+).map((o) => o.value);
+
+const PAGE_SIZE = 10;
+// The admin list endpoint caps `limit` at 100.
+const EXPORT_CHUNK = 100;
+
+function fetcherFor(params: Record<string, string>) {
+  return async (page: number, limit: number) => {
+    const res = await apiClient.get(ENDPOINTS.internshipEnrollments.adminList, {
+      params: { ...params, page, limit },
+    });
+    const d = res.data?.data as {
+      enrollments?: InternshipEnrollmentListRow[];
+      totalPages?: number;
+      total?: number;
+    };
+    return {
+      items: d?.enrollments ?? [],
+      totalPages: d?.totalPages ?? 1,
+      total: d?.total ?? 0,
+    };
+  };
+}
+
+function toExcelRow(row: InternshipEnrollmentListRow): ExcelRow {
+  return {
+    Learner: userDisplayName(row.user),
+    Email: row.user?.email ?? "",
+    Internship: row.internship?.title ?? "",
+    Batch: row.batchSnapshot?.name ?? "",
+    Path: row.enrollmentType === "merit" ? "Merit" : row.enrollmentType === "paid" ? "Paid" : "",
+    Status: formatStatus(row.status),
+    Certificate: CERT_OUTCOME_BADGE[certOutcomeOf(row)].label,
+    Points: row.internshipSuccessPoints ?? 0,
+    Enrolled: row.enrolledAt ? formatDate(row.enrolledAt) : "",
+    Updated: row.updatedAt ? formatDate(row.updatedAt) : "",
+  };
+}
+
 const COL_SPAN = 9;
 
 export default function InternshipEnrollmentsAdminPage() {
@@ -275,54 +342,30 @@ export default function InternshipEnrollmentsAdminPage() {
     [batches],
   );
 
-  const fetchRows = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const params: Record<string, string | number> = {
-        page,
-        limit: 10,
-      };
-      if (debouncedSearch) params.search = debouncedSearch;
-      // Either a lifecycle group or an explicit `s:`-prefixed status list —
-      // never both, so the two can no longer disagree.
-      if (statusFilter.startsWith("s:")) {
-        params.status = statusFilter.slice(2);
-        params.lifecycle = "all";
-      } else {
-        params.lifecycle = statusFilter;
-      }
-      if (certOutcomeFilter !== "all")
-        params.certificateOutcome = certOutcomeFilter;
-      if (enrollmentTypeFilter !== "all")
-        params.enrollmentType = enrollmentTypeFilter;
-      if (internshipFilter !== ALL_INTERNSHIPS)
-        params.internshipId = internshipFilter;
-      if (batchFilter !== ALL_BATCHES) params.batchId = batchFilter;
-      if (enrolledFrom) params.enrolledFrom = enrolledFrom;
-      if (enrolledTo) params.enrolledTo = enrolledTo;
-
-      const res = await apiClient.get(
-        ENDPOINTS.internshipEnrollments.adminList,
-        {
-          params,
-        },
-      );
-      const d = res.data?.data as {
-        enrollments?: InternshipEnrollmentListRow[];
-        totalPages?: number;
-        total?: number;
-      };
-      setRows(d?.enrollments ?? []);
-      setTotalPages(d?.totalPages ?? 1);
-      setTotal(d?.total ?? 0);
-    } catch {
-      toast.error("Failed to load internship enrollments");
-      setRows([]);
-    } finally {
-      setIsLoading(false);
+  const filterParams = useMemo(() => {
+    const params: Record<string, string> = {};
+    if (debouncedSearch) params.search = debouncedSearch;
+    // Either a lifecycle group or an explicit `s:`-prefixed status list —
+    // never both, so the two can no longer disagree.
+    if (statusFilter.startsWith("s:")) {
+      params.status = statusFilter.slice(2);
+      params.lifecycle = "all";
+    } else {
+      params.lifecycle = statusFilter;
     }
+    if (certOutcomeFilter !== "all")
+      params.certificateOutcome = certOutcomeFilter;
+    if (enrollmentTypeFilter !== "all")
+      params.enrollmentType = enrollmentTypeFilter;
+    if (internshipFilter !== ALL_INTERNSHIPS)
+      params.internshipId = internshipFilter;
+    if (batchFilter !== ALL_BATCHES) params.batchId = batchFilter;
+    const from = istDateOnlyToUtcIso(enrolledFrom);
+    const to = istEndOfDayToUtcIso(enrolledTo);
+    if (from) params.enrolledFrom = from;
+    if (to) params.enrolledTo = to;
+    return params;
   }, [
-    page,
     debouncedSearch,
     statusFilter,
     certOutcomeFilter,
@@ -333,9 +376,50 @@ export default function InternshipEnrollmentsAdminPage() {
     enrolledTo,
   ]);
 
+  const fetchPage = useMemo(() => fetcherFor(filterParams), [filterParams]);
+
+  const fetchRangePage = useCallback(
+    (range: ExportDateRange, statuses: string[]) => {
+      const rest = { ...filterParams };
+      delete rest.status;
+      delete rest.enrolledFrom;
+      delete rest.enrolledTo;
+      return fetcherFor({
+        ...rest,
+        ...range,
+        lifecycle: "all",
+        status: statuses.join(","),
+      });
+    },
+    [filterParams],
+  );
+
+  const defaultExportStatuses = useMemo(() => {
+    if (statusFilter.startsWith("s:")) return statusFilter.slice(2).split(",");
+    if (statusFilter === "program") return PROGRAM_STATUSES;
+    if (statusFilter === "pipeline") return PIPELINE_STATUSES;
+    return EXPORT_STATUS_OPTIONS.map((o) => o.value);
+  }, [statusFilter]);
+
+  const fetchRows = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const d = await fetchPage(page, PAGE_SIZE);
+      setRows(d.items);
+      setTotalPages(d.totalPages);
+      setTotal(d.total);
+    } catch {
+      toast.error("Failed to load internship enrollments");
+      setRows([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchPage, page]);
+
   useEffect(() => {
     void fetchRows();
   }, [fetchRows]);
+
 
   /** Filters tucked behind "More filters" — the badge counts these. */
   const moreFiltersCount =
@@ -428,6 +512,25 @@ export default function InternshipEnrollmentsAdminPage() {
       <InternshipAdminListShell
         title="Internship enrollments"
         subtitle="Learners across the internship lifecycle. Opens on everyone in the program; switch Status to reach the exam and selection pipeline."
+        headerActions={
+          <EnrollmentExport
+            fileName="internship-enrollments"
+            statusOptions={EXPORT_STATUS_OPTIONS}
+            defaultStatuses={defaultExportStatuses}
+            currentRows={rows}
+            currentPage={page}
+            totalPages={totalPages}
+            pageSize={PAGE_SIZE}
+            chunkSize={EXPORT_CHUNK}
+            fetchTablePage={fetchPage}
+            fetchRangePage={fetchRangePage}
+            statusOf={(r) => r.status}
+            toExcelRow={toExcelRow}
+            defaultDateFrom={enrolledFrom}
+            defaultDateTo={enrolledTo}
+            disabled={isLoading}
+          />
+        }
         searchPlaceholder="Search by learner email, name, internship title, or batch…"
         searchValue={search}
         onSearchChange={setSearch}

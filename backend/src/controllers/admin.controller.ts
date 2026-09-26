@@ -18,6 +18,8 @@ import { isBrand } from "../constants/brands";
 import {
   getAdminEnrollmentsService,
   EnrollmentTypeFilter,
+  ADMIN_ENROLLMENT_STATUSES,
+  type AdminEnrollmentStatus,
 } from "../services/admin-enrollments.services";
 import { revokeEnrollmentAdminService } from "../services/enrollment.services";
 import { getTimeSpentPerDayService } from "../services/enrollment.services";
@@ -275,7 +277,8 @@ export const getAdminOrdersController = asyncHandler(
  * @route   GET /api/admin/enrollments
  * @desc    Get all enrollments (paid, gift, trial) for admin with type filter
  * @access  Admin
- * @query   page, limit, search, enrollmentType, paymentStatus
+ * @query   page, limit, search, enrollmentType, paymentStatus, enrollmentStatus,
+ *          statuses (comma-separated), enrolledFrom, enrolledTo
  */
 export const getAdminEnrollmentsController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -286,6 +289,9 @@ export const getAdminEnrollmentsController = asyncHandler(
       enrollmentType = "paid",
       paymentStatus,
       enrollmentStatus,
+      statuses: statusesQ,
+      enrolledFrom,
+      enrolledTo,
     } = req.query;
 
     if (Number(page) < 1 || Number(limit) < 1) {
@@ -304,6 +310,17 @@ export const getAdminEnrollmentsController = asyncHandler(
         (enrollmentStatus as "all" | "active" | "revoked")
       : undefined;
 
+    const statuses =
+      typeof statusesQ === "string" ?
+        statusesQ
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s): s is AdminEnrollmentStatus =>
+            (ADMIN_ENROLLMENT_STATUSES as readonly string[]).includes(s)
+          )
+      : [];
+    const range = parseDateRange(enrolledFrom, enrolledTo);
+
     const result = await getAdminEnrollmentsService(
       Number(page),
       Number(limit),
@@ -311,7 +328,8 @@ export const getAdminEnrollmentsController = asyncHandler(
       typeof search === "string" ? search : undefined,
       typeof paymentStatus === "string" ? paymentStatus : undefined,
       statusFilter,
-      isBrand(req.query.brand) ? req.query.brand : undefined
+      isBrand(req.query.brand) ? req.query.brand : undefined,
+      { statuses, enrolledFrom: range.from, enrolledTo: range.to }
     );
 
     sendSuccessResponse(res, result, "Enrollments fetched successfully", 200);

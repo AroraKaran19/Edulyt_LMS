@@ -117,9 +117,10 @@ export const adminAdjustSuccessPoints = asyncHandler(
     const admin = req.user;
     if (!admin?._id) throw new AppError("Unauthorized", 401);
 
-    const { userId, points } = req.body as {
+    const { userId, points, expiryDays } = req.body as {
       userId?: string;
       points?: number | string;
+      expiryDays?: number | string | null;
     };
 
     const adminName =
@@ -132,6 +133,10 @@ export const adminAdjustSuccessPoints = asyncHandler(
       adminName,
       targetUserId: String(userId ?? ""),
       points: Number(points),
+      expiryDays:
+        expiryDays === undefined || expiryDays === null || expiryDays === ""
+          ? undefined
+          : Number(expiryDays),
     });
 
     sendSuccessResponse(res, result, "Success points adjusted", 200);

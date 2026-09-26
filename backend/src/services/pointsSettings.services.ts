@@ -10,6 +10,8 @@ export type PointsSettingsPayload = {
   loginSuccessPoints: number;
   communityReviewSuccessPoints: number;
   internshipRegistrationSuccessPoints: number;
+  successPointsExpiryDays: number;
+  successPointsMonthlyTransferLimit: number;
 };
 
 const NUMERIC_FIELDS: (keyof PointsSettingsPayload)[] = [
@@ -19,12 +21,20 @@ const NUMERIC_FIELDS: (keyof PointsSettingsPayload)[] = [
   "loginSuccessPoints",
   "communityReviewSuccessPoints",
   "internshipRegistrationSuccessPoints",
+  "successPointsExpiryDays",
+  "successPointsMonthlyTransferLimit",
 ];
 
 /** Fields capped at an upper bound after the generic non-negative parse. */
 const MAX_BY_FIELD: Partial<Record<keyof PointsSettingsPayload, number>> = {
   successPointsMaxUtilizationPercent: 100,
+  successPointsExpiryDays: 3650,
 };
+
+const WHOLE_NUMBER_FIELDS = new Set<keyof PointsSettingsPayload>([
+  "successPointsExpiryDays",
+  "successPointsMonthlyTransferLimit",
+]);
 
 function parseNonNegNumber(value: unknown, field: string): number {
   const n =
@@ -54,6 +64,10 @@ export async function getPointsSettings(): Promise<PointsSettingsPayload> {
     internshipRegistrationSuccessPoints: num(
       doc?.internshipRegistrationSuccessPoints,
     ),
+    successPointsExpiryDays: num(doc?.successPointsExpiryDays),
+    successPointsMonthlyTransferLimit: num(
+      doc?.successPointsMonthlyTransferLimit,
+    ),
   };
 }
 
@@ -67,6 +81,7 @@ export async function updatePointsSettings(
   for (const field of NUMERIC_FIELDS) {
     if (body[field] !== undefined) {
       let val = parseNonNegNumber(body[field], field);
+      if (WHOLE_NUMBER_FIELDS.has(field)) val = Math.floor(val);
       const max = MAX_BY_FIELD[field];
       if (max !== undefined && val > max) val = max;
       next[field] = val;

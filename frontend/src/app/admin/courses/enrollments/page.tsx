@@ -20,6 +20,27 @@ import RevokeConfirmationModal from "./RevokeConfirmationModal";
 import Pagination from "@/components/admin/Pagination";
 import BrandMark from "@/components/admin/BrandMark";
 import { BRANDS, BRAND_LABEL, type BrandFilter } from "@/constants/brands";
+import EnrollmentExport, {
+  type ExportDateRange,
+  type ExportStatusOption,
+} from "@/components/admin/EnrollmentExport";
+import type { ExcelRow } from "@/lib/exportToExcel";
+
+const PAGE_SIZE = 10;
+const EXPORT_CHUNK = 200;
+
+const EXPORT_STATUS_OPTIONS: ExportStatusOption[] = [
+  { value: "active", label: "Active" },
+  { value: "completed", label: "Completed" },
+  { value: "paused", label: "Paused" },
+  { value: "revoked", label: "Revoked or dropped" },
+];
+
+const DEFAULT_EXPORT_STATUSES: Record<string, string[]> = {
+  all: EXPORT_STATUS_OPTIONS.map((o) => o.value),
+  active: ["active", "completed", "paused"],
+  revoked: ["revoked"],
+};
 
 interface EnrollmentUser {
   firstName?: string;
@@ -133,28 +154,44 @@ const EnrollmentsPage = () => {
     };
   }, [search]);
 
-  const fetchEnrollments = async () => {
-    setIsLoading(true);
-    try {
+  const fetchWith =
+    (extra: Record<string, string | undefined>) =>
+    async (pageNo: number, limit: number) => {
       const params = new URLSearchParams();
-      params.append("page", page.toString());
-      params.append("limit", "10");
+      params.append("page", pageNo.toString());
+      params.append("limit", limit.toString());
       params.append("enrollmentType", enrollmentType);
       if (brandFilter !== "all") params.append("brand", brandFilter);
       if (debouncedSearch) params.append("search", debouncedSearch);
-      if (enrollmentStatus !== "all") {
-        params.append("enrollmentStatus", enrollmentStatus);
+      for (const [key, value] of Object.entries(extra)) {
+        if (value) params.append(key, value);
       }
 
       const response = await apiClient.get(
         `/admin/enrollments?${params.toString()}`,
       );
       const data = response.data?.data;
-      if (data) {
-        setEnrollments(data.enrollments ?? []);
-        setTotalPages(data.totalPages ?? 1);
-        setTotal(data.total ?? 0);
-      }
+      return {
+        items: (data?.enrollments ?? []) as EnrollmentItem[],
+        totalPages: (data?.totalPages ?? 1) as number,
+        total: (data?.total ?? 0) as number,
+      };
+    };
+
+  const fetchPage = fetchWith({
+    enrollmentStatus: enrollmentStatus !== "all" ? enrollmentStatus : undefined,
+  });
+
+  const fetchRangePage = (range: ExportDateRange, statuses: string[]) =>
+    fetchWith({ ...range, statuses: statuses.join(",") });
+
+  const fetchEnrollments = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchPage(page, PAGE_SIZE);
+      setEnrollments(data.items);
+      setTotalPages(data.totalPages);
+      setTotal(data.total);
     } catch (error) {
       toast.error("Failed to fetch enrollments");
       setEnrollments([]);
@@ -198,6 +235,34 @@ const EnrollmentsPage = () => {
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
     return name || user.email || "—";
   };
+
+  const typeLabel = (item: EnrollmentItem) => {
+    if (item.type === "paid") {
+      if (item.grantSource === "category-sibling") return "Free (Legacy bundle)";
+      if (item.enrollmentSource === "promotion") return "Free (Collaboration)";
+      return "Paid";
+    }
+    return item.type === "gift" ? "Gift" : "Trial";
+  };
+
+  const toExcelRow = (item: EnrollmentItem): ExcelRow => ({
+    User: getUserName(item.userId),
+    Email: item.userId?.email ?? "",
+    Course: item.courseId?.title ?? "",
+    Type: typeLabel(item),
+    Brand: item.brand
+      ? (BRAND_LABEL[item.brand as keyof typeof BRAND_LABEL] ?? item.brand)
+      : "",
+    Plan: item.planType ?? "",
+    Status: item.status,
+    ...(showExpiryColumn && {
+      Expiry:
+        item.type === "trial" && item.trialExpiresAt
+          ? formatDate(item.trialExpiresAt)
+          : "",
+    }),
+    Date: item.date ? formatDate(item.date) : "",
+  });
 
   const renderTypeBadge = (item: EnrollmentItem) => {
     if (item.type === "paid") {
@@ -254,13 +319,33 @@ const EnrollmentsPage = () => {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-          Enrollments
-        </h1>
-        <p className="text-gray-600 mt-1">
-          All enrollments — paid, gift, and trial
-        </p>
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Enrollments
+          </h1>
+          <p className="text-gray-600 mt-1">
+            All enrollments — paid, gift, and trial
+          </p>
+        </div>
+        <EnrollmentExport
+          fileName="course-enrollments"
+          statusOptions={EXPORT_STATUS_OPTIONS}
+          defaultStatuses={
+            DEFAULT_EXPORT_STATUSES[enrollmentStatus] ??
+            DEFAULT_EXPORT_STATUSES.all
+          }
+          currentRows={enrollments}
+          currentPage={page}
+          totalPages={totalPages}
+          pageSize={PAGE_SIZE}
+          chunkSize={EXPORT_CHUNK}
+          fetchTablePage={fetchPage}
+          fetchRangePage={fetchRangePage}
+          statusOf={(item) => item.status}
+          toExcelRow={toExcelRow}
+          disabled={isLoading}
+        />
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">

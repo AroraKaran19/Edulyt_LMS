@@ -168,6 +168,7 @@ export interface PlatformPointsRow {
     redeemed: number;
     transfersOut: number;
     adminDeductions: number;
+    expired: number;
   };
 }
 
@@ -210,7 +211,7 @@ const DEBIT_EXPR = {
   $switch: {
     branches: [
       {
-        case: { $in: ["$tx.type", ["redeemed", "transferred_out"]] },
+        case: { $in: ["$tx.type", ["redeemed", "transferred_out", "expired"]] },
         then: { $abs: "$tx.points" },
       },
       {
@@ -294,6 +295,7 @@ export async function getPlatformSuccessPointsReport(
         spentRedeemed: sumForTypes(["redeemed"]),
         spentTransfersOut: sumForTypes(["transferred_out"]),
         spentAdminDeductions: sumAdminAdjustments("deduction"),
+        spentExpired: sumForTypes(["expired"]),
       },
     },
     // Drop users whose in-window entries all netted to nothing.
@@ -345,6 +347,7 @@ export async function getPlatformSuccessPointsReport(
       redeemed: Number(r.spentRedeemed ?? 0),
       transfersOut: Number(r.spentTransfersOut ?? 0),
       adminDeductions: Number(r.spentAdminDeductions ?? 0),
+      expired: Number(r.spentExpired ?? 0),
     },
   }));
 

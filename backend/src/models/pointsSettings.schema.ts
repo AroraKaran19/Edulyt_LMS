@@ -51,6 +51,20 @@ const pointsSettingsSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    /** Days a wallet credit stays spendable; 0 = never expires. */
+    successPointsExpiryDays: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    /** Most points one user may send per IST calendar month; 0 = unlimited. */
+    successPointsMonthlyTransferLimit: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
   },
   { timestamps: true },
 );

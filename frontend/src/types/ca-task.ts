@@ -79,5 +79,11 @@ export interface CaReviewQueueRow {
   taskId: string;
   taskTitle: string;
   submittedAt: string;
-  pendingQuestions: { questionId: string; questionText: string; currentFile: string; learnerComment: string }[];
+  pendingQuestions: {
+    questionId: string;
+    questionText: string;
+    currentFile: string;
+    learnerComment: string;
+    maxScore: number;
+  }[];
 }

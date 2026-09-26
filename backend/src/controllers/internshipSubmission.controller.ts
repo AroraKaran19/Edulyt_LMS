@@ -11,6 +11,7 @@ import {
   saveFileAnswer,
   submitSubmission,
   reviewFileResponse,
+  bulkReviewTaskSubmissions,
   finalizeCertificationExamReview,
   getSubmissionById,
   listSubmissionsAdmin,
@@ -105,6 +106,23 @@ export const submitController = asyncHandler(
     const { submissionId } = req.params;
     const result = await submitSubmission(String(submissionId));
     sendSuccessResponse(res, result, "Submission finalized", 200);
+  },
+);
+
+/**
+ * @route   POST /api/internship-submissions/admin/bulk-review
+ * @desc    One verdict applied to every waiting file answer of the selected task submissions
+ * @access  Admin
+ */
+export const bulkReviewTaskSubmissionsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?._id;
+    if (!userId) throw new AppError("Unauthorized", 401);
+    const result = await bulkReviewTaskSubmissions(
+      req.body ?? {},
+      new mongoose.Types.ObjectId(String(userId)),
+    );
+    sendSuccessResponse(res, result, "Bulk review finished", 200);
   },
 );
 

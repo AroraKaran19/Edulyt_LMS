@@ -1157,6 +1157,141 @@ export async function reviewFileResponse(
   return await serializeSubmission(sub.toObject());
 }
 
+export const MAX_BULK_REVIEW = 50;
+
+export type BulkReviewBody = {
+  submissionIds?: unknown;
+  verdict?: unknown;
+  /** Share of each question's marks to award on approval, 0 to 100. */
+  percent?: unknown;
+  reviewNote?: unknown;
+};
+
+export type BulkReviewResult = {
+  submissionId: string;
+  ok: boolean;
+  /** File answers reviewed in this submission. */
+  reviewed: number;
+  error?: string;
+};
+
+/**
+ * Applies one verdict to every file answer still awaiting review in each
+ * selected task submission. Each answer goes through `reviewFileResponse`, so
+ * status, totals and the success-points ledger move exactly as a manual review
+ * would. Serial on purpose: that function reads, then saves the whole document.
+ */
+export async function bulkReviewTaskSubmissions(
+  body: BulkReviewBody,
+  reviewerId: mongoose.Types.ObjectId,
+): Promise<{ results: BulkReviewResult[]; reviewed: number; failed: number }> {
+  const ids = [
+    ...new Set(
+      (Array.isArray(body.submissionIds) ? body.submissionIds : []).map(String),
+    ),
+  ];
+  if (ids.length === 0) throw new AppError("Select at least one submission", 400);
+  if (ids.length > MAX_BULK_REVIEW) {
+    throw new AppError(`Review at most ${MAX_BULK_REVIEW} submissions at a time`, 400);
+  }
+  if (ids.some((id) => !mongoose.Types.ObjectId.isValid(id))) {
+    throw new AppError("Invalid submission id", 400);
+  }
+
+  const verdict = body.verdict;
+  if (verdict !== "reviewed" && verdict !== "re_upload_requested") {
+    throw new AppError("Choose approve or request resubmission", 400);
+  }
+  const reviewNote = String(body.reviewNote ?? "").trim().slice(0, 2000);
+  if (verdict === "re_upload_requested" && !reviewNote) {
+    throw new AppError("Add a note telling learners what to fix", 400);
+  }
+  const percent = Number(body.percent);
+  if (verdict === "reviewed" && !(percent >= 0 && percent <= 100)) {
+    throw new AppError("Marks must be between 0% and 100%", 400);
+  }
+
+  const docs = await InternshipSubmissionModel.find(
+    { _id: { $in: ids } },
+    {
+      submissionFor: 1,
+      status: 1,
+      "fileResponses.question": 1,
+      "fileResponses.status": 1,
+      "templateSnapshot.questions": 1,
+    },
+  ).lean();
+  const byId = new Map(docs.map((d) => [String(d._id), d]));
+
+  const results: BulkReviewResult[] = [];
+  for (const submissionId of ids) {
+    const doc = byId.get(submissionId) as
+      | {
+          submissionFor?: string;
+          status?: string;
+          fileResponses?: { question: string; status: string }[];
+          templateSnapshot?: { questions?: { questionId: string; score: number }[] };
+        }
+      | undefined;
+
+    if (!doc) {
+      results.push({ submissionId, ok: false, reviewed: 0, error: "Submission not found" });
+      continue;
+    }
+    // Certification exams close through their own finalize step, never in bulk.
+    if (doc.submissionFor !== "task") {
+      results.push({ submissionId, ok: false, reviewed: 0, error: "Not a task submission" });
+      continue;
+    }
+    if (doc.status === "draft") {
+      results.push({ submissionId, ok: false, reviewed: 0, error: "Not submitted yet" });
+      continue;
+    }
+
+    const pending = (doc.fileResponses ?? []).filter((r) => r.status === "submitted");
+    if (pending.length === 0) {
+      results.push({ submissionId, ok: false, reviewed: 0, error: "Nothing waiting for review" });
+      continue;
+    }
+
+    const maxByQuestion = new Map(
+      (doc.templateSnapshot?.questions ?? []).map((q) => [q.questionId, q.score]),
+    );
+    let reviewed = 0;
+    try {
+      for (const answer of pending) {
+        const max = maxByQuestion.get(answer.question) ?? 0;
+        await reviewFileResponse(
+          submissionId,
+          answer.question,
+          {
+            awardedScore:
+              verdict === "reviewed" ? Math.round(max * percent) / 100 : 0,
+            reviewNote,
+            status: verdict,
+          },
+          reviewerId,
+        );
+        reviewed += 1;
+      }
+      results.push({ submissionId, ok: true, reviewed });
+    } catch (error) {
+      results.push({
+        submissionId,
+        ok: false,
+        reviewed,
+        error: error instanceof AppError ? error.message : "Could not review",
+      });
+    }
+  }
+
+  return {
+    results,
+    reviewed: results.filter((r) => r.ok).length,
+    failed: results.filter((r) => !r.ok).length,
+  };
+}
+
 /**
  * Admin / instructor: close certification exam review (after learner submit and
  * any file uploads scored). MCQ-only exams use this directly after submit.

@@ -93,6 +93,37 @@ const giftFromLookupAndNameStages: any[] = [
 export type EnrollmentTypeFilter = "all" | "paid" | "gift" | "trial";
 export type EnrollmentStatusFilter = "all" | "active" | "revoked";
 
+export const ADMIN_ENROLLMENT_STATUSES = ["active", "completed", "paused", "revoked"] as const;
+export type AdminEnrollmentStatus = (typeof ADMIN_ENROLLMENT_STATUSES)[number];
+
+export interface AdminEnrollmentExtraFilters {
+  /** Overrides `enrollmentStatus` when non-empty. "revoked" also covers dropped. */
+  statuses?: AdminEnrollmentStatus[];
+  enrolledFrom?: Date;
+  enrolledTo?: Date;
+}
+
+const applyExtraFilters = (
+  match: Record<string, unknown>,
+  enrollmentStatus: EnrollmentStatusFilter | undefined,
+  extra: AdminEnrollmentExtraFilters
+) => {
+  if (extra.statuses?.length) {
+    const raw = extra.statuses.flatMap((s) => (s === "revoked" ? ["dropped", "revoked"] : [s]));
+    match.status = { $in: raw };
+  } else if (enrollmentStatus === "active") {
+    match.status = { $nin: ["dropped", "revoked"] };
+  } else if (enrollmentStatus === "revoked") {
+    match.status = { $in: ["dropped", "revoked"] };
+  }
+  if (extra.enrolledFrom || extra.enrolledTo) {
+    const range: Record<string, Date> = {};
+    if (extra.enrolledFrom) range.$gte = extra.enrolledFrom;
+    if (extra.enrolledTo) range.$lte = extra.enrolledTo;
+    match.enrolledAt = range;
+  }
+};
+
 export interface AdminEnrollmentItem {
   _id: string;
   brand?: Brand;
@@ -125,7 +156,8 @@ export const getAdminEnrollmentsService = async (
   search?: string,
   _paymentStatus?: string, // deprecated – kept for API compatibility, not used
   enrollmentStatus?: EnrollmentStatusFilter,
-  brand?: Brand
+  brand?: Brand,
+  extra: AdminEnrollmentExtraFilters = {}
 ) => {
   const skip = (page - 1) * limit;
 
@@ -140,11 +172,7 @@ export const getAdminEnrollmentsService = async (
     } else if (type === "trial") {
       match.$or = [{ enrollmentSource: "trial" }, { isTrial: true }];
     }
-    if (enrollmentStatus === "active") {
-      match.status = { $nin: ["dropped", "revoked"] };
-    } else if (enrollmentStatus === "revoked") {
-      match.status = { $in: ["dropped", "revoked"] };
-    }
+    applyExtraFilters(match, enrollmentStatus, extra);
     return match;
   };
 
@@ -333,11 +361,7 @@ export const getAdminEnrollmentsService = async (
     } else {
       match.$or = [{ enrollmentSource: "trial" }, { isTrial: true }];
     }
-    if (enrollmentStatus === "active") {
-      match.status = { $nin: ["dropped", "revoked"] };
-    } else if (enrollmentStatus === "revoked") {
-      match.status = { $in: ["dropped", "revoked"] };
-    }
+    applyExtraFilters(match, enrollmentStatus, extra);
 
     const hasSearch = !!(search && search.trim());
     // giftFrom display resolution is only needed for the rows actually
@@ -430,11 +454,7 @@ export const getAdminEnrollmentsService = async (
   // so "All" could read *lower* than a single type).
   const allMatch: Record<string, unknown> = {};
   if (brand) allMatch.brand = brand;
-  if (enrollmentStatus === "active") {
-    allMatch.status = { $nin: ["dropped", "revoked"] };
-  } else if (enrollmentStatus === "revoked") {
-    allMatch.status = { $in: ["dropped", "revoked"] };
-  }
+  applyExtraFilters(allMatch, enrollmentStatus, extra);
 
   const hasSearch = !!(search && search.trim());
 

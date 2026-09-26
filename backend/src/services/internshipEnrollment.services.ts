@@ -14,6 +14,7 @@ import {
   isPaidUpgradeWindowOpen,
 } from "../utils/applicationWindow";
 import { formatIstDate } from "../utils/ist";
+import { dateRangeClause, parseDateRange } from "../utils/lib/dateRange";
 import { CA_PROGRAMME_NAME } from "../lib/caDocuments";
 import { getPointsSettings } from "./pointsSettings.services";
 import { tryAwardInternshipRegistrationPoints } from "./successPoints.services";
@@ -238,9 +239,9 @@ export async function listInternshipEnrollmentsAdmin(
     /** Filter by certificate outcome (override wins over the computed verdict). */
     certificateOutcome?: "certified" | "not_certified" | "pending";
     enrollmentType?: "merit" | "paid";
-    /** Filter enrollments where `enrolledAt` >= this ISO date string. */
+    /** Inclusive lower bound on `enrolledAt`: bare date or full ISO instant. */
     enrolledFrom?: string;
-    /** Filter enrollments where `enrolledAt` <= this ISO date string. */
+    /** Inclusive upper bound on `enrolledAt`: bare date or full ISO instant. */
     enrolledTo?: string;
     /** When true, `in_merit_pool` rows sort before all other statuses (then by `updatedAt` desc). */
     meritPoolFirst?: boolean;
@@ -298,21 +299,8 @@ export async function listInternshipEnrollmentsAdmin(
   if (enrollmentType === "merit" || enrollmentType === "paid") {
     preMatch.enrollmentType = enrollmentType;
   }
-  if (enrolledFrom || enrolledTo) {
-    const dateRange: Record<string, Date> = {};
-    if (enrolledFrom) {
-      const d = new Date(enrolledFrom);
-      if (!isNaN(d.getTime())) dateRange.$gte = d;
-    }
-    if (enrolledTo) {
-      const d = new Date(enrolledTo);
-      if (!isNaN(d.getTime())) {
-        d.setHours(23, 59, 59, 999);
-        dateRange.$lte = d;
-      }
-    }
-    if (Object.keys(dateRange).length > 0) preMatch.enrolledAt = dateRange;
-  }
+  const enrolledClause = dateRangeClause(parseDateRange(enrolledFrom, enrolledTo));
+  if (enrolledClause) preMatch.enrolledAt = enrolledClause;
   // `status` accepts one status ("enrolled") or a comma-separated group
   // ("pending_documentation,docs_under_review") so the admin UI can offer
   // named sub-groups such as "Documentation pending" without a second param.

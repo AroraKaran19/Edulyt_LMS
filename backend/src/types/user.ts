@@ -1,5 +1,6 @@
 import { Affiliate, Course, Review, PaymentOrder, Enrollment } from ".";
 import type { Brand } from "../constants/brands";
+import type { SuccessPointLot } from "../lib/successPointLots";
 
 export type SuccessPointEarnSource =
   | "purchased"
@@ -49,6 +50,15 @@ export type SuccessPointTransaction =
       points: number;
       adjustedByUserId?: string;
       adjustedByName?: string;
+      /** Grants only; null means never expires. */
+      expiresAt?: Date | null;
+    }
+  | {
+      transactionId: string;
+      earnedAt: Date;
+      type: "expired";
+      /** Magnitude (positive). */
+      points: number;
     }
   | {
       transactionId: string;
@@ -170,6 +180,11 @@ export interface Student extends User {
 
   successPoints?: number;
   successPointsHistory?: SuccessPointTransaction[];
+  successPointsLots?: SuccessPointLot[];
+  successPointsVersion?: number;
+  /** IST "YYYY-MM" that `successPointsTransferredThisMonth` counts for. */
+  successPointsTransferMonth?: string;
+  successPointsTransferredThisMonth?: number;
   /** One-shot idempotency flag for the first-login wallet bonus. */
   firstLoginBonusAwarded?: boolean;
 }

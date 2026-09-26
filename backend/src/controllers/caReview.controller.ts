@@ -2,7 +2,12 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { AppError, asyncHandler, sendSuccessResponse } from "../middlewares/error.middleware";
 import { fullName } from "../services/caApplicationReview.services";
-import { listCaReviewQueue, reviewCaTaskAnswer, type CaViewer } from "../services/caReview.services";
+import {
+  bulkReviewCaTaskAnswers,
+  listCaReviewQueue,
+  reviewCaTaskAnswer,
+  type CaViewer,
+} from "../services/caReview.services";
 
 const viewerOf = (req: Request): CaViewer => {
   const u = req.user;
@@ -13,6 +18,12 @@ const viewerOf = (req: Request): CaViewer => {
 /** @route GET /api/ca-reviews */
 export const listCaReviewQueueController = asyncHandler(async (req: Request, res: Response) => {
   sendSuccessResponse(res, { reviews: await listCaReviewQueue(viewerOf(req)) }, "Review queue fetched", 200);
+});
+
+/** @route POST /api/ca-reviews/bulk */
+export const bulkReviewCaTaskAnswersController = asyncHandler(async (req: Request, res: Response) => {
+  const result = await bulkReviewCaTaskAnswers(viewerOf(req), req.body ?? {});
+  sendSuccessResponse(res, result, "Bulk review finished", 200);
 });
 
 /** @route POST /api/ca-reviews/:submissionId/answers/:questionId */

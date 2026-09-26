@@ -40,6 +40,15 @@ export type SuccessPointTransaction =
       points: number;
       adjustedByUserId?: string;
       adjustedByName?: string;
+      /** Grants only; null means never expires. */
+      expiresAt?: string | null;
+    }
+  | {
+      transactionId: string;
+      earnedAt: string;
+      type: "expired";
+      /** Magnitude (positive). */
+      points: number;
     }
   | {
       transactionId: string;
@@ -81,8 +90,19 @@ export interface TransferResult {
   recipient: { name: string; email: string };
 }
 
+export interface SuccessPointsWallet {
+  balance: number;
+  nextExpiry: { points: number; expiresAt: string } | null;
+  transfer: {
+    monthlyLimit: number;
+    sentThisMonth: number;
+    /** null when there is no monthly limit. */
+    remainingThisMonth: number | null;
+  };
+}
+
 export default function useSuccessPoints() {
-  const getBalance = useCallback(async (): Promise<{ balance: number }> => {
+  const getBalance = useCallback(async (): Promise<SuccessPointsWallet> => {
     const res = await apiClient.get("/success-points/me");
     return res.data.data;
   }, []);
@@ -115,6 +135,7 @@ export default function useSuccessPoints() {
     async (input: {
       userId: string;
       points: number;
+      expiryDays?: number;
     }): Promise<{ balance: number; applied: number }> => {
       const res = await apiClient.post(
         "/success-points/admin/adjust",

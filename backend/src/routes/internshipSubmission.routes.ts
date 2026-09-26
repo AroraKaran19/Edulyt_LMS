@@ -12,6 +12,7 @@ import {
   saveFileAnswerController,
   submitController,
   reviewFileResponseController,
+  bulkReviewTaskSubmissionsController,
   finalizeCertificationReviewController,
   listSubmissionsAdminController,
 } from "../controllers/internshipSubmission.controller";
@@ -25,6 +26,9 @@ router.post("/", createSubmissionController);
 
 /** GET /api/internship-submissions/admin — admin list */
 router.get("/admin", verifyAdmin, requireAnyPermission("internships.certification-exams", "internships.tasks", "internships.entrance-exams"), listSubmissionsAdminController);
+
+/** POST /api/internship-submissions/admin/bulk-review */
+router.post("/admin/bulk-review", verifyAdmin, requireAnyPermission("internships.tasks"), bulkReviewTaskSubmissionsController);
 
 /** GET /api/internship-submissions/admin/:submissionId — full detail for admin */
 router.get("/admin/:submissionId", verifyAdmin, requireAnyPermission("internships.certification-exams", "internships.tasks", "internships.entrance-exams"), getSubmissionAdminController);

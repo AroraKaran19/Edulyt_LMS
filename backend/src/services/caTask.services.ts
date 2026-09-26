@@ -394,7 +394,10 @@ export const submitCaTaskAnswers = async (
       // Atomic per-answer update: conditioned on the answer still being the one
       // we read as rejected, so a concurrent review cannot be overwritten mid-flight.
       await CaTaskSubmissionModel.findOneAndUpdate(
-        { _id: existing._id, "fileResponses.question": answer.questionId, "fileResponses.status": "rejected" },
+        {
+          _id: existing._id,
+          fileResponses: { $elemMatch: { question: answer.questionId, status: "rejected" } },
+        },
         {
           $set: {
             "fileResponses.$.currentFile": nextFile,

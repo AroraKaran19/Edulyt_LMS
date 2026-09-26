@@ -12,6 +12,7 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { InternshipModel } from "../models/internship.schema";
 import { enqueueDueInternshipEvaluations } from "./internshipEvaluationJob.services";
 import { randomizeActiveCourseSeatsLeft } from "./course.services";
+import { expireSuccessPoints } from "./successPointsWallet.services";
 import { verificationBaseUrl } from "../lib/verifyUrl";
 import { uploadFileToS3 } from "./upload.services";
 import {
@@ -364,6 +365,26 @@ export const initializeCronJobs = () => {
 
   console.log("✅ Cron jobs initialized:");
   console.log("  - Payment verification: Every 10 minutes");
+
+  // Lots expire at IST end of day, so a run just after midnight clears the previous day.
+  cron.schedule(
+    "10 0 * * *",
+    () => {
+      void expireSuccessPoints()
+        .then((r) => {
+          console.log(
+            `✅ Success points expiry: ${r.points} points from ${r.wallets} wallet(s), ${r.failed} failed`,
+          );
+        })
+        .catch((error) => {
+          console.error("❌ Success points expiry failed:", error);
+        });
+    },
+    {
+      timezone: "Asia/Kolkata",
+    }
+  );
+  console.log("  - Success points expiry: Daily at 00:10 IST");
 
   // Certificate evaluation: enqueue learners whose program window has closed.
   // 01:00 IST — `endDate` is IST end-of-day, so this is the N+1 morning and the

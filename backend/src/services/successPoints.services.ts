@@ -11,6 +11,20 @@ import { InternshipEnrollmentModel } from "../models/internshipEnrollment.schema
 import { calculateFinalDiscountedPrice } from "../utils/lib/calculateDiscount";
 import { AppError } from "../middlewares/error.middleware";
 import { getPointsSettings } from "./pointsSettings.services";
+import {
+  creditWallet,
+  debitWallet,
+  defaultCreditExpiry,
+  getWalletSummary,
+  mutateWallet,
+} from "./successPointsWallet.services";
+import {
+  creditLots,
+  debitLots,
+  expiryFromDays,
+  istMonthKey,
+  type SuccessPointLot,
+} from "../lib/successPointLots";
 import type { PaymentOrder } from "../types/order";
 import type { Course } from "../types/course";
 import type { Enrollment } from "../types/enrollment";
@@ -167,9 +181,10 @@ export async function tryAwardCompletionSuccessPoints(
     ...(course.slug ? { slug: course.slug } : {}),
   };
 
+  const now = new Date();
   const tx: SuccessPointTransaction = {
     transactionId: uuidv4(),
-    earnedAt: new Date(),
+    earnedAt: now,
     type: "earned",
     points,
     courseId: courseId.toString(),
@@ -177,6 +192,7 @@ export async function tryAwardCompletionSuccessPoints(
     earnSource: ev.earnSource,
     courseSnapshot,
   };
+  const expiresAt = await defaultCreditExpiry(now);
 
   const session = await mongoose.startSession();
   try {
@@ -193,18 +209,7 @@ export async function tryAwardCompletionSuccessPoints(
         return;
       }
 
-      const student = await StudentModel.findByIdAndUpdate(
-        userId,
-        {
-          $inc: { successPoints: points },
-          $push: { successPointsHistory: tx },
-        },
-        { new: true, session },
-      );
-
-      if (!student) {
-        throw new Error("Student not found for success points update");
-      }
+      await creditWallet(userId, points, expiresAt, tx, session);
     });
   } catch (e) {
     console.error("Success points transaction failed:", e);
@@ -262,9 +267,10 @@ export async function tryAwardPurchaseSuccessPoints(input: {
     ...(course.slug ? { slug: course.slug } : {}),
   };
 
+  const now = new Date();
   const tx: SuccessPointTransaction = {
     transactionId: uuidv4(),
-    earnedAt: new Date(),
+    earnedAt: now,
     type: "earned",
     points,
     courseId: String(course._id),
@@ -274,10 +280,7 @@ export async function tryAwardPurchaseSuccessPoints(input: {
   };
 
   try {
-    await StudentModel.findByIdAndUpdate(input.userId, {
-      $inc: { successPoints: points },
-      $push: { successPointsHistory: tx },
-    });
+    await creditWallet(input.userId, points, await defaultCreditExpiry(now), tx);
   } catch (e) {
     // Roll back the claim so a later retry can re-attempt the credit.
     await OrderModel.findByIdAndUpdate(input.orderId, {
@@ -346,10 +349,7 @@ export async function tryRedeemSuccessPointsForOrder(input: {
   };
 
   try {
-    await StudentModel.findByIdAndUpdate(input.userId, {
-      $inc: { successPoints: -points },
-      $push: { successPointsHistory: tx },
-    });
+    await debitWallet(input.userId, points, tx);
   } catch (e) {
     // Roll back the claim so a later retry can re-attempt.
     await OrderModel.findByIdAndUpdate(input.orderId, {
@@ -376,18 +376,16 @@ export async function awardWalletSuccessPoints(
   const amount = Math.max(0, Math.floor(Number(points)));
   if (amount <= 0) return;
 
+  const now = new Date();
   const tx: SuccessPointTransaction = {
     transactionId: uuidv4(),
-    earnedAt: new Date(),
+    earnedAt: now,
     type: "reward",
     points: amount,
     rewardSource,
   };
 
-  await StudentModel.findByIdAndUpdate(userId, {
-    $inc: { successPoints: amount },
-    $push: { successPointsHistory: tx },
-  });
+  await creditWallet(userId, amount, await defaultCreditExpiry(now), tx);
 }
 
 /**
@@ -524,18 +522,8 @@ export async function tryAwardInternshipRegistrationPoints(
 // Wallet: balance, history, peer-to-peer transfer
 // ===================================================================
 
-/** Returns the current success-points balance for a student. */
-export async function getSuccessPointsBalanceService(
-  userId: string,
-): Promise<{ balance: number }> {
-  const student = await StudentModel.findById(userId)
-    .select("successPoints")
-    .lean<{ successPoints?: number } | null>();
-  if (!student) {
-    throw new AppError("Account not found", 404);
-  }
-  return { balance: student.successPoints ?? 0 };
-}
+/** Balance plus the next batch due to expire and this month's transfer allowance. */
+export const getSuccessPointsBalanceService = getWalletSummary;
 
 /** Paginated success-points history (newest first). */
 export async function getSuccessPointsHistoryService(
@@ -573,8 +561,8 @@ export async function getSuccessPointsHistoryService(
  * Credit / debit classification for one ledger entry, inside a `$reduce`
  * (hence `$$this`). Mirrors the admin platform-points report so the totals an
  * admin sees on a single student reconcile with that report's columns:
- * `redeemed` / `transferred_out` store positive magnitudes and are debits by
- * type, while `admin_adjustment` is the only signed type, so its sign decides
+ * `redeemed` / `transferred_out` / `expired` store positive magnitudes and are
+ * debits by type, while `admin_adjustment` is the only signed type, so its sign decides
  * which side it lands on.
  */
 const LEDGER_CREDIT_EXPR = {
@@ -602,7 +590,7 @@ const LEDGER_DEBIT_EXPR = {
   $switch: {
     branches: [
       {
-        case: { $in: ["$$this.type", ["redeemed", "transferred_out"]] },
+        case: { $in: ["$$this.type", ["redeemed", "transferred_out", "expired"]] },
         then: { $abs: "$$this.points" },
       },
       {
@@ -786,39 +774,59 @@ export async function transferSuccessPointsService(
     peerTransactionId,
   };
 
+  const { successPointsMonthlyTransferLimit: limit } = await getPointsSettings();
+  const month = istMonthKey(now);
+
   let newBalance = 0;
   const session = await mongoose.startSession();
   try {
     await session.withTransaction(async () => {
-      // Guarded debit: the `$gte` filter makes concurrent transfers
-      // overdraft-safe — a racing transfer simply matches no document.
-      const updatedSender = await StudentModel.findOneAndUpdate(
-        { _id: sender._id, successPoints: { $gte: points } },
-        {
-          $inc: { successPoints: -points },
-          $push: { successPointsHistory: outTx },
+      // Received points keep the sender's expiry, so passing points around never extends them.
+      let taken: SuccessPointLot[] = [];
+      const sent = await mutateWallet(
+        sender._id,
+        (s) => {
+          if (s.balance < points) {
+            throw new AppError(
+              "You don't have enough success points for this transfer",
+              400,
+            );
+          }
+          const used = s.transferMonth === month ? s.transferredThisMonth : 0;
+          if (limit > 0 && used + points > limit) {
+            const left = Math.max(0, limit - used);
+            throw new AppError(
+              left > 0
+                ? `You can send ${left} more points this month (monthly limit ${limit}).`
+                : `You've reached this month's transfer limit of ${limit} points.`,
+              400,
+            );
+          }
+          const debit = debitLots(s.lots, points);
+          taken = debit.taken;
+          return {
+            delta: -points,
+            lots: debit.lots,
+            history: [outTx],
+            set: {
+              successPointsTransferMonth: month,
+              successPointsTransferredThisMonth: used + points,
+            },
+          };
         },
-        { new: true, session },
+        session,
       );
-      if (!updatedSender) {
-        throw new AppError(
-          "You don't have enough success points for this transfer",
-          400,
-        );
-      }
-      newBalance = updatedSender.successPoints ?? 0;
+      newBalance = sent?.balance ?? 0;
 
-      const updatedRecipient = await StudentModel.findByIdAndUpdate(
+      await mutateWallet(
         recipient._id,
-        {
-          $inc: { successPoints: points },
-          $push: { successPointsHistory: inTx },
-        },
-        { new: true, session },
+        (s) => ({
+          delta: points,
+          lots: creditLots(s.lots, s.balance, taken),
+          history: [inTx],
+        }),
+        session,
       );
-      if (!updatedRecipient) {
-        throw new AppError("Recipient account not found", 404);
-      }
     });
   } finally {
     await session.endSession();
@@ -837,6 +845,8 @@ export interface AdminAdjustSuccessPointsInput {
   targetUserId: string;
   /** Signed: positive grants points, negative deducts them. */
   points: number;
+  /** Grants only; omitted uses the global window, 0 never expires. */
+  expiryDays?: number;
 }
 
 /**
@@ -855,27 +865,34 @@ export async function adminAdjustSuccessPointsService(
     throw new AppError("Invalid user id", 400);
   }
 
+  const now = new Date();
+  let expiresAt: Date | null = null;
+  if (points > 0) {
+    if (input.expiryDays === undefined) {
+      expiresAt = await defaultCreditExpiry(now);
+    } else {
+      const days = Number(input.expiryDays);
+      if (!Number.isInteger(days) || days < 0 || days > 3650) {
+        throw new AppError("Expiry must be a whole number of days from 0 to 3650", 400);
+      }
+      expiresAt = expiryFromDays(days, now);
+    }
+  }
+
   const adjustTx: SuccessPointTransaction = {
     transactionId: uuidv4(),
-    earnedAt: new Date(),
+    earnedAt: now,
     type: "admin_adjustment",
     points,
     adjustedByUserId: String(input.adminId),
     adjustedByName: input.adminName,
+    ...(points > 0 ? { expiresAt } : {}),
   };
 
-  const updated = await StudentModel.findByIdAndUpdate(
-    input.targetUserId,
-    {
-      $inc: { successPoints: points },
-      $push: { successPointsHistory: adjustTx },
-    },
-    { new: true },
-  ).select("successPoints");
+  const updated =
+    points > 0
+      ? await creditWallet(input.targetUserId, points, expiresAt, adjustTx)
+      : await debitWallet(input.targetUserId, -points, adjustTx);
 
-  if (!updated) {
-    throw new AppError("Student account not found", 404);
-  }
-
-  return { balance: updated.successPoints ?? 0, applied: points };
+  return { balance: updated?.balance ?? 0, applied: points };
 }
