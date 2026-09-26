@@ -91,6 +91,14 @@ type Errors = Partial<
   >
 >;
 
+const STEP_ONE_FIELDS = [
+  "name",
+  "email",
+  "phone",
+  "college",
+  "collegeEmail",
+] as const;
+
 const OTHER_DEGREE = "Other";
 const KNOWN_DEGREES = new Set(
   DEGREE_OPTIONS.map((o) => o.value).filter((v) => v !== OTHER_DEGREE),
@@ -179,6 +187,7 @@ export default function LeadForm({
   const [careerStageInput, setCareerStageInput] = useState<string | null>(
     null,
   );
+  const [page, setPage] = useState<1 | 2>(1);
   const [step, setStep] = useState<Step>("form");
   const [digits, setDigits] = useState<string[]>([]);
   const [reqId, setReqId] = useState<string | null>(null);
@@ -336,6 +345,23 @@ export default function LeadForm({
       block: "center",
     });
   }, [step, phoneProved, sent]);
+
+  // Only scrolls when the form's top has gone off screen, so a short step never jumps.
+  const goToPage = (next: 1 | 2) => {
+    setPage(next);
+    setErrors({});
+    requestAnimationFrame(() => {
+      const el = document.getElementById("eq-form");
+      if (!el || el.getBoundingClientRect().top >= 0) return;
+      el.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+    });
+  };
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -567,6 +593,22 @@ export default function LeadForm({
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const found = validate();
+    const stepOneErrors = Object.fromEntries(
+      Object.entries(found).filter(([key]) =>
+        (STEP_ONE_FIELDS as readonly string[]).includes(key),
+      ),
+    ) as Errors;
+
+    if (page === 1 || Object.keys(stepOneErrors).length > 0) {
+      if (Object.keys(stepOneErrors).length > 0) {
+        setPage(1);
+        setErrors(stepOneErrors);
+      } else {
+        goToPage(2);
+      }
+      return;
+    }
+
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
@@ -847,555 +889,583 @@ export default function LeadForm({
             Get your plan details
           </h2>
           <span className="flex-none text-[11px] font-semibold whitespace-nowrap text-[#8c7a70]">
-            Takes 30 seconds
+            Step {page} of 2
           </span>
         </div>
 
-        {isAuthenticated ? (
-          <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#3aa544]/[0.08] px-3 py-2">
-            <Check
-              size={13}
-              strokeWidth={3.4}
-              className="mt-[3.5px] flex-none text-[#2c7f34]"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[11.5px] font-semibold text-[#2c7f34]">
-                Signed in as {profileName || profile?.email}
-              </p>
-              {hideEmail && profileName ? (
-                <p className="truncate text-[10.5px] leading-[1.4] text-[#2c7f34]/75">
-                  {profile?.email}
-                </p>
-              ) : null}
-            </div>
-            {/* `redirect: false` keeps them on the page. Bouncing a lead to
-                /login to sign out would end the visit. */}
-            <button
-              type="button"
-              onClick={() => void handleSignOut({ redirect: false })}
-              className="mt-[1px] flex-none rounded px-1 text-[11px] font-bold text-[#2c7f34]/80 underline underline-offset-2 transition-colors hover:text-[#2c7f34] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2c7f34]"
-            >
-              Log out
-            </button>
-          </div>
-        ) : (
+        {page === 1 && (
           <>
-            <button
-              type="button"
-              onClick={handleGoogle}
-              disabled={oauthLoading}
-              className="mb-2.5 flex h-[42px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-[1.5px] border-[#ecdfd5] bg-white text-[13.5px] font-bold text-text-primary transition-[border-color,background-color] duration-150 hover:border-[#f2d6c2] hover:bg-[#fffaf6] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              <Image src="/google-icon.svg" alt="" width={16} height={16} />
-              {oauthLoading ? "Opening Google..." : "Continue with Google"}
-            </button>
-            <div className="mb-2.5 flex items-center gap-2.5">
-              <span className="h-px flex-1 bg-[#f2d6c2]" />
-              <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8c7a70]">
-                or fill it in
-              </span>
-              <span className="h-px flex-1 bg-[#f2d6c2]" />
+            {isAuthenticated ? (
+              <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#3aa544]/[0.08] px-3 py-2">
+                <Check
+                  size={13}
+                  strokeWidth={3.4}
+                  className="mt-[3.5px] flex-none text-[#2c7f34]"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11.5px] font-semibold text-[#2c7f34]">
+                    Signed in as {profileName || profile?.email}
+                  </p>
+                  {hideEmail && profileName ? (
+                    <p className="truncate text-[10.5px] leading-[1.4] text-[#2c7f34]/75">
+                      {profile?.email}
+                    </p>
+                  ) : null}
+                </div>
+                {/* `redirect: false` keeps them on the page. Bouncing a lead to
+                    /login to sign out would end the visit. */}
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut({ redirect: false })}
+                  className="mt-[1px] flex-none rounded px-1 text-[11px] font-bold text-[#2c7f34]/80 underline underline-offset-2 transition-colors hover:text-[#2c7f34] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#2c7f34]"
+                >
+                  Log out
+                </button>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={handleGoogle}
+                  disabled={oauthLoading}
+                  className="mb-2.5 flex h-[42px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-[1.5px] border-[#ecdfd5] bg-white text-[13.5px] font-bold text-text-primary transition-[border-color,background-color] duration-150 hover:border-[#f2d6c2] hover:bg-[#fffaf6] disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  <Image src="/google-icon.svg" alt="" width={16} height={16} />
+                  {oauthLoading ? "Opening Google..." : "Continue with Google"}
+                </button>
+                <div className="mb-2.5 flex items-center gap-2.5">
+                  <span className="h-px flex-1 bg-[#f2d6c2]" />
+                  <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-[#8c7a70]">
+                    or fill it in
+                  </span>
+                  <span className="h-px flex-1 bg-[#f2d6c2]" />
+                </div>
+              </>
+            )}
+
+            {!hideName && (
+              <div className="mb-2.5">
+                <label
+                  className="block text-[11.5px] font-bold text-text-primary mb-1"
+                  htmlFor="eq-name"
+                >
+                  Full name
+                </label>
+                <input
+                  id="eq-name"
+                  className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Ananya Sharma"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  aria-invalid={!!errors.name}
+                />
+                {errors.name && (
+                  <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                    {errors.name}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {!hideEmail && (
+              <div className="mb-2.5">
+                <label
+                  className="block text-[11.5px] font-bold text-text-primary mb-1"
+                  htmlFor="eq-email"
+                >
+                  Email
+                </label>
+                <input
+                  id="eq-email"
+                  className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="you@college.edu"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={!!errors.email}
+                />
+                {errors.email && (
+                  <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                    {errors.email}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="mb-2.5">
+              <label
+                className="block text-[11.5px] font-bold text-text-primary mb-1"
+                htmlFor="eq-phone"
+              >
+                Mobile number
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-[42px] flex-none items-center rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fbf3ed] px-3 text-[14px] font-semibold text-text-secondary">
+                  +91
+                </span>
+                <input
+                  id="eq-phone"
+                  className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  maxLength={10}
+                  placeholder="98765 43210"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                  aria-invalid={!!errors.phone}
+                />
+              </div>
+              {errors.phone && (
+                <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                  {errors.phone}
+                </span>
+              )}
             </div>
+
+            <div className="mb-2.5">
+              <CollegeSelect
+                label="University / College"
+                labelClassName="text-[11.5px] font-bold text-text-primary mb-1"
+                placeholder="Search and select your college"
+                value={college}
+                onChange={(value) => {
+                  setCollegeInput(value);
+                  // "" not null: null would fall back to the profile's college id.
+                  setCollegeIdInput("");
+                }}
+                onSelect={(picked) => {
+                  setCollegeInput(picked.display);
+                  setCollegeIdInput(picked._id);
+                }}
+                error={errors.college}
+              />
+            </div>
+
+            <div className="mb-2.5">
+              <label className={LABEL_CLASS} htmlFor="eq-college-email">
+                College email
+              </label>
+              <input
+                id="eq-college-email"
+                className={FIELD_CLASS}
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                placeholder="Your email on your college's domain"
+                value={collegeEmail}
+                onChange={(e) => setCollegeEmail(e.target.value)}
+                aria-invalid={!!errors.collegeEmail}
+              />
+              {errors.collegeEmail && (
+                <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                  {errors.collegeEmail}
+                </span>
+              )}
+            </div>
+
+            {errors.form && (
+              <span className="mt-3 block text-xs font-semibold text-[#c03c19]">
+                {errors.form}
+              </span>
+            )}
+
+            <EnquiryButton type="submit" block className="mt-3">
+              Continue
+              <ArrowRight size={15} strokeWidth={2.5} />
+            </EnquiryButton>
           </>
         )}
 
-        {!hideName && (
-          <div className="mb-2.5">
-            <label
-              className="block text-[11.5px] font-bold text-text-primary mb-1"
-              htmlFor="eq-name"
-            >
-              Full name
-            </label>
-            <input
-              id="eq-name"
-              className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
-              type="text"
-              autoComplete="name"
-              placeholder="Ananya Sharma"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              aria-invalid={!!errors.name}
-            />
-            {errors.name && (
-              <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-                {errors.name}
-              </span>
-            )}
-          </div>
-        )}
-
-        {!hideEmail && (
-          <div className="mb-2.5">
-            <label
-              className="block text-[11.5px] font-bold text-text-primary mb-1"
-              htmlFor="eq-email"
-            >
-              Email
-            </label>
-            <input
-              id="eq-email"
-              className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              placeholder="you@college.edu"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={!!errors.email}
-            />
-            {errors.email && (
-              <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-                {errors.email}
-              </span>
-            )}
-          </div>
-        )}
-
-        <div className="mb-2.5">
-          <label
-            className="block text-[11.5px] font-bold text-text-primary mb-1"
-            htmlFor="eq-phone"
-          >
-            Mobile number
-          </label>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-[42px] flex-none items-center rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fbf3ed] px-3 text-[14px] font-semibold text-text-secondary">
-              +91
-            </span>
-            <input
-              id="eq-phone"
-              className="h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]"
-              type="tel"
-              inputMode="numeric"
-              autoComplete="tel-national"
-              maxLength={10}
-              placeholder="98765 43210"
-              value={phone}
-              onChange={(e) =>
-                setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-              }
-              aria-invalid={!!errors.phone}
-            />
-          </div>
-          {errors.phone && (
-            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-              {errors.phone}
-            </span>
-          )}
-        </div>
-
-        <div className="mb-2.5">
-          <CollegeSelect
-            label="University / College"
-            labelClassName="text-[11.5px] font-bold text-text-primary mb-1"
-            placeholder="Search and select your college"
-            value={college}
-            onChange={(value) => {
-              setCollegeInput(value);
-              // "" not null: null would fall back to the profile's college id.
-              setCollegeIdInput("");
-            }}
-            onSelect={(picked) => {
-              setCollegeInput(picked.display);
-              setCollegeIdInput(picked._id);
-            }}
-            error={errors.college}
-          />
-        </div>
-
-        <div className="mb-2.5">
-          <label className={LABEL_CLASS} htmlFor="eq-college-email">
-            College email
-          </label>
-          <input
-            id="eq-college-email"
-            className={FIELD_CLASS}
-            type="email"
-            inputMode="email"
-            autoComplete="off"
-            placeholder="Your email on your college's domain"
-            value={collegeEmail}
-            onChange={(e) => setCollegeEmail(e.target.value)}
-            aria-invalid={!!errors.collegeEmail}
-          />
-          {errors.collegeEmail && (
-            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-              {errors.collegeEmail}
-            </span>
-          )}
-        </div>
-
-        <div className="mb-2.5">
-          <label className={LABEL_CLASS} htmlFor="eq-degree">
-            Degree
-          </label>
-          <div className="relative">
-            <select
-              id="eq-degree"
-              className={cn(FIELD_CLASS, "appearance-none pr-9")}
-              value={degreeChoice}
-              onChange={(e) => setDegreeChoiceInput(e.target.value)}
-              aria-invalid={!!errors.degree}
-            >
-              <option value="">Select your degree</option>
-              {DEGREE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={16}
-              strokeWidth={2.6}
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
-            />
-          </div>
-          {degreeChoice === OTHER_DEGREE && (
-            <input
-              aria-label="Your degree"
-              className={cn(FIELD_CLASS, "mt-2")}
-              type="text"
-              placeholder="Type your degree"
-              maxLength={120}
-              value={degreeOther}
-              onChange={(e) => setDegreeOtherInput(e.target.value)}
-              aria-invalid={!!errors.degree}
-            />
-          )}
-          {errors.degree && (
-            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-              {errors.degree}
-            </span>
-          )}
-        </div>
-
-        <div className="mb-2.5">
-          <label className={LABEL_CLASS} htmlFor="eq-career-stage">
-            Career stage
-          </label>
-          <div className="relative">
-            <select
-              id="eq-career-stage"
-              className={cn(FIELD_CLASS, "appearance-none pr-9")}
-              value={careerStage}
-              onChange={(e) => setCareerStageInput(e.target.value)}
-              aria-invalid={!!errors.careerStage}
-            >
-              <option value="">Select your career stage</option>
-              {EXPERIENCE_LEVELS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={16}
-              strokeWidth={2.6}
-              aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
-            />
-          </div>
-          {errors.careerStage && (
-            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-              {errors.careerStage}
-            </span>
-          )}
-        </div>
-
-        <div className="mb-2.5">
-          <span id="eq-languages" className={LABEL_CLASS}>
-            Languages
-          </span>
-          <div
-            className="flex flex-wrap gap-1.5"
-            role="group"
-            aria-labelledby="eq-languages"
-          >
-            {COURSE_LANGUAGES.map((language) => {
-              const on = languages.includes(language.label);
-              return (
-                <button
-                  key={language.code}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => toggleLanguage(language.label)}
-                  className={cn(
-                    "inline-flex h-9 items-center gap-1 rounded-full border-[1.5px] px-3 text-[12.5px] font-bold transition-[border-color,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                    on
-                      ? "border-primary bg-primary/10 text-text-primary"
-                      : "border-[#ecdfd5] bg-[#fffcfa] text-text-secondary hover:border-[#f2d6c2]",
-                  )}
-                >
-                  {on && <Check size={12} strokeWidth={3.2} aria-hidden="true" />}
-                  {language.label}
-                </button>
-              );
-            })}
-          </div>
-          {errors.languages && (
-            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
-              {errors.languages}
-            </span>
-          )}
-        </div>
-
-        {extraQuestions.map((question) => (
-          <div className="mb-2.5" key={question.key}>
-            <label
-              htmlFor={`enquiry-${question.key}`}
-              className="mb-1 block text-[11.5px] font-bold text-text-primary"
-            >
-              {question.label}
-              {question.required ? (
-                <span className="text-[#c03c19]"> *</span>
-              ) : null}
-            </label>
-            {question.type === "select" ? (
-              <select
-                id={`enquiry-${question.key}`}
-                value={extraAnswers[question.key] ?? ""}
-                onChange={(e) =>
-                  setExtraAnswers((prev) => ({
-                    ...prev,
-                    [question.key]: e.target.value,
-                  }))
-                }
-                className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
-              >
-                <option value="">Select an option</option>
-                {question.options.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                id={`enquiry-${question.key}`}
-                type="text"
-                value={extraAnswers[question.key] ?? ""}
-                onChange={(e) =>
-                  setExtraAnswers((prev) => ({
-                    ...prev,
-                    [question.key]: e.target.value,
-                  }))
-                }
-                className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
-              />
-            )}
-          </div>
-        ))}
-
-        <div className="mb-2.5">
-          <div className="mb-[9px] flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
-            <span className="block text-[12.5px] font-bold text-text-primary">
-              Plan you are interested in
-            </span>
+        {page === 2 && (
+          <>
             <button
               type="button"
-              className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-bold text-[#c4551a] underline decoration-[#c4551a]/40 decoration-[1.5px] underline-offset-[3px] hover:text-primary hover:decoration-current focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-primary"
-              onClick={onCompare}
+              onClick={() => goToPage(1)}
+              className="mb-3 inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#8c7a70] transition-colors hover:text-[#c4551a]"
             >
-              Compare plans
-              <ArrowDown size={13} strokeWidth={2.6} />
+              <ArrowDown size={13} strokeWidth={2.8} className="rotate-90" />
+              Back to your details
             </button>
-          </div>
-          <div className="grid grid-cols-3 gap-1.5">
-            {plans.map((plan) => (
-              <label
-                key={plan.id}
-                className={cn(
-                  "relative block cursor-pointer rounded-lg border-[1.5px] px-1.5 py-2 text-center transition-[border-color,background-color,box-shadow] duration-150",
-                  "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
-                  selected === plan.id
-                    ? "border-primary bg-primary/10 shadow-[0_0_0_3px_rgba(247,173,36,0.22)]"
-                    : "border-[#ecdfd5] bg-[#fffcfa] hover:border-[#f2d6c2]",
-                )}
-              >
-                <input
-                  type="radio"
-                  name="plan-form"
-                  value={plan.id}
-                  checked={selected === plan.id}
-                  onChange={() => onSelect(plan.id)}
-                  className="sr-only"
+
+            <div className="mb-2.5">
+              <label className={LABEL_CLASS} htmlFor="eq-degree">
+                Degree
+              </label>
+              <div className="relative">
+                <select
+                  id="eq-degree"
+                  className={cn(FIELD_CLASS, "appearance-none pr-9")}
+                  value={degreeChoice}
+                  onChange={(e) => setDegreeChoiceInput(e.target.value)}
+                  aria-invalid={!!errors.degree}
+                >
+                  <option value="">Select your degree</option>
+                  {DEGREE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={16}
+                  strokeWidth={2.6}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
                 />
-                <span className="block truncate text-[11.5px] font-bold text-text-primary">
-                  {plan.name}
+              </div>
+              {degreeChoice === OTHER_DEGREE && (
+                <input
+                  aria-label="Your degree"
+                  className={cn(FIELD_CLASS, "mt-2")}
+                  type="text"
+                  placeholder="Type your degree"
+                  maxLength={120}
+                  value={degreeOther}
+                  onChange={(e) => setDegreeOtherInput(e.target.value)}
+                  aria-invalid={!!errors.degree}
+                />
+              )}
+              {errors.degree && (
+                <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                  {errors.degree}
                 </span>
-                <span className="mt-0.5 block text-[12.5px] font-extrabold text-primary">
-                  {hasPrices ? `₹${plan.price.toLocaleString("en-IN")}` : ""}
-                </span>
+              )}
+            </div>
+
+            <div className="mb-2.5">
+              <label className={LABEL_CLASS} htmlFor="eq-career-stage">
+                Career stage
               </label>
+              <div className="relative">
+                <select
+                  id="eq-career-stage"
+                  className={cn(FIELD_CLASS, "appearance-none pr-9")}
+                  value={careerStage}
+                  onChange={(e) => setCareerStageInput(e.target.value)}
+                  aria-invalid={!!errors.careerStage}
+                >
+                  <option value="">Select your career stage</option>
+                  {EXPERIENCE_LEVELS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={16}
+                  strokeWidth={2.6}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
+                />
+              </div>
+              {errors.careerStage && (
+                <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                  {errors.careerStage}
+                </span>
+              )}
+            </div>
+
+            <div className="mb-2.5">
+              <span id="eq-languages" className={LABEL_CLASS}>
+                Languages
+              </span>
+              <div
+                className="flex flex-wrap gap-1.5"
+                role="group"
+                aria-labelledby="eq-languages"
+              >
+                {COURSE_LANGUAGES.map((language) => {
+                  const on = languages.includes(language.label);
+                  return (
+                    <button
+                      key={language.code}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => toggleLanguage(language.label)}
+                      className={cn(
+                        "inline-flex h-9 items-center gap-1 rounded-full border-[1.5px] px-3 text-[12.5px] font-bold transition-[border-color,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                        on
+                          ? "border-primary bg-primary/10 text-text-primary"
+                          : "border-[#ecdfd5] bg-[#fffcfa] text-text-secondary hover:border-[#f2d6c2]",
+                      )}
+                    >
+                      {on && <Check size={12} strokeWidth={3.2} aria-hidden="true" />}
+                      {language.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.languages && (
+                <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+                  {errors.languages}
+                </span>
+              )}
+            </div>
+
+            {extraQuestions.map((question) => (
+              <div className="mb-2.5" key={question.key}>
+                <label
+                  htmlFor={`enquiry-${question.key}`}
+                  className="mb-1 block text-[11.5px] font-bold text-text-primary"
+                >
+                  {question.label}
+                  {question.required ? (
+                    <span className="text-[#c03c19]"> *</span>
+                  ) : null}
+                </label>
+                {question.type === "select" ? (
+                  <select
+                    id={`enquiry-${question.key}`}
+                    value={extraAnswers[question.key] ?? ""}
+                    onChange={(e) =>
+                      setExtraAnswers((prev) => ({
+                        ...prev,
+                        [question.key]: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
+                  >
+                    <option value="">Select an option</option>
+                    {question.options.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id={`enquiry-${question.key}`}
+                    type="text"
+                    value={extraAnswers[question.key] ?? ""}
+                    onChange={(e) =>
+                      setExtraAnswers((prev) => ({
+                        ...prev,
+                        [question.key]: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-[10px] border border-black/12 bg-white px-3 py-2.5 text-[13.5px] text-text-primary"
+                  />
+                )}
+              </div>
             ))}
-          </div>
 
-          {scholarship && (
-            /*
-             * A new tab, not a navigation: the form above may already hold a
-             * half-finished entry and a verified OTP session, and neither
-             * survives leaving the page.
-             */
-            <a
-              href={scholarshipHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2.5 flex items-center justify-center gap-1 rounded-lg border-[1.5px] border-[#f2d6c2] bg-[#fff6f1] px-2.5 py-2 text-center text-[11.5px] font-bold text-[#c4551a] transition-colors duration-150 hover:border-primary hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              We offer a scholarship on this too. Click here
-              <ArrowRight size={13} strokeWidth={2.6} className="flex-none" />
-            </a>
-          )}
-
-          <div className="mt-3">
-            <div className="mb-1 flex items-baseline justify-between gap-2">
-              <label
-                className="block text-[11.5px] font-bold text-text-primary"
-                htmlFor="eq-cert"
-              >
-                MNC certification
-              </label>
-              <span className="flex-none text-[10.5px] font-bold whitespace-nowrap text-[#c4551a]">
-                {freeCert
-                  ? "1 included free"
-                  : hasPrices
-                    ? `+₹${mncAddonPrice.toLocaleString("en-IN")} each`
-                    : "Charged extra"}
-              </span>
-            </div>
-            <div className="relative">
-              <select
-                id="eq-cert"
-                className="h-[42px] w-full appearance-none rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] pr-9 pl-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)]"
-                value={cert ?? ""}
-                onChange={(e) => onCert(e.target.value || null)}
-              >
-                <option value="">
-                  {/* Not "none": every plan ships Airkrit's own certificates,
-                      and this dropdown only decides the MNC exam on top. */}
-                  {freeCert
-                    ? "Help me choose later"
-                    : "Airkrit certificates only"}
-                </option>
-                {ISSUERS.map((issuer) => (
-                  <option key={issuer.name} value={issuer.name}>
-                    {issuer.name}
-                    {freeCert
-                      ? " (free)"
-                      : hasPrices
-                        ? ` (+₹${mncAddonPrice.toLocaleString("en-IN")})`
-                        : " (charged extra)"}
-                  </option>
+            <div className="mb-2.5">
+              <div className="mb-[9px] flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
+                <span className="block text-[12.5px] font-bold text-text-primary">
+                  Plan you are interested in
+                </span>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-bold text-[#c4551a] underline decoration-[#c4551a]/40 decoration-[1.5px] underline-offset-[3px] hover:text-primary hover:decoration-current focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-primary"
+                  onClick={onCompare}
+                >
+                  Compare plans
+                  <ArrowDown size={13} strokeWidth={2.6} />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {plans.map((plan) => (
+                  <label
+                    key={plan.id}
+                    className={cn(
+                      "relative block cursor-pointer rounded-lg border-[1.5px] px-1.5 py-2 text-center transition-[border-color,background-color,box-shadow] duration-150",
+                      "has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-primary",
+                      selected === plan.id
+                        ? "border-primary bg-primary/10 shadow-[0_0_0_3px_rgba(247,173,36,0.22)]"
+                        : "border-[#ecdfd5] bg-[#fffcfa] hover:border-[#f2d6c2]",
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="plan-form"
+                      value={plan.id}
+                      checked={selected === plan.id}
+                      onChange={() => onSelect(plan.id)}
+                      className="sr-only"
+                    />
+                    <span className="block truncate text-[11.5px] font-bold text-text-primary">
+                      {plan.name}
+                    </span>
+                    <span className="mt-0.5 block text-[12.5px] font-extrabold text-primary">
+                      {hasPrices ? `₹${plan.price.toLocaleString("en-IN")}` : ""}
+                    </span>
+                  </label>
                 ))}
-              </select>
-              <ChevronDown
-                size={16}
-                strokeWidth={2.6}
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
-              />
+              </div>
+
+              {scholarship && (
+                /*
+                 * A new tab, not a navigation: the form above may already hold a
+                 * half-finished entry and a verified OTP session, and neither
+                 * survives leaving the page.
+                 */
+                <a
+                  href={scholarshipHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2.5 flex items-center justify-center gap-1 rounded-lg border-[1.5px] border-[#f2d6c2] bg-[#fff6f1] px-2.5 py-2 text-center text-[11.5px] font-bold text-[#c4551a] transition-colors duration-150 hover:border-primary hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  We offer a scholarship on this too. Click here
+                  <ArrowRight size={13} strokeWidth={2.6} className="flex-none" />
+                </a>
+              )}
+
+              <div className="mt-3">
+                <div className="mb-1 flex items-baseline justify-between gap-2">
+                  <label
+                    className="block text-[11.5px] font-bold text-text-primary"
+                    htmlFor="eq-cert"
+                  >
+                    MNC certification
+                  </label>
+                  <span className="flex-none text-[10.5px] font-bold whitespace-nowrap text-[#c4551a]">
+                    {freeCert
+                      ? "1 included free"
+                      : hasPrices
+                        ? `+₹${mncAddonPrice.toLocaleString("en-IN")} each`
+                        : "Charged extra"}
+                  </span>
+                </div>
+                <div className="relative">
+                  <select
+                    id="eq-cert"
+                    className="h-[42px] w-full appearance-none rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] pr-9 pl-3 text-[14px] text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)]"
+                    value={cert ?? ""}
+                    onChange={(e) => onCert(e.target.value || null)}
+                  >
+                    <option value="">
+                      {/* Not "none": every plan ships Airkrit's own certificates,
+                          and this dropdown only decides the MNC exam on top. */}
+                      {freeCert
+                        ? "Help me choose later"
+                        : "Airkrit certificates only"}
+                    </option>
+                    {ISSUERS.map((issuer) => (
+                      <option key={issuer.name} value={issuer.name}>
+                        {issuer.name}
+                        {freeCert
+                          ? " (free)"
+                          : hasPrices
+                            ? ` (+₹${mncAddonPrice.toLocaleString("en-IN")})`
+                            : " (charged extra)"}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    strokeWidth={2.6}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
+                  />
+                </div>
+                <p className="mt-1 text-[10.5px] leading-[1.45] text-[#8c7a70]">
+                  {freeCert
+                    ? "Mentor-to-Placement includes one certification of your choice at no extra cost."
+                    : hasPrices
+                      ? "Optional. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."
+                      : "Optional and charged extra. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."}
+                </p>
+              </div>
+
+              <div className="mt-2 flex items-baseline justify-between gap-2 rounded-lg bg-[#fff6f1] px-3 py-2">
+                <span className="text-[11px] leading-[1.35] font-semibold text-text-secondary">
+                  {/* The no-cert-chosen case still depends on the plan: on
+                      Mentor-to-Placement one MNC certification is already paid
+                      for, so saying "Airkrit certificates only" would undersell
+                      what they are buying. */}
+                  {cert
+                    ? freeCert
+                      ? `${chosenPlan.name}, Airkrit certificates + ${cert} certification included`
+                      : `${chosenPlan.name}, Airkrit certificates + ${cert} certification${
+                          hasPrices ? "" : " (charged extra)"
+                        }`
+                    : freeCert
+                      ? `${chosenPlan.name}, Airkrit certificates + 1 MNC certification included (choose yours above)`
+                      : `${chosenPlan.name}, Airkrit certificates only`}
+                </span>
+                {!hasPrices ? null : (
+                  <span className="flex-none text-[14px] font-extrabold text-primary">
+                    ₹{total.toLocaleString("en-IN")}
+                  </span>
+                )}
+              </div>
             </div>
-            <p className="mt-1 text-[10.5px] leading-[1.45] text-[#8c7a70]">
-              {freeCert
-                ? "Mentor-to-Placement includes one certification of your choice at no extra cost."
-                : hasPrices
-                  ? "Optional. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."
-                  : "Optional and charged extra. Sit the official exam and get certified by Meta, Microsoft, Adobe or Cisco."}
-            </p>
-          </div>
 
-          <div className="mt-2 flex items-baseline justify-between gap-2 rounded-lg bg-[#fff6f1] px-3 py-2">
-            <span className="text-[11px] leading-[1.35] font-semibold text-text-secondary">
-              {/* The no-cert-chosen case still depends on the plan: on
-                  Mentor-to-Placement one MNC certification is already paid
-                  for, so saying "Airkrit certificates only" would undersell
-                  what they are buying. */}
-              {cert
-                ? freeCert
-                  ? `${chosenPlan.name}, Airkrit certificates + ${cert} certification included`
-                  : `${chosenPlan.name}, Airkrit certificates + ${cert} certification${
-                      hasPrices ? "" : " (charged extra)"
-                    }`
-                : freeCert
-                  ? `${chosenPlan.name}, Airkrit certificates + 1 MNC certification included (choose yours above)`
-                  : `${chosenPlan.name}, Airkrit certificates only`}
-            </span>
-            {!hasPrices ? null : (
-              <span className="flex-none text-[14px] font-extrabold text-primary">
-                ₹{total.toLocaleString("en-IN")}
-              </span>
+            {needsCaptcha && (
+              <div className="mt-3">
+                <RecaptchaV2
+                  onChange={setCaptchaToken}
+                  resetSignal={captchaNonce}
+                />
+                {errors.captcha && (
+                  <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
+                    {errors.captcha}
+                  </span>
+                )}
+              </div>
             )}
-          </div>
-        </div>
 
-        {needsCaptcha && (
-          <div className="mt-3">
-            <RecaptchaV2
-              onChange={setCaptchaToken}
-              resetSignal={captchaNonce}
-            />
-            {errors.captcha && (
-              <span className="mt-1 block text-xs font-semibold text-[#c03c19]">
-                {errors.captcha}
-              </span>
+            {(errors.form || cooldown > 0 || sendLimitMinutes !== null) && (
+              <p
+                role="alert"
+                className="mt-3 flex items-start gap-2 rounded-xl border border-[#f0b9a2] bg-[#fff4ef] px-3 py-2.5 text-[12.5px] leading-[1.45] font-semibold text-[#a8401a]"
+              >
+                <TriangleAlert
+                  size={14}
+                  strokeWidth={2.6}
+                  className="mt-[1px] flex-none"
+                />
+                <span>
+                  {sendLimitMinutes !== null
+                    ? `You have requested the maximum number of codes. You can start over in ${sendLimitMinutes} minute${sendLimitMinutes === 1 ? "" : "s"}.`
+                    : cooldown > 0
+                      ? `A code was just sent. You can ask for another in ${cooldown}s.`
+                      : errors.form}
+                </span>
+              </p>
             )}
-          </div>
-        )}
 
-        {(errors.form || cooldown > 0 || sendLimitMinutes !== null) && (
-          <p
-            role="alert"
-            className="mt-3 flex items-start gap-2 rounded-xl border border-[#f0b9a2] bg-[#fff4ef] px-3 py-2.5 text-[12.5px] leading-[1.45] font-semibold text-[#a8401a]"
-          >
-            <TriangleAlert
-              size={14}
-              strokeWidth={2.6}
-              className="mt-[1px] flex-none"
-            />
-            <span>
-              {sendLimitMinutes !== null
-                ? `You have requested the maximum number of codes. You can start over in ${sendLimitMinutes} minute${sendLimitMinutes === 1 ? "" : "s"}.`
+            <EnquiryButton
+              type="submit"
+              block
+              disabled={sending || cooldown > 0 || sendLimitMinutes !== null}
+              className="mt-3"
+            >
+              {sending
+                ? "Sending"
                 : cooldown > 0
-                  ? `A code was just sent. You can ask for another in ${cooldown}s.`
-                  : errors.form}
-            </span>
-          </p>
+                  ? `Wait ${cooldown}s`
+                  : "Send me the details"}
+              {!sending && <ArrowRight size={15} strokeWidth={2.5} />}
+            </EnquiryButton>
+
+            <p className="mt-2.5 text-[10.5px] leading-[1.45] text-[#8c7a70]">
+              By submitting you agree to hear from Airkrit about this plan over
+              call, email, SMS and WhatsApp. Read our{" "}
+              <Link
+                href="/terms-of-use"
+                className="text-text-secondary underline underline-offset-2"
+              >
+                terms
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/privacy-policy"
+                className="text-text-secondary underline underline-offset-2"
+              >
+                privacy policy
+              </Link>
+              .
+            </p>
+          </>
         )}
-
-        <EnquiryButton
-          type="submit"
-          block
-          disabled={sending || cooldown > 0 || sendLimitMinutes !== null}
-          className="mt-3"
-        >
-          {sending
-            ? "Sending"
-            : cooldown > 0
-              ? `Wait ${cooldown}s`
-              : "Send me the details"}
-          {!sending && <ArrowRight size={15} strokeWidth={2.5} />}
-        </EnquiryButton>
-
-        <p className="mt-2.5 text-[10.5px] leading-[1.45] text-[#8c7a70]">
-          By submitting you agree to hear from Airkrit about this plan over
-          call, email, SMS and WhatsApp. Read our{" "}
-          <Link
-            href="/terms-of-use"
-            className="text-text-secondary underline underline-offset-2"
-          >
-            terms
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/privacy-policy"
-            className="text-text-secondary underline underline-offset-2"
-          >
-            privacy policy
-          </Link>
-          .
-        </p>
       </form>
     </div>
   );
