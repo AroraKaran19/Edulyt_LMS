@@ -21,6 +21,13 @@ export const ENQUIRY_SECTIONS: ReadonlyArray<{
       "The scholarship line in the lead form, under the plan tiles. Main page only.",
   },
   {
+    slug: "extra-questions",
+    key: "questions",
+    title: "Extra questions",
+    description:
+      "Up to two extra questions in the lead form, on the plain page or, with link questions off, on every visit.",
+  },
+  {
     slug: "hero",
     key: "hero",
     title: "Hero",

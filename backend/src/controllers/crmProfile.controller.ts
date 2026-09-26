@@ -15,9 +15,10 @@ import {
   ensureCrmCode,
   ensureCrmProfile,
   listAmbassadors,
-  MAX_EXTRA_QUESTIONS,
   resolveCrmCode,
 } from "../services/crmProfile.services";
+import { cleanQuestionList } from "../lib/extraQuestions";
+import { linkQuestionsTurnedOff } from "../services/enquiryPageSettings.services";
 import {
   listOwnCampaignOptions,
   resolveAttachableCampaignId,
@@ -124,7 +125,10 @@ export const getMyCrmProfile = asyncHandler(
     ).lean();
 
     // An ambassador may edit their own only while their owner permits it.
-    const canSetQuestions = isStaff || (await canSetOwnQuestions(req));
+    const [canSetQuestions, linkQuestionsOff] = await Promise.all([
+      isStaff || canSetOwnQuestions(req),
+      linkQuestionsTurnedOff(),
+    ]);
 
     sendSuccessResponse(
       res,
@@ -147,6 +151,7 @@ export const getMyCrmProfile = asyncHandler(
           isStaff && Boolean(settings?.allowAmbassadorQuestions),
         questions: settings?.extraQuestions ?? [],
         canSetQuestions,
+        linkQuestionsOff,
       },
       "CRM profile fetched",
       200,
@@ -376,47 +381,6 @@ export const listPersonAmbassadorsController = asyncHandler(
 );
 
 /**
- * Validates and normalises one submitted question.
- *
- * The key is derived server-side and namespaced, so a chosen label can never
- * collide with a built-in answer key such as `college` or `plan`.
- */
-const cleanQuestion = (raw: unknown) => {
-  const q = (raw ?? {}) as Record<string, unknown>;
-
-  const label = String(q.label ?? "").trim();
-  if (label.length < 3) {
-    throw new AppError("Give the question a label", 400);
-  }
-
-  const type = q.type === "select" ? "select" : "text";
-  // Uncapped: a dropdown is as long as the list it stands for, and a course
-  // roster or a city list is not something to trim to fit. The floor stays,
-  // since a one-option dropdown is a label pretending to be a choice.
-  const options = (Array.isArray(q.options) ? q.options : [])
-    .map((o: unknown) => String(o ?? "").trim())
-    .filter(Boolean);
-  if (type === "select" && options.length < 2) {
-    throw new AppError("A dropdown needs at least two options", 400);
-  }
-
-  const key = `extra_${label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 40)}`;
-
-  return {
-    enabled: true,
-    key,
-    label: label.slice(0, 200),
-    type,
-    options: type === "select" ? options : [],
-    required: Boolean(q.required),
-  };
-};
-
-/**
  * Whether the caller may set questions of their own.
  *
  * Staff always may. A campus ambassador may only while their current owner
@@ -438,22 +402,14 @@ export const updateMyExtraQuestion = asyncHandler(
       throw new AppError("You don't have access to this section", 403);
     }
 
-    const raw = Array.isArray(req.body?.questions) ? req.body.questions : [];
-    if (raw.length > MAX_EXTRA_QUESTIONS) {
+    if (await linkQuestionsTurnedOff()) {
       throw new AppError(
-        `You can ask at most ${MAX_EXTRA_QUESTIONS} extra questions`,
-        400,
+        "Link questions are turned off by the admin, so they can't be edited right now",
+        409,
       );
     }
 
-    const questions = raw.map(cleanQuestion);
-
-    // Two labels can slugify to the same key, which would put two answers under
-    // one key on the lead and make them indistinguishable in the CRM. Rejected
-    // rather than auto-suffixed, so the keys stay meaningful.
-    if (new Set(questions.map((q) => q.key)).size !== questions.length) {
-      throw new AppError("Two questions cannot have the same label", 400);
-    }
+    const questions = cleanQuestionList(req.body?.questions);
 
     // Opened first, because a marketer may never have minted a code and this
     // endpoint must not start doing that as a side effect.

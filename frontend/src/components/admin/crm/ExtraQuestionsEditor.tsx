@@ -102,6 +102,7 @@ export default function ExtraQuestionsEditor({
             ]}
             value={question.type}
             onChange={(v) => update(index, { type: v as "text" | "select" })}
+            disabled={disabled}
           />
 
           {question.type === "select" ? (

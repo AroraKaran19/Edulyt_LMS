@@ -1,6 +1,6 @@
 "use client";
 
-import { useSectionState } from "../EnquirySettingsContext";
+import { useEnquirySettings, useSectionState } from "../EnquirySettingsContext";
 import MediaField from "../components/MediaField";
 import {
   FieldGroup,
@@ -75,6 +75,7 @@ export default function PlansSectionPage() {
     instructorsHeading: s?.plans?.instructorsHeading ?? "",
     instructors: s?.plans?.instructors ?? [],
   }));
+  const pricesOff = useEnquirySettings().settings?.controls?.pricesOff === true;
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
@@ -124,10 +125,21 @@ export default function PlansSectionPage() {
       </FieldGroup>
 
       <FieldGroup>
-        <label className="flex items-start gap-2 text-sm font-semibold text-gray-800">
+        {pricesOff && (
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+            All pricing is turned off at the top of this page, so this switch
+            has no effect until that is turned back on.
+          </p>
+        )}
+        <label
+          className={`flex items-start gap-2 text-sm font-semibold text-gray-800 ${
+            pricesOff ? "opacity-50" : ""
+          }`}
+        >
           <input
             type="checkbox"
             checked={state.showPrices}
+            disabled={pricesOff}
             onChange={(e) =>
               setState((p) => ({ ...p, showPrices: e.target.checked }))
             }

@@ -6,6 +6,7 @@ import {
 import {
   getEnquiryPageSettings,
   getEnquiryPricing,
+  getEnquiryQuestions,
   getEnquiryScholarship,
   stripPerVisitFields,
   updateEnquiryPageSection,
@@ -36,6 +37,21 @@ export const getEnquiryPageSettingsController = asyncHandler(
 );
 
 /**
+ * @route GET /api/admin/enquiry-page-settings
+ * @desc  The full document for the editor, including what the public copy strips.
+ */
+export const getAdminEnquiryPageSettingsController = asyncHandler(
+  async (_req: Request, res: Response) => {
+    sendSuccessResponse(
+      res,
+      await getEnquiryPageSettings(),
+      "Enquiry page settings fetched",
+      200,
+    );
+  },
+);
+
+/**
  * @route GET /api/enquiry-page-settings/pricing?ref=CODE
  * @desc  Plan prices for one visit, or an empty set when they are withheld.
  *
@@ -58,9 +74,6 @@ export const getEnquiryPricingController = asyncHandler(
  * @route GET /api/enquiry-page-settings/scholarship?ref=CODE
  * @desc  The scholarship campaign this visit should advertise, or null.
  *
- * Its own route rather than part of `/pricing`, though both are per-visit and
- * uncached: a campaign lookup that fails must not withhold prices, and prices
- * that fail must not hide a campaign.
  */
 export const getEnquiryScholarshipController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -69,6 +82,22 @@ export const getEnquiryScholarshipController = asyncHandler(
       res,
       await getEnquiryScholarship(ref),
       "Scholarship fetched",
+      200,
+    );
+  },
+);
+
+/**
+ * @route GET /api/enquiry-page-settings/questions?ref=CODE
+ * @desc  The extra questions this visit's lead form asks.
+ */
+export const getEnquiryQuestionsController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const ref = typeof req.query.ref === "string" ? req.query.ref : undefined;
+    sendSuccessResponse(
+      res,
+      { questions: await getEnquiryQuestions(ref) },
+      "Questions fetched",
       200,
     );
   },

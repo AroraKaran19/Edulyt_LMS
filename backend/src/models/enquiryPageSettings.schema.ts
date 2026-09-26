@@ -291,9 +291,40 @@ const scholarshipSchema = new Schema(
   { _id: false },
 );
 
+// The page-wide switches, kept apart so saving any content section can never reset them.
+const controlsSchema = new Schema(
+  {
+    pricesOff: { type: Boolean, default: false },
+    /** Ignores every link owner's questions; the page's own apply to every visit. */
+    linkQuestionsOff: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
+const extraQuestionSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: true },
+    key: { type: String, required: true, trim: true, maxlength: 60 },
+    label: { type: String, required: true, trim: true, maxlength: 200 },
+    type: { type: String, enum: ["text", "select"], default: "text" },
+    options: { type: [String], default: [] },
+    required: { type: Boolean, default: false },
+  },
+  { _id: false },
+);
+
+const questionsSchema = new Schema(
+  {
+    items: { type: [extraQuestionSchema], default: [] },
+  },
+  { _id: false },
+);
+
 const enquiryPageSettingsSchema = new Schema(
   {
     key: { type: String, required: true, unique: true, default: "global" },
+    controls: { type: controlsSchema, default: () => ({}) },
+    questions: { type: questionsSchema, default: () => ({}) },
     offer: { type: offerSchema, default: () => ({}) },
     scholarship: { type: scholarshipSchema, default: () => ({}) },
     hero: { type: heroSchema, default: () => ({}) },

@@ -31,6 +31,8 @@ export interface CrmProfile {
   questions?: CrmExtraQuestion[];
   /** False for an ambassador whose owner has not allowed it. */
   canSetQuestions?: boolean;
+  /** The admin has turned link questions off: saved ones are kept but not asked. */
+  linkQuestionsOff?: boolean;
   /** Hides plan prices on this member's own link. Staff only. */
   hidePlanPrices?: boolean;
   /** Hides plan prices on this owner's ambassadors' links. Staff only. */

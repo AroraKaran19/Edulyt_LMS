@@ -223,9 +223,31 @@ export interface EnquiryPageSettings {
   resumes?: EnquiryResumesSettings;
   languages?: EnquiryLanguagesSettings;
   plans?: EnquiryPlansSettings;
+  controls?: EnquiryControlsSettings;
+  questions?: EnquiryQuestionsSettings;
   howItRuns?: EnquiryHowItRunsSettings;
   trackRecord?: EnquiryTrackRecordSettings;
   closing?: EnquiryClosingSettings;
+}
+
+/** Page-wide switches, saved on their own so no section save can reset them. */
+export interface EnquiryControlsSettings {
+  /** No prices on any visit, referral links included. */
+  pricesOff?: boolean;
+  /** Link owners' questions ignored; the page's own apply to every visit. */
+  linkQuestionsOff?: boolean;
+}
+
+export interface EnquiryExtraQuestion {
+  label: string;
+  type: "text" | "select";
+  /** Saved as a list; the editor sends one option per line. */
+  options: string[] | string;
+  required: boolean;
+}
+
+export interface EnquiryQuestionsSettings {
+  items?: EnquiryExtraQuestion[];
 }
 
 /** Mirrors the backend allowlist. */
@@ -238,6 +260,8 @@ export const ENQUIRY_SECTION_KEYS = [
   "resumes",
   "languages",
   "plans",
+  "controls",
+  "questions",
   "howItRuns",
   "trackRecord",
   "closing",

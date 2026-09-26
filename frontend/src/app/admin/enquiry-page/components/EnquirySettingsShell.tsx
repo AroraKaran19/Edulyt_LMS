@@ -10,6 +10,39 @@ import { ENQUIRY_SECTIONS, findSectionIndex } from "../sections";
 
 const ROOT = "/admin/enquiry-page";
 
+type ControlKey = "pricesOff" | "linkQuestionsOff";
+
+const CONTROLS: Record<
+  ControlKey,
+  {
+    title: string;
+    onHint: string;
+    offHint: string;
+    confirm: (next: boolean) => string;
+  }
+> = {
+  pricesOff: {
+    title: "Turn off all pricing",
+    onHint: "No prices shown to anyone, referral links included.",
+    offHint: "Prices follow the Plans setting and each link's own.",
+    confirm: (next) =>
+      next
+        ? "Hide all prices on the live enquiry page for every visitor?"
+        : "Show prices again on the live enquiry page?",
+  },
+  linkQuestionsOff: {
+    title: "Turn off link questions",
+    onHint:
+      "Marketers' and sales links ask none of their own; every visit gets this page's Extra questions.",
+    offHint:
+      "Links ask their owner's questions; the plain page asks this page's Extra questions.",
+    confirm: (next) =>
+      next
+        ? "Hide every referral link's own extra questions and lock them in their owners' dashboards?"
+        : "Let referral links ask their owners' extra questions again?",
+  },
+};
+
 export default function EnquirySettingsShell({
   children,
 }: {
@@ -17,8 +50,25 @@ export default function EnquirySettingsShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isLoading, isSaving, saveActiveSection, isActiveDirty } =
-    useEnquirySettings();
+  const {
+    settings,
+    isLoading,
+    isSaving,
+    saveActiveSection,
+    saveSection,
+    isActiveDirty,
+  } = useEnquirySettings();
+  const controls = {
+    pricesOff: settings?.controls?.pricesOff === true,
+    linkQuestionsOff: settings?.controls?.linkQuestionsOff === true,
+  };
+
+  // Saves on the spot: it changes the live page, so it never waits on a section's Save.
+  const toggleControl = async (key: ControlKey) => {
+    const next = !controls[key];
+    if (!window.confirm(CONTROLS[key].confirm(next))) return;
+    await saveSection("controls", { ...controls, [key]: next });
+  };
 
   const activeSlug = useMemo(() => {
     if (!pathname || pathname === ROOT) return null;
@@ -62,6 +112,49 @@ export default function EnquirySettingsShell({
             View live page
             <ExternalLink className="size-3" />
           </a>
+
+          <div className="mt-4 divide-y divide-gray-100 rounded-xl border border-gray-200">
+            {(Object.keys(CONTROLS) as ControlKey[]).map((key) => {
+              const on = controls[key];
+              return (
+                <div
+                  key={key}
+                  className="flex items-start justify-between gap-3 px-3 py-2.5"
+                >
+                  <div className="min-w-0">
+                    <p
+                      id={`enquiry-control-${key}`}
+                      className="text-sm font-semibold text-gray-900"
+                    >
+                      {CONTROLS[key].title}
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-gray-500">
+                      {on ? CONTROLS[key].onHint : CONTROLS[key].offHint}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={on}
+                    aria-labelledby={`enquiry-control-${key}`}
+                    disabled={isLoading || isSaving}
+                    onClick={() => void toggleControl(key)}
+                    className={cn(
+                      "relative mt-0.5 h-5 w-9 flex-none rounded-full transition-colors disabled:opacity-50",
+                      on ? "bg-orange-500" : "bg-gray-300",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "absolute top-0.5 left-0.5 size-4 rounded-full bg-white shadow transition-transform",
+                        on && "translate-x-4",
+                      )}
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2">

@@ -3,6 +3,8 @@ import { EnquiryPageSettingsModel } from "../models/enquiryPageSettings.schema";
 import { ScholarshipTestModel } from "../models/scholarshipTest.schema";
 import { resolveAttachableCampaignId } from "./scholarshipAttach.services";
 import { AppError } from "../middlewares/error.middleware";
+import { cleanQuestionList, MAX_EXTRA_QUESTIONS } from "../lib/extraQuestions";
+import type { CrmExtraQuestion } from "../types/crm";
 
 const GLOBAL_KEY = "global";
 
@@ -29,6 +31,8 @@ export const ENQUIRY_PAGE_SECTION_KEYS = [
   "resumes",
   "languages",
   "plans",
+  "controls",
+  "questions",
   "howItRuns",
   "trackRecord",
   "closing",
@@ -83,17 +87,20 @@ export const updateEnquiryPageSection = async (
     throw new AppError("Section value must be an object", 400);
   }
 
-  // The one section whose value is a pointer into another collection, so it is
-  // the one section that cannot be stored as sent.
-  const next: Record<string, unknown> =
-    section === "scholarship"
-      ? {
-          testId: await resolveAttachableCampaignId(
-            (value as Record<string, unknown>).testId,
-            actorId,
-          ),
-        }
-      : (value as Record<string, unknown>);
+  const raw = value as Record<string, unknown>;
+  // Sections that cannot be stored as sent: a pointer into another collection,
+  // questions that must pass the same checks as a link owner's, and strict flags.
+  let next: Record<string, unknown> = raw;
+  if (section === "scholarship") {
+    next = { testId: await resolveAttachableCampaignId(raw.testId, actorId) };
+  } else if (section === "questions") {
+    next = { items: cleanQuestionList(raw.items) };
+  } else if (section === "controls") {
+    next = {
+      pricesOff: raw.pricesOff === true,
+      linkQuestionsOff: raw.linkQuestionsOff === true,
+    };
+  }
 
   const updated = await EnquiryPageSettingsModel.findOneAndUpdate(
     { key: GLOBAL_KEY },
@@ -122,9 +129,11 @@ export const updateEnquiryPageSection = async (
 export const stripPerVisitFields = (
   data: Record<string, unknown>,
 ): Record<string, unknown> => {
-  // The bare page's campaign, which a referred visit must never receive.
-  const { scholarship, ...rest } = data;
+  // The bare page's campaign and questions, which a referred visit may not get.
+  const { scholarship, questions, controls, ...rest } = data;
   void scholarship;
+  void questions;
+  void controls;
 
   const plans = rest.plans as Record<string, unknown> | undefined;
   if (!plans) return rest;
@@ -191,6 +200,9 @@ export const getEnquiryPricing = async (
   const section = (settings.plans ?? {}) as Record<string, unknown>;
   const empty: EnquiryPricing = { plans: [], mncAddonPrice: null };
 
+  // Checked first: the global switch outranks both authorities below.
+  if (controlsOf(settings).pricesOff === true) return empty;
+
   if (ref?.trim()) {
     // Imported lazily: crmProfile.services pulls in the user models, and this
     // module is loaded by the public settings route on every cold start.
@@ -205,6 +217,33 @@ export const getEnquiryPricing = async (
 
   if (section.showPrices === false) return empty;
   return pricesFrom(section);
+};
+
+const controlsOf = (settings: Record<string, unknown>) =>
+  (settings.controls ?? {}) as { pricesOff?: unknown; linkQuestionsOff?: unknown };
+
+export const linkQuestionsTurnedOff = async (): Promise<boolean> =>
+  controlsOf(await getEnquiryPageSettings()).linkQuestionsOff === true;
+
+/**
+ * The extra questions one visit asks. The page's own questions apply to every
+ * visit while link questions are off; otherwise a working link asks its
+ * owner's, and every other visit the page's own.
+ */
+export const getEnquiryQuestions = async (
+  ref?: string,
+): Promise<CrmExtraQuestion[]> => {
+  const settings = await getEnquiryPageSettings();
+  const own = (((settings.questions ?? {}) as { items?: CrmExtraQuestion[] }).items ?? [])
+    .filter((q) => q?.enabled !== false)
+    .slice(0, MAX_EXTRA_QUESTIONS);
+
+  if (controlsOf(settings).linkQuestionsOff === true || !ref?.trim()) return own;
+
+  const { resolveCrmCode } = await import("./crmProfile.services");
+  const resolved = await resolveCrmCode(ref);
+  // An unknown code is not a referral, so it gets the plain page's questions.
+  return resolved ? resolved.questions : own;
 };
 
 /** All the public page needs to draw the line and link it somewhere. */

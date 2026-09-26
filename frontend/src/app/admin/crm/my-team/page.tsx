@@ -57,6 +57,7 @@ export default function MyTeamPage() {
   const { team, setHold, isLoading: caIsLoading } = useCaApplications();
 
   const [profile, setProfile] = useState<CrmProfile | null>(null);
+  const questionsLocked = profile?.linkQuestionsOff === true;
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -392,18 +393,28 @@ export default function MyTeamPage() {
           you let them set their own below.
         </p>
 
-        <ExtraQuestionsEditor
-          questions={drafts}
-          onChange={setDrafts}
-          max={MAX_EXTRA_QUESTIONS}
-          disabled={isLoading}
-        />
+        {questionsLocked && (
+          <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+            The admin has turned off link questions, so your forms don&apos;t ask
+            these right now. They&apos;re kept as they are and come back when the
+            admin turns link questions on again.
+          </p>
+        )}
+
+        <div className={questionsLocked ? "opacity-60" : undefined}>
+          <ExtraQuestionsEditor
+            questions={drafts}
+            onChange={setDrafts}
+            max={MAX_EXTRA_QUESTIONS}
+            disabled={isLoading || questionsLocked}
+          />
+        </div>
 
         <div className="mt-4">
           <OrangeButton
             glow={false}
             onClick={onSaveQuestions}
-            disabled={isLoading}
+            disabled={isLoading || questionsLocked}
           >
             Save
           </OrangeButton>

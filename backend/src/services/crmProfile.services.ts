@@ -3,6 +3,7 @@ import { CaApplicationModel, CrmProfileModel, UserModel } from "../models";
 import { AppError } from "../middlewares/error.middleware";
 import { generateCrmCode } from "../lib/crmCode";
 import { isRolePageGated } from "../config/adminPermissions";
+import { MAX_EXTRA_QUESTIONS } from "../lib/extraQuestions";
 import type {
   AmbassadorKind,
   CrmExtraQuestion,
@@ -35,11 +36,7 @@ export const toAmbassadorKind = (value: unknown): AmbassadorKind | null =>
 
 const CODE_MAX_RETRIES = 6;
 
-/**
- * A lead form with more than two custom questions stops being a lead form.
- * Shared by the owner's own set and an ambassador's.
- */
-export const MAX_EXTRA_QUESTIONS = 2;
+export { MAX_EXTRA_QUESTIONS };
 
 /**
  * The CRM role is derived, never stored: a stored copy could drift out of sync

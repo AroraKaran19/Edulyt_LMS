@@ -2,6 +2,7 @@ import { NextFunction, Request, Response, Router } from "express";
 import {
   getEnquiryPageSettingsController,
   getEnquiryPricingController,
+  getEnquiryQuestionsController,
   getEnquiryScholarshipController,
 } from "../controllers/enquiryPageSettings.controller";
 
@@ -38,5 +39,14 @@ router.get("/pricing", getEnquiryPricingController);
  * another.
  */
 router.get("/scholarship", getEnquiryScholarshipController);
+
+/**
+ * @route   GET /api/enquiry-page-settings/questions?ref=CODE
+ * @desc    The extra questions this visit asks
+ * @access  Public
+ *
+ * Uncached: the answer depends on the referral link.
+ */
+router.get("/questions", getEnquiryQuestionsController);
 
 export default router;

@@ -20,7 +20,7 @@ import {
   patchHomePageSettingsController,
 } from "../controllers/homePageSettings.controller";
 import {
-  getEnquiryPageSettingsController,
+  getAdminEnquiryPageSettingsController,
   getEnquiryScholarshipOptionsController,
   patchEnquiryPageSettingsController,
 } from "../controllers/enquiryPageSettings.controller";
@@ -145,7 +145,7 @@ router.patch("/points-settings", requirePermission("settings.points"), patchPoin
 router.get("/home-page-settings", requirePermission("settings.home-page"), getHomePageSettingsController);
 router.patch("/home-page-settings", requirePermission("settings.home-page"), patchHomePageSettingsController);
 
-router.get("/enquiry-page-settings", requirePermission("leads.enquiry-page"), getEnquiryPageSettingsController);
+router.get("/enquiry-page-settings", requirePermission("leads.enquiry-page"), getAdminEnquiryPageSettingsController);
 // Hard-scoped to the caller's own campaigns inside, so this permission never
 // becomes a back door onto the campaign list it does not otherwise grant.
 router.get("/enquiry-page-settings/scholarship-options", requirePermission("leads.enquiry-page"), getEnquiryScholarshipOptionsController);

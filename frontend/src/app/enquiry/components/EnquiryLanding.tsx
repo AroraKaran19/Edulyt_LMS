@@ -126,13 +126,14 @@ export default function EnquiryLanding({
   /*
    * Resolved here rather than in the server component: reading `searchParams`
    * up there would make this whole landing page dynamic, and it is the page ads
-   * point at. An unknown code just leaves the extra field off and shows prices.
+   * point at. The endpoint decides whose questions this visit asks.
    */
   useEffect(() => {
-    if (!refCode) return;
     let cancelled = false;
     publicClient
-      .get("/crm-public/resolve", { params: { code: refCode } })
+      .get("/enquiry-page-settings/questions", {
+        params: refCode ? { ref: refCode } : undefined,
+      })
       .then((res) => {
         if (cancelled) return;
         setExtraQuestions(res.data?.data?.questions ?? []);
