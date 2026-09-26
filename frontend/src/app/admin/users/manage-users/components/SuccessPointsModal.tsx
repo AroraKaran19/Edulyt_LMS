@@ -9,7 +9,13 @@ import OrangeButton from "@/components/ui/buttons/OrangeButton";
 import WhiteButton from "@/components/ui/buttons/WhiteButton";
 import { cn } from "@/lib/utils";
 import useSuccessPoints from "@/hooks/useSuccessPoints";
+import apiClient from "@/configs/apiConfig";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { formatSuccessPointDate } from "@/components/shared/SuccessPoints/SuccessPointsHistoryRow";
 import type { User, Student } from "@/types/user";
+
+const expiryDateLabel = (days: number) =>
+  formatSuccessPointDate(new Date(Date.now() + days * 86_400_000).toISOString());
 
 interface Props {
   isOpen: boolean;
@@ -27,6 +33,8 @@ export default function SuccessPointsModal({
   const { adminAdjust } = useSuccessPoints();
   const [balance, setBalance] = useState(0);
   const [amount, setAmount] = useState("");
+  const [defaultExpiryDays, setDefaultExpiryDays] = useState("0");
+  const [expiryDays, setExpiryDays] = useState("0");
   const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => {
@@ -36,12 +44,37 @@ export default function SuccessPointsModal({
     }
   }, [isOpen, user]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    apiClient
+      .get(ENDPOINTS.admin.pointsSettings)
+      .then((res) => {
+        const days = String(
+          Number(res.data?.data?.successPointsExpiryDays ?? 0) || 0,
+        );
+        if (cancelled) return;
+        setDefaultExpiryDays(days);
+        setExpiryDays(days);
+      })
+      .catch(() => {
+        // Server applies the global window when expiryDays is left out.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
   if (!isOpen || !user) return null;
 
   const parsed = Math.trunc(Number(amount));
   const valid =
     amount.trim() !== "" && Number.isFinite(parsed) && parsed !== 0;
   const preview = valid ? balance + parsed : balance;
+  const isGrant = valid && parsed > 0;
+  const days = Number(expiryDays);
+  const expiryValid =
+    expiryDays.trim() !== "" && Number.isInteger(days) && days >= 0 && days <= 3650;
 
   const apply = async () => {
     if (!valid) {
@@ -50,14 +83,20 @@ export default function SuccessPointsModal({
       );
       return;
     }
+    if (isGrant && !expiryValid) {
+      toast.error("Expiry must be a whole number of days from 0 to 3650.");
+      return;
+    }
     setIsApplying(true);
     try {
       const res = await adminAdjust({
         userId: user._id || "",
         points: parsed,
+        ...(isGrant ? { expiryDays: days } : {}),
       });
       setBalance(res.balance);
       setAmount("");
+      setExpiryDays(defaultExpiryDays);
       onAdjusted(user._id || "", res.balance);
       toast.success(
         `${parsed > 0 ? "Granted" : "Deducted"} ${Math.abs(
@@ -122,6 +161,28 @@ export default function SuccessPointsModal({
             placeholder="e.g. 100 or -50"
           />
 
+          {isGrant && (
+            <div className="space-y-1">
+              <Input
+                label="Expires after (days)"
+                type="number"
+                min={0}
+                max={3650}
+                step={1}
+                value={expiryDays}
+                onChange={(e) => setExpiryDays(e.target.value)}
+                placeholder="0"
+              />
+              <p className="text-xs text-gray-500">
+                {!expiryValid
+                  ? "Enter a whole number of days from 0 to 3650."
+                  : days === 0
+                    ? "These points will never expire."
+                    : `These points expire at the end of ${expiryDateLabel(days)} (IST).`}
+              </p>
+            </div>
+          )}
+
           {valid && (
             <p className="text-xs text-gray-500">
               New balance will be{" "}
@@ -149,7 +210,7 @@ export default function SuccessPointsModal({
           <OrangeButton
             glow={false}
             onClick={apply}
-            disabled={isApplying || !valid}
+            disabled={isApplying || !valid || (isGrant && !expiryValid)}
           >
             {isApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             {isApplying ? "Applying…" : "Apply"}

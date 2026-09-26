@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { Loader2, IndianRupee, Save, Star } from "lucide-react";
+import { Hourglass, Loader2, IndianRupee, Save, Star } from "lucide-react";
 import apiClient from "@/configs/apiConfig";
 import { ENDPOINTS } from "@/constants/endpoints";
 import Input from "@/components/ui/inputs/Input";
@@ -16,6 +16,8 @@ type PointsSettings = {
   loginSuccessPoints: number;
   communityReviewSuccessPoints: number;
   internshipRegistrationSuccessPoints: number;
+  successPointsExpiryDays: number;
+  successPointsMonthlyTransferLimit: number;
 };
 
 function num(v: unknown): number {
@@ -39,6 +41,8 @@ function parsePointsPayload(axiosData: unknown): PointsSettings | null {
     internshipRegistrationSuccessPoints: num(
       p.internshipRegistrationSuccessPoints,
     ),
+    successPointsExpiryDays: num(p.successPointsExpiryDays),
+    successPointsMonthlyTransferLimit: num(p.successPointsMonthlyTransferLimit),
   };
 }
 
@@ -61,6 +65,11 @@ export default function AdminPointsSettingsPage() {
     internshipRegistrationSuccessPoints,
     setInternshipRegistrationSuccessPoints,
   ] = useState("");
+  const [successPointsExpiryDays, setSuccessPointsExpiryDays] = useState("");
+  const [
+    successPointsMonthlyTransferLimit,
+    setSuccessPointsMonthlyTransferLimit,
+  ] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -79,6 +88,10 @@ export default function AdminPointsSettingsPage() {
         );
         setInternshipRegistrationSuccessPoints(
           String(d.internshipRegistrationSuccessPoints),
+        );
+        setSuccessPointsExpiryDays(String(d.successPointsExpiryDays));
+        setSuccessPointsMonthlyTransferLimit(
+          String(d.successPointsMonthlyTransferLimit),
         );
       }
     } catch {
@@ -104,6 +117,10 @@ export default function AdminPointsSettingsPage() {
       internshipRegistrationSuccessPoints: parseFloat(
         internshipRegistrationSuccessPoints,
       ),
+      successPointsExpiryDays: parseFloat(successPointsExpiryDays),
+      successPointsMonthlyTransferLimit: parseFloat(
+        successPointsMonthlyTransferLimit,
+      ),
     };
     if (
       Object.values(values).some((v) => Number.isNaN(v) || v < 0)
@@ -113,6 +130,17 @@ export default function AdminPointsSettingsPage() {
     }
     if (values.successPointsMaxUtilizationPercent > 100) {
       toast.error("Max success-points utilisation can't exceed 100%");
+      return;
+    }
+    if (
+      !Number.isInteger(values.successPointsExpiryDays) ||
+      !Number.isInteger(values.successPointsMonthlyTransferLimit)
+    ) {
+      toast.error("Expiry days and the transfer limit must be whole numbers");
+      return;
+    }
+    if (values.successPointsExpiryDays > 3650) {
+      toast.error("Points expiry can't be more than 3650 days");
       return;
     }
     setSaving(true);
@@ -205,6 +233,57 @@ export default function AdminPointsSettingsPage() {
               value={successPointsMaxUtilizationPercent}
               onChange={(e) =>
                 setSuccessPointsMaxUtilizationPercent(e.target.value)
+              }
+              placeholder="0"
+            />
+          </div>
+        </div>
+      </Container>
+
+      <Container
+        icon={Hourglass}
+        title="Expiry & transfers"
+        description="How long wallet success points stay usable, and how many a user can send to others."
+        className="w-full h-fit border-stone-200 shadow-sm"
+        classNameBody="flex flex-col gap-6"
+      >
+        <div className="grid gap-6 sm:grid-cols-1">
+          <div className="rounded-xl border border-stone-100 bg-stone-50/80 p-4 space-y-2">
+            <label className="block text-sm font-semibold text-stone-800">
+              Points expire after (days)
+            </label>
+            <p className="text-xs text-stone-500">
+              Every credit (course completion, plan purchase, rewards, admin grants) gets an
+              expiry this many days after it lands, at the end of that day (IST). Changing it
+              only affects new credits. Transferred points keep their original expiry. Set to
+              0 so new points never expire.
+            </p>
+            <Input
+              type="number"
+              min={0}
+              max={3650}
+              step={1}
+              value={successPointsExpiryDays}
+              onChange={(e) => setSuccessPointsExpiryDays(e.target.value)}
+              placeholder="0"
+            />
+          </div>
+
+          <div className="rounded-xl border border-stone-100 bg-stone-50/80 p-4 space-y-2">
+            <label className="block text-sm font-semibold text-stone-800">
+              Monthly transfer limit per user
+            </label>
+            <p className="text-xs text-stone-500">
+              The most points one user can send to others in a calendar month (IST). Set to 0
+              for no limit.
+            </p>
+            <Input
+              type="number"
+              min={0}
+              step={1}
+              value={successPointsMonthlyTransferLimit}
+              onChange={(e) =>
+                setSuccessPointsMonthlyTransferLimit(e.target.value)
               }
               placeholder="0"
             />
