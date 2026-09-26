@@ -19,6 +19,10 @@ const leadSchema = z.object({
     .optional(),
   /** Raw CRM code from `?ref=`. The backend resolves it; this only forwards. */
   ref: z.string().trim().max(32).optional(),
+  collegeEmail: z.string().trim().max(160),
+  languages: z.array(z.string().trim().max(40)).min(1).max(10),
+  degree: z.string().trim().min(1).max(120),
+  careerStage: z.string().trim().min(1).max(80),
   /**
    * Answers to the questions the link owner added, if any. Capped at two here
    * as well as server-side, so a crafted request cannot pad the lead's answer
@@ -50,12 +54,6 @@ const leadSchema = z.object({
   source: z.string().max(500).optional(),
 });
 
-const PLAN_NAMES: Record<number, string> = {
-  1: "Blended",
-  2: "Mentor-Led",
-  3: "Mentor-to-Placement",
-};
-
 /**
  * Proxies to the backend rather than letting the browser call it directly.
  * Going through apiClient would put this public page behind its 401
@@ -81,34 +79,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not available" }, { status: 503 });
   }
 
-  const answers = [
-    { key: "college", label: "College", value: lead.college },
-    ...(lead.extraAnswers ?? []).filter((a) => a.value),
-    {
-      key: "plan",
-      label: "Plan you are interested in",
-      value: `${PLAN_NAMES[lead.plan]} (Plan 0${lead.plan})`,
-    },
-    {
-      key: "certification",
-      label: "MNC certification",
-      value: lead.certification
-        ? lead.plan === 3
-          ? `${lead.certification} (included free)`
-          : `${lead.certification} (add-on)`
-        : "Airkrit certificates only (no MNC exam)",
-    },
-    ...(lead.total !== undefined
-      ? [
-          {
-            key: "total",
-            label: "Quoted total",
-            value: `₹${lead.total.toLocaleString("en-IN")}`,
-          },
-        ]
-      : []),
-  ];
-
   try {
     const response = await fetch(`${apiBase}/leads`, {
       method: "POST",
@@ -124,7 +94,18 @@ export async function POST(request: Request) {
         // `phone` is compared against the signed-in profile; the anonymous path
         // ignores it and uses the session. Neither path trusts it as the value.
         phone: lead.phone,
-        answers,
+        // Raw fields: the backend words the answers, the same way the Excel import does.
+        enquiry: {
+          college: lead.college,
+          collegeEmail: lead.collegeEmail,
+          languages: lead.languages,
+          degree: lead.degree,
+          careerStage: lead.careerStage,
+          plan: lead.plan,
+          certification: lead.certification ?? null,
+        },
+        extraAnswers: lead.extraAnswers,
+        total: lead.total,
         collegeId: lead.collegeId,
         ref: lead.ref,
         pageQuery: lead.source,

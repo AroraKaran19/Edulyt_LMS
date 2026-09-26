@@ -310,11 +310,15 @@ export default function ImportLeadsModal({ onClose }: Props) {
 
           <ul className="mt-2.5 list-disc space-y-1 pl-4 text-xs text-gray-500">
             <li>
-              <span className="font-semibold text-gray-700">name, email, phone, brand</span>{" "}
-              are required; the rest are optional.
+              <span className="font-semibold text-gray-700">
+                name, email, phone, brand, collegeName, collegeEmail, languages, degree,
+                careerStage, plan
+              </span>{" "}
+              are required, the same as on the enquiry form.
             </li>
             <li>brand: airkrit or edulyt</li>
-            <li>programKind: course or internship</li>
+            <li>languages: one or more, separated by commas</li>
+            <li>certification: blank, or Meta, Microsoft, Adobe or Cisco</li>
             <li>status and subStatus: leave blank for the default stage</li>
             <li>extras: a JSON object, shown in the lead&apos;s details</li>
             <li>

@@ -6,10 +6,14 @@ export interface LeadImportRow {
   email: string;
   phone: string;
   brand: string;
-  collegeName?: string;
-  state?: string;
-  programKind?: string;
-  programSlug?: string;
+  collegeName: string;
+  collegeEmail: string;
+  /** Comma-separated. */
+  languages: string;
+  degree: string;
+  careerStage: string;
+  plan: string;
+  certification?: string;
   status?: string;
   subStatus?: string;
   /** Raw JSON text, shown verbatim in the lead's details. */
@@ -24,9 +28,12 @@ export const LEAD_IMPORT_COLUMNS = [
   "phone",
   "brand",
   "collegeName",
-  "state",
-  "programKind",
-  "programSlug",
+  "collegeEmail",
+  "languages",
+  "degree",
+  "careerStage",
+  "plan",
+  "certification",
   "status",
   "subStatus",
   "extras",

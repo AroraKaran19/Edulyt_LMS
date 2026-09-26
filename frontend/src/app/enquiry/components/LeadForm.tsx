@@ -33,7 +33,11 @@ import {
 } from "@/constants/authErrorCodes";
 import EnquiryButton from "./EnquiryButton";
 import OtpBoxes from "./OtpBoxes";
-import { ISSUERS, type PlanId } from "../plans";
+import { COURSE_LANGUAGES, ISSUERS, type PlanId } from "../plans";
+import {
+  DEGREE_OPTIONS,
+  EXPERIENCE_LEVELS,
+} from "@/lib/constants/profileOptions";
 import { usePlanData } from "../usePlanData";
 import { useScholarship } from "../settings";
 
@@ -72,10 +76,29 @@ export type ExtraQuestion = {
 
 type Errors = Partial<
   Record<
-    "name" | "email" | "phone" | "college" | "code" | "captcha" | "form",
+    | "name"
+    | "email"
+    | "phone"
+    | "college"
+    | "collegeEmail"
+    | "languages"
+    | "degree"
+    | "careerStage"
+    | "code"
+    | "captcha"
+    | "form",
     string
   >
 >;
+
+const OTHER_DEGREE = "Other";
+const KNOWN_DEGREES = new Set(
+  DEGREE_OPTIONS.map((o) => o.value).filter((v) => v !== OTHER_DEGREE),
+);
+
+const FIELD_CLASS =
+  "h-[42px] w-full rounded-xl border-[1.5px] border-[#ecdfd5] bg-[#fffcfa] px-3 text-[14px] max-sm:text-base text-text-primary outline-none transition-[border-color,box-shadow,background-color] duration-150 placeholder:text-[#b7a79b] hover:border-[#f2d6c2] focus:border-primary focus:bg-white focus:shadow-[0_0_0_3.5px_rgba(247,173,36,0.28)] aria-invalid:border-[#d2451e]";
+const LABEL_CLASS = "block text-[11.5px] font-bold text-text-primary mb-1";
 
 /** Which proof the form is currently collecting. */
 type Step = "form" | "phoneOtp";
@@ -127,6 +150,12 @@ export default function LeadForm({
   const student = profile as Student | undefined;
   const profileCollege = (student?.collegeName ?? "").trim();
   const profileCollegeId = student?.college ?? "";
+  const profileDegree = (student?.degreeName ?? "").trim();
+  const profileCareerStage = EXPERIENCE_LEVELS.some(
+    (o) => o.value === student?.experienceLevel,
+  )
+    ? (student?.experienceLevel ?? "")
+    : "";
 
   const [nameInput, setNameInput] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState<string | null>(
@@ -138,6 +167,17 @@ export default function LeadForm({
   );
   const [collegeIdInput, setCollegeIdInput] = useState<string | null>(
     initialCollegeId || null,
+  );
+  const [collegeEmail, setCollegeEmail] = useState("");
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [degreeChoiceInput, setDegreeChoiceInput] = useState<string | null>(
+    null,
+  );
+  const [degreeOtherInput, setDegreeOtherInput] = useState<string | null>(
+    null,
+  );
+  const [careerStageInput, setCareerStageInput] = useState<string | null>(
+    null,
   );
   const [step, setStep] = useState<Step>("form");
   const [digits, setDigits] = useState<string[]>([]);
@@ -183,6 +223,28 @@ export default function LeadForm({
   const phone = phoneInput ?? profilePhone;
   const college = collegeInput ?? profileCollege;
   const collegeId = collegeIdInput ?? profileCollegeId;
+  // A profile degree outside the list came from "Other", so it reopens there.
+  const degreeChoice =
+    degreeChoiceInput ??
+    (profileDegree
+      ? KNOWN_DEGREES.has(profileDegree)
+        ? profileDegree
+        : OTHER_DEGREE
+      : "");
+  const degreeOther =
+    degreeOtherInput ??
+    (profileDegree && !KNOWN_DEGREES.has(profileDegree) ? profileDegree : "");
+  const degree = (
+    degreeChoice === OTHER_DEGREE ? degreeOther : degreeChoice
+  ).trim();
+  const careerStage = careerStageInput ?? profileCareerStage;
+
+  const toggleLanguage = (label: string) =>
+    setLanguages((current) =>
+      current.includes(label)
+        ? current.filter((l) => l !== label)
+        : [...current, label],
+    );
 
   /** One answer per question key, so two questions cannot share a box. */
   const [extraAnswers, setExtraAnswers] = useState<Record<string, string>>({});
@@ -353,6 +415,17 @@ export default function LeadForm({
       next.phone = "Indian mobile numbers start with 6, 7, 8 or 9";
     }
     if (!college.trim()) next.college = "Select your college";
+    if (!EMAIL.test(collegeEmail.trim())) {
+      next.collegeEmail = "Enter a valid college email address";
+    }
+    if (languages.length === 0) next.languages = "Pick at least one language";
+    if (!degree) {
+      next.degree =
+        degreeChoice === OTHER_DEGREE
+          ? "Type your degree"
+          : "Select your degree";
+    }
+    if (!careerStage) next.careerStage = "Select your career stage";
     return next;
   };
 
@@ -374,6 +447,10 @@ export default function LeadForm({
           phone,
           college: college.trim(),
           collegeId: collegeId || undefined,
+          collegeEmail: collegeEmail.trim().toLowerCase(),
+          languages,
+          degree,
+          careerStage,
           ref: refCode || undefined,
           extraAnswers: extraQuestions
             .filter((q) => (extraAnswers[q.key] ?? "").trim())
@@ -916,7 +993,8 @@ export default function LeadForm({
             value={college}
             onChange={(value) => {
               setCollegeInput(value);
-              setCollegeIdInput(null);
+              // "" not null: null would fall back to the profile's college id.
+              setCollegeIdInput("");
             }}
             onSelect={(picked) => {
               setCollegeInput(picked.display);
@@ -924,6 +1002,143 @@ export default function LeadForm({
             }}
             error={errors.college}
           />
+        </div>
+
+        <div className="mb-2.5">
+          <label className={LABEL_CLASS} htmlFor="eq-college-email">
+            College email
+          </label>
+          <input
+            id="eq-college-email"
+            className={FIELD_CLASS}
+            type="email"
+            inputMode="email"
+            autoComplete="off"
+            placeholder="Your email on your college's domain"
+            value={collegeEmail}
+            onChange={(e) => setCollegeEmail(e.target.value)}
+            aria-invalid={!!errors.collegeEmail}
+          />
+          {errors.collegeEmail && (
+            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+              {errors.collegeEmail}
+            </span>
+          )}
+        </div>
+
+        <div className="mb-2.5">
+          <label className={LABEL_CLASS} htmlFor="eq-degree">
+            Degree
+          </label>
+          <div className="relative">
+            <select
+              id="eq-degree"
+              className={cn(FIELD_CLASS, "appearance-none pr-9")}
+              value={degreeChoice}
+              onChange={(e) => setDegreeChoiceInput(e.target.value)}
+              aria-invalid={!!errors.degree}
+            >
+              <option value="">Select your degree</option>
+              {DEGREE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              strokeWidth={2.6}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
+            />
+          </div>
+          {degreeChoice === OTHER_DEGREE && (
+            <input
+              aria-label="Your degree"
+              className={cn(FIELD_CLASS, "mt-2")}
+              type="text"
+              placeholder="Type your degree"
+              maxLength={120}
+              value={degreeOther}
+              onChange={(e) => setDegreeOtherInput(e.target.value)}
+              aria-invalid={!!errors.degree}
+            />
+          )}
+          {errors.degree && (
+            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+              {errors.degree}
+            </span>
+          )}
+        </div>
+
+        <div className="mb-2.5">
+          <label className={LABEL_CLASS} htmlFor="eq-career-stage">
+            Career stage
+          </label>
+          <div className="relative">
+            <select
+              id="eq-career-stage"
+              className={cn(FIELD_CLASS, "appearance-none pr-9")}
+              value={careerStage}
+              onChange={(e) => setCareerStageInput(e.target.value)}
+              aria-invalid={!!errors.careerStage}
+            >
+              <option value="">Select your career stage</option>
+              {EXPERIENCE_LEVELS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              size={16}
+              strokeWidth={2.6}
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#8c7a70]"
+            />
+          </div>
+          {errors.careerStage && (
+            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+              {errors.careerStage}
+            </span>
+          )}
+        </div>
+
+        <div className="mb-2.5">
+          <span id="eq-languages" className={LABEL_CLASS}>
+            Languages
+          </span>
+          <div
+            className="flex flex-wrap gap-1.5"
+            role="group"
+            aria-labelledby="eq-languages"
+          >
+            {COURSE_LANGUAGES.map((language) => {
+              const on = languages.includes(language.label);
+              return (
+                <button
+                  key={language.code}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleLanguage(language.label)}
+                  className={cn(
+                    "inline-flex h-9 items-center gap-1 rounded-full border-[1.5px] px-3 text-[12.5px] font-bold transition-[border-color,background-color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                    on
+                      ? "border-primary bg-primary/10 text-text-primary"
+                      : "border-[#ecdfd5] bg-[#fffcfa] text-text-secondary hover:border-[#f2d6c2]",
+                  )}
+                >
+                  {on && <Check size={12} strokeWidth={3.2} aria-hidden="true" />}
+                  {language.label}
+                </button>
+              );
+            })}
+          </div>
+          {errors.languages && (
+            <span className="mt-1.5 block text-xs font-semibold text-[#c03c19]">
+              {errors.languages}
+            </span>
+          )}
         </div>
 
         {extraQuestions.map((question) => (

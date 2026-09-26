@@ -1,9 +1,13 @@
 import ExcelJS from "exceljs";
 import { CollegeModel } from "../models/college.schema";
-import { CourseModel } from "../models/course.schema";
-import { InternshipModel } from "../models/internship.schema";
 import { BRANDS } from "../constants/brands";
-import { INDIAN_STATES } from "../constants/indianStates";
+import {
+  CAREER_STAGES,
+  DEGREE_OPTIONS,
+  ENQUIRY_LANGUAGES,
+  ENQUIRY_PLANS,
+  MNC_CERTIFICATIONS,
+} from "../constants/enquiryProfile";
 import { getLeadPipeline, type LeadPipeline } from "./leadPipelineSettings.services";
 
 export const LEAD_IMPORT_COLUMNS = [
@@ -12,9 +16,12 @@ export const LEAD_IMPORT_COLUMNS = [
   "phone",
   "brand",
   "collegeName",
-  "state",
-  "programKind",
-  "programSlug",
+  "collegeEmail",
+  "languages",
+  "degree",
+  "careerStage",
+  "plan",
+  "certification",
   "status",
   "subStatus",
   "extras",
@@ -22,20 +29,16 @@ export const LEAD_IMPORT_COLUMNS = [
 ] as const;
 
 const TEMPLATE_DATA_ROWS = 2000;
-const EXAMPLE_ROW_COUNT = 2;
 
 export interface LeadImportTemplateData {
   collegeNames: string[];
-  programSlugs: string[];
   pipeline: LeadPipeline;
 }
 
 /** Everything the template's dropdowns are built from, fetched in parallel with lean, projected queries. */
 export const fetchLeadImportTemplateData = async (): Promise<LeadImportTemplateData> => {
-  const [colleges, courses, internships, pipeline] = await Promise.all([
+  const [colleges, pipeline] = await Promise.all([
     CollegeModel.find({ isActive: true }, { name: 1, _id: 0 }).lean(),
-    CourseModel.find({ isActive: true }, { slug: 1, _id: 0 }).lean(),
-    InternshipModel.find({ isActive: true }, { slug: 1, _id: 0 }).lean(),
     getLeadPipeline(),
   ]);
 
@@ -47,15 +50,7 @@ export const fetchLeadImportTemplateData = async (): Promise<LeadImportTemplateD
     ),
   ].sort((a, b) => a.localeCompare(b));
 
-  const programSlugs = [
-    ...new Set(
-      [...(courses as { slug?: string }[]), ...(internships as { slug?: string }[])]
-        .map((doc) => String(doc.slug ?? "").trim())
-        .filter(Boolean),
-    ),
-  ].sort((a, b) => a.localeCompare(b));
-
-  return { collegeNames, programSlugs, pipeline };
+  return { collegeNames, pipeline };
 };
 
 /** A valid, unique Excel defined-name for a pipeline stage's sub-status list. */
@@ -107,28 +102,29 @@ export const buildLeadImportTemplateWorkbook = (
     return values.length;
   };
 
+  const planNames = ENQUIRY_PLANS.map((plan) => plan.name);
   const brandCount = writeColumn(1, "Brand", [...BRANDS]);
-  const programKindCount = writeColumn(2, "ProgramKind", ["course", "internship"]);
-  const stateCount = writeColumn(3, "State", [...INDIAN_STATES]);
-  const collegeCount = writeColumn(4, "College", data.collegeNames);
-  const programSlugCount = writeColumn(5, "ProgramSlug", data.programSlugs);
-  const statusCount = writeColumn(6, "Status", statusLabels);
+  const collegeCount = writeColumn(2, "College", data.collegeNames);
+  const degreeCount = writeColumn(3, "Degree", [...DEGREE_OPTIONS]);
+  const careerStageCount = writeColumn(4, "CareerStage", [...CAREER_STAGES]);
+  const planCount = writeColumn(5, "Plan", planNames);
+  const certificationCount = writeColumn(6, "Certification", [...MNC_CERTIFICATIONS]);
+  const statusCount = writeColumn(7, "Status", statusLabels);
 
   workbook.definedNames.add(`Lists!$A$2:$A$${Math.max(brandCount, 1) + 1}`, "Brands");
-  workbook.definedNames.add(`Lists!$B$2:$B$${Math.max(programKindCount, 1) + 1}`, "ProgramKinds");
-  workbook.definedNames.add(`Lists!$C$2:$C$${Math.max(stateCount, 1) + 1}`, "States");
   if (collegeCount > 0) {
-    workbook.definedNames.add(`Lists!$D$2:$D$${collegeCount + 1}`, "Colleges");
+    workbook.definedNames.add(`Lists!$B$2:$B$${collegeCount + 1}`, "Colleges");
   }
-  if (programSlugCount > 0) {
-    workbook.definedNames.add(`Lists!$E$2:$E$${programSlugCount + 1}`, "ProgramSlugs");
-  }
-  workbook.definedNames.add(`Lists!$F$2:$F$${Math.max(statusCount, 1) + 1}`, "StatusLabels");
+  workbook.definedNames.add(`Lists!$C$2:$C$${degreeCount + 1}`, "Degrees");
+  workbook.definedNames.add(`Lists!$D$2:$D$${careerStageCount + 1}`, "CareerStages");
+  workbook.definedNames.add(`Lists!$E$2:$E$${planCount + 1}`, "Plans");
+  workbook.definedNames.add(`Lists!$F$2:$F$${certificationCount + 1}`, "Certifications");
+  workbook.definedNames.add(`Lists!$G$2:$G$${Math.max(statusCount, 1) + 1}`, "StatusLabels");
 
   // One column per active stage, holding its active sub-status labels; named for INDIRECT lookup.
   const takenRangeNames = new Set<string>();
   const stageRangeNameByLabel = new Map<string, string>();
-  let nextCol = 7;
+  let nextCol = 8;
   for (let i = 0; i < activeStages.length; i += 1) {
     const stage = activeStages[i];
     const subLabels = stage.subStatuses.filter((s) => s.active).map((s) => s.label);
@@ -174,9 +170,12 @@ export const buildLeadImportTemplateWorkbook = (
     { key: "phone", width: 16 },
     { key: "brand", width: 12 },
     { key: "collegeName", width: 30 },
-    { key: "state", width: 20 },
-    { key: "programKind", width: 14 },
-    { key: "programSlug", width: 26 },
+    { key: "collegeEmail", width: 28 },
+    { key: "languages", width: 20 },
+    { key: "degree", width: 18 },
+    { key: "careerStage", width: 30 },
+    { key: "plan", width: 20 },
+    { key: "certification", width: 14 },
     { key: "status", width: 18 },
     { key: "subStatus", width: 24 },
     { key: "extras", width: 34 },
@@ -192,23 +191,29 @@ export const buildLeadImportTemplateWorkbook = (
       "9876543210",
       BRANDS[0],
       data.collegeNames[0] ?? "Example Institute of Technology",
-      "Delhi",
-      "course",
-      data.programSlugs[0] ?? "sample-course-slug",
+      "jane.doe@college.example.edu",
+      "English, Hindi",
+      "BTech/BE",
+      CAREER_STAGES[2],
+      planNames[0],
+      MNC_CERTIFICATIONS[0],
       statusLabels[0] ?? "",
       "",
-      '{"Year":"3rd"}',
+      '{"Quoted total":"₹25,000"}',
       "marketer@example.com",
     ],
     [
       "John Doe",
       "john.doe@example.com",
       "9123456780",
-      BRANDS[1] ?? BRANDS[0],
+      BRANDS[0],
+      data.collegeNames[1] ?? data.collegeNames[0] ?? "Example College of Commerce",
+      "john.doe@college.example.edu",
+      "Tamil",
+      "BCom",
+      CAREER_STAGES[4],
+      planNames[2],
       "",
-      "",
-      "internship",
-      data.programSlugs[1] ?? data.programSlugs[0] ?? "sample-internship-slug",
       "",
       "",
       "",
@@ -235,14 +240,6 @@ export const buildLeadImportTemplateWorkbook = (
       errorStyle: "error",
       error: "Choose airkrit or edulyt",
     };
-    sheet.getCell(`F${r}`).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: ["States"],
-      showErrorMessage: true,
-      errorStyle: "error",
-      error: "Choose a state from the list",
-    };
     sheet.getCell(`E${r}`).dataValidation = {
       type: "list",
       allowBlank: true,
@@ -252,24 +249,40 @@ export const buildLeadImportTemplateWorkbook = (
       errorTitle: "College not in the list",
       error: "This college isn't in the directory yet. You can still type it in; it just won't be pre-validated.",
     };
-    sheet.getCell(`G${r}`).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      formulae: ["ProgramKinds"],
-      showErrorMessage: true,
-      errorStyle: "error",
-      error: "Choose course or internship",
-    };
     sheet.getCell(`H${r}`).dataValidation = {
       type: "list",
-      allowBlank: true,
-      formulae: ["ProgramSlugs"],
+      allowBlank: false,
+      formulae: ["Degrees"],
       showErrorMessage: true,
       errorStyle: "warning",
-      errorTitle: "Slug not in the list",
-      error: "This slug isn't in the active list. Double check it before importing.",
+      errorTitle: "Degree not in the list",
+      error: "You can still type a degree that isn't listed, the same as choosing Other on the form.",
     };
     sheet.getCell(`I${r}`).dataValidation = {
+      type: "list",
+      allowBlank: false,
+      formulae: ["CareerStages"],
+      showErrorMessage: true,
+      errorStyle: "error",
+      error: "Choose a career stage from the list",
+    };
+    sheet.getCell(`J${r}`).dataValidation = {
+      type: "list",
+      allowBlank: false,
+      formulae: ["Plans"],
+      showErrorMessage: true,
+      errorStyle: "error",
+      error: `Choose ${planNames.join(", ")}`,
+    };
+    sheet.getCell(`K${r}`).dataValidation = {
+      type: "list",
+      allowBlank: true,
+      formulae: ["Certifications"],
+      showErrorMessage: true,
+      errorStyle: "error",
+      error: `Leave blank or choose ${MNC_CERTIFICATIONS.join(", ")}`,
+    };
+    sheet.getCell(`L${r}`).dataValidation = {
       type: "list",
       allowBlank: true,
       formulae: ["StatusLabels"],
@@ -277,11 +290,11 @@ export const buildLeadImportTemplateWorkbook = (
       errorStyle: "error",
       error: "Choose a pipeline stage label",
     };
-    sheet.getCell(`J${r}`).dataValidation = {
+    sheet.getCell(`M${r}`).dataValidation = {
       type: "list",
       allowBlank: true,
       formulae: [
-        `INDIRECT(VLOOKUP($I${r},Lists!$${mapColLetter}$2:$${mapColLetter2}$${mapLastRow},2,FALSE))`,
+        `INDIRECT(VLOOKUP($L${r},Lists!$${mapColLetter}$2:$${mapColLetter2}$${mapLastRow},2,FALSE))`,
       ],
       showErrorMessage: true,
       errorStyle: "warning",
@@ -310,15 +323,27 @@ export const buildLeadImportTemplateWorkbook = (
     { column: "brand", required: "Yes", allowed: `One of: ${BRANDS.join(", ")}` },
     {
       column: "collegeName",
-      required: "No",
-      allowed: "Pick from the dropdown, or type a college not yet in the directory (this only warns, it does not block import)",
+      required: "Yes",
+      allowed:
+        "Pick from the dropdown so the lead links to the college and its state. A college not in the directory can still be typed; it is kept as text with no state.",
     },
-    { column: "state", required: "No", allowed: `One of: ${INDIAN_STATES.join(", ")}` },
-    { column: "programKind", required: "No", allowed: "course or internship (must be given together with programSlug)" },
+    { column: "collegeEmail", required: "Yes", allowed: "A valid email address" },
     {
-      column: "programSlug",
+      column: "languages",
+      required: "Yes",
+      allowed: `One or more, separated by commas: ${ENQUIRY_LANGUAGES.join(", ")}`,
+    },
+    {
+      column: "degree",
+      required: "Yes",
+      allowed: "Pick from the dropdown, or type the degree if it isn't listed",
+    },
+    { column: "careerStage", required: "Yes", allowed: `One of: ${CAREER_STAGES.join(", ")}` },
+    { column: "plan", required: "Yes", allowed: `One of: ${planNames.join(", ")}` },
+    {
+      column: "certification",
       required: "No",
-      allowed: "The slug of an active course or internship (must be given together with programKind)",
+      allowed: `Blank for none, or one of: ${MNC_CERTIFICATIONS.join(", ")}`,
     },
     { column: "status", required: "No", allowed: "A pipeline stage label; leave blank for the default stage" },
     {
@@ -329,7 +354,8 @@ export const buildLeadImportTemplateWorkbook = (
     {
       column: "extras",
       required: "No",
-      allowed: 'A JSON object of simple values, for example {"Year":"3rd"}, shown in the lead\'s details',
+      allowed:
+        'A JSON object of simple values, for example {"Quoted total":"₹25,000"}, shown in the lead\'s details',
     },
     {
       column: "creatorEmail",

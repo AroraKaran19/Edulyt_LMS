@@ -39,3 +39,24 @@ export const toAmbassadorLeadRow = (doc: AmbassadorLeadDoc): AmbassadorLeadRow =
   college: doc.collegeName || "",
   createdAt: new Date(doc.createdAt).toISOString(),
 });
+
+/** What a sales person's lead reads leave out: pipeline history and who brought the lead in. */
+export const SALES_LEAD_PROJECTION = {
+  statusHistory: 0,
+  assignmentHistory: 0,
+  creator: 0,
+  parent: 0,
+  pageQuery: 0,
+  submittedByUserId: 0,
+  "source.fileName": 0,
+  "source.importedBy": 0,
+  "source.importJobId": 0,
+  "source.importRow": 0,
+} as const;
+
+/** Form, import and referral leads must read alike to sales; scholarship keeps its own panel. */
+export const toSalesLeadView = <T extends { source?: { kind?: string } }>(lead: T): T => {
+  if (!lead.source || lead.source.kind === "scholarship") return lead;
+  const { kind: _kind, ...source } = lead.source;
+  return { ...lead, source };
+};

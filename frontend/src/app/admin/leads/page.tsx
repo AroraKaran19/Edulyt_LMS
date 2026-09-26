@@ -548,7 +548,9 @@ export default function LeadsPage() {
                         {subStatusLabel(pipeline, lead.status, lead.subStatus)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-gray-400">
-                        {LEAD_SOURCE_LABELS[lead.source?.kind] ?? lead.source?.kind}
+                        {lead.source?.kind
+                          ? (LEAD_SOURCE_LABELS[lead.source.kind] ?? lead.source.kind)
+                          : ""}
                       </div>
                     </td>
                     <td className="min-w-[150px] px-3 py-2.5 whitespace-nowrap text-gray-500 sm:px-4">

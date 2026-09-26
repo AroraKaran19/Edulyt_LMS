@@ -41,6 +41,12 @@ import {
 import { asBrand, BRAND_MAIL, type Brand } from "../constants/brands";
 import { enquiryReceivedMail } from "../mail";
 import { isValidPhone } from "../services/phoneVerification.services";
+import { SALES_LEAD_PROJECTION, toSalesLeadView } from "../lib/leadPrivacy";
+import {
+  buildEnquiryAnswers,
+  parseEnquiryProfile,
+  type EnquiryProfile,
+} from "../lib/enquiryAnswers";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -165,6 +171,9 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
     collegeId,
     brand: rawBrand,
     program: rawProgram,
+    enquiry: rawEnquiry,
+    extraAnswers,
+    total,
   } = req.body ?? {};
 
   // Which site the enquiry came from. Absent on the LMS form, which is what
@@ -197,14 +206,29 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
 
   const submittedByUserId = proved.userId;
 
-  const cleanAnswers: LeadAnswer[] = (Array.isArray(answers) ? answers : [])
-    .slice(0, 40)
-    .map((a: LeadAnswer) => ({
-      key: String(a?.key ?? "").slice(0, 60),
-      label: String(a?.label ?? "").slice(0, 200),
-      value: String(a?.value ?? "").slice(0, 500),
-    }))
-    .filter((a) => a.key && a.value);
+  const toAnswers = (raw: unknown, max: number): LeadAnswer[] =>
+    (Array.isArray(raw) ? raw : [])
+      .slice(0, max)
+      .map((a: LeadAnswer) => ({
+        key: String(a?.key ?? "").slice(0, 60),
+        label: String(a?.label ?? "").slice(0, 200),
+        value: String(a?.value ?? "").slice(0, 500),
+      }))
+      .filter((a) => a.key && a.value);
+
+  // The /enquiry form sends its fields raw so the import can word them identically.
+  let enquiry: EnquiryProfile | undefined;
+  if (rawEnquiry !== undefined) {
+    const parsed = parseEnquiryProfile(rawEnquiry ?? {});
+    if (!parsed.ok) throw new AppError(parsed.error, 400);
+    enquiry = parsed.profile;
+  }
+  const quotedTotal =
+    Number.isInteger(total) && total >= 0 && total <= 1_000_000 ? (total as number) : undefined;
+
+  const cleanAnswers: LeadAnswer[] = enquiry
+    ? buildEnquiryAnswers(enquiry, brand, toAnswers(extraAnswers, 2), quotedTotal)
+    : toAnswers(answers, 40);
 
   // Wrapped so a failed lookup never costs the student their submission.
   let emailOnPlatform: boolean | null = null;
@@ -265,6 +289,8 @@ export const createLead = asyncHandler(async (req: Request, res: Response) => {
       console.error("[leads] college snapshot failed:", error);
     }
   }
+  // A typed college not in the directory is kept as text, as an import keeps it.
+  if (!college.collegeId && enquiry) college = { collegeName: enquiry.college };
 
   const program = await resolveProgram(rawProgram, brand);
   // The landing pair is whatever the admin marked as the default stage, so a
@@ -668,15 +694,11 @@ export const listAssigneesController = asyncHandler(
   }
 );
 
-/**
- * Sales works a lead from where it stands now. Who moved it through the
- * pipeline before them, and who owned it, are the admin's record: kept off the
- * response rather than hidden in the UI.
- */
-const SALES_HIDDEN_FIELDS = {
-  statusHistory: 0,
-  assignmentHistory: 0,
-} as const;
+// Kept off the response rather than hidden in the UI.
+const SALES_HIDDEN_FIELDS = SALES_LEAD_PROJECTION;
+
+const salesView = (lead: Lead | null) =>
+  lead ? toSalesLeadView((lead as mongoose.Document & Lead).toObject?.() ?? lead) : lead;
 
 /**
  * @desc  One of the caller's own leads, in full
@@ -717,10 +739,10 @@ export const getMyAssignedLead = asyncHandler(
     sendSuccessResponse(
       res,
       {
-        lead: {
+        lead: toSalesLeadView({
           ...lead.toObject(),
           scholarship: scholarshipViewFor(scholarship, lead),
-        },
+        }),
       },
       "Lead fetched",
       200
@@ -762,10 +784,12 @@ export const listMyAssignedLeads = asyncHandler(
     ]);
 
     const scholarship = await buildScholarshipViews(leads);
-    const rows = leads.map((lead) => ({
-      ...lead.toObject(),
-      scholarship: scholarshipViewFor(scholarship, lead),
-    }));
+    const rows = leads.map((lead) =>
+      toSalesLeadView({
+        ...lead.toObject(),
+        scholarship: scholarshipViewFor(scholarship, lead),
+      })
+    );
 
     sendSuccessResponse(
       res,
@@ -838,6 +862,6 @@ export const updateMyAssignedLead = asyncHandler(
       throw new AppError("Nothing to update", 400);
     }
 
-    sendSuccessResponse(res, { lead }, "Lead updated", 200);
+    sendSuccessResponse(res, { lead: salesView(lead) }, "Lead updated", 200);
   }
 );

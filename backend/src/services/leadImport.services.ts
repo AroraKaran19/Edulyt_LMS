@@ -1,12 +1,10 @@
 import mongoose from "mongoose";
 import { LeadModel } from "../models/lead.schema";
-import { CourseModel } from "../models/course.schema";
-import { InternshipModel } from "../models/internship.schema";
+import { CollegeModel } from "../models/college.schema";
 import { CrmProfileModel, UserModel } from "../models";
 import { BRANDS, type Brand } from "../constants/brands";
 import { crmRoleOf } from "./crmProfile.services";
 import type { LeadAttribution } from "../lib/leadAttribution";
-import { normalizeState } from "../constants/indianStates";
 import { normalizePhone, isValidPhone } from "./phoneVerification.services";
 import {
   defaultPair,
@@ -14,7 +12,8 @@ import {
   type LeadPipeline,
   type PipelineStage,
 } from "./leadPipelineSettings.services";
-import type { LeadAnswer, LeadProgram, LeadProgramKind } from "../types/lead";
+import type { LeadAnswer } from "../types/lead";
+import { buildEnquiryAnswers, parseEnquiryProfile } from "../lib/enquiryAnswers";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const MAX_EXTRA_KEYS = 30;
@@ -29,9 +28,12 @@ export interface ImportRow {
   phone?: unknown;
   brand?: unknown;
   collegeName?: unknown;
-  state?: unknown;
-  programKind?: unknown;
-  programSlug?: unknown;
+  collegeEmail?: unknown;
+  languages?: unknown;
+  degree?: unknown;
+  careerStage?: unknown;
+  plan?: unknown;
+  certification?: unknown;
   status?: unknown;
   subStatus?: unknown;
   extras?: unknown;
@@ -126,12 +128,10 @@ interface FieldsOk {
   email: string;
   phone: string;
   brand: Brand;
-  collegeName?: string;
-  state?: string;
+  collegeName: string;
   answers: LeadAnswer[];
   status?: string;
   subStatus?: string;
-  program?: { kind: LeadProgramKind; slug: string };
   creatorEmail?: string;
 }
 
@@ -155,36 +155,21 @@ const validateFields = (row: ImportRow): FieldsOk | FieldsErr => {
   if (!BRANDS.includes(brandRaw as Brand)) return { ok: false, error: "Unknown brand" };
   const brand = brandRaw as Brand;
 
-  let state: string | undefined;
-  if (row.state !== undefined && row.state !== null && String(row.state).trim() !== "") {
-    const normalized = normalizeState(row.state);
-    if (!normalized) return { ok: false, error: "Unknown state" };
-    state = normalized;
-  }
+  // Same checks and wording as the /enquiry form, so an imported lead reads like a form lead.
+  const parsed = parseEnquiryProfile({
+    college: row.collegeName,
+    collegeEmail: row.collegeEmail,
+    languages: row.languages,
+    degree: row.degree,
+    careerStage: row.careerStage,
+    plan: row.plan,
+    certification: row.certification,
+  });
+  if (!parsed.ok) return { ok: false, error: parsed.error };
 
-  const collegeName =
-    row.collegeName !== undefined && row.collegeName !== null
-      ? String(row.collegeName).trim() || undefined
-      : undefined;
-
-  const kindRaw = row.programKind;
-  const slugRaw = row.programSlug;
-  const hasKind = kindRaw !== undefined && kindRaw !== null && String(kindRaw).trim() !== "";
-  const hasSlug = slugRaw !== undefined && slugRaw !== null && String(slugRaw).trim() !== "";
-  let program: { kind: LeadProgramKind; slug: string } | undefined;
-  if (hasKind !== hasSlug) {
-    return { ok: false, error: "programKind and programSlug must be given together" };
-  }
-  if (hasKind && hasSlug) {
-    const kind = String(kindRaw).trim();
-    if (kind !== "course" && kind !== "internship") {
-      return { ok: false, error: "programKind must be course or internship" };
-    }
-    program = { kind, slug: String(slugRaw).trim() };
-  }
-
-  const answers = parseExtras(row.extras);
-  if (answers === null) return { ok: false, error: EXTRAS_ERROR };
+  const extras = parseExtras(row.extras);
+  if (extras === null) return { ok: false, error: EXTRAS_ERROR };
+  const answers = buildEnquiryAnswers(parsed.profile, brand, extras);
 
   const creatorEmail = String(row.creatorEmail ?? "").trim().toLowerCase();
   if (creatorEmail && !EMAIL_RE.test(creatorEmail)) {
@@ -202,12 +187,10 @@ const validateFields = (row: ImportRow): FieldsOk | FieldsErr => {
     email,
     phone,
     brand,
-    collegeName,
-    state,
+    collegeName: parsed.profile.college,
     answers,
     status: statusRaw || undefined,
     subStatus: subStatusRaw || undefined,
-    program,
     creatorEmail: creatorEmail || undefined,
   };
 };
@@ -225,12 +208,12 @@ interface RowRecord {
     email: string;
     phone: string;
     brand: Brand;
-    collegeName?: string;
+    collegeName: string;
+    collegeId?: mongoose.Types.ObjectId;
     state?: string;
     answers: LeadAnswer[];
     status: string;
     subStatus: string;
-    program?: LeadProgram;
   };
 }
 
@@ -328,62 +311,57 @@ const resolveCreators = async (emails: string[]): Promise<Map<string, LeadAttrib
   return byEmail;
 };
 
-type ProgramRef = { refId: mongoose.Types.ObjectId; title: string };
+type CollegeRef = { collegeId: mongoose.Types.ObjectId; collegeName: string; state?: string };
 
-const programKey = (kind: LeadProgramKind, brand: Brand, slug: string) =>
-  `${kind}::${brand}::${slug}`;
+/**
+ * Exact-name matches against the active directory, the same list the template's
+ * dropdown offers. A name two colleges share links to neither, like a typed
+ * college on the form.
+ */
+const resolveColleges = async (names: string[]): Promise<Map<string, CollegeRef>> => {
+  const found = new Map<string, CollegeRef>();
+  if (names.length === 0) return found;
 
-/** One query per (kind, brand) pair for every program the rows name. */
-const resolvePrograms = async (
-  requests: { kind: LeadProgramKind; brand: Brand; slug: string }[],
-): Promise<Map<string, ProgramRef>> => {
-  const found = new Map<string, ProgramRef>();
-  const slugsByKindBrand = new Map<string, { kind: LeadProgramKind; brand: Brand; slugs: Set<string> }>();
-  for (const req of requests) {
-    const key = `${req.kind}::${req.brand}`;
-    if (!slugsByKindBrand.has(key)) {
-      slugsByKindBrand.set(key, { kind: req.kind, brand: req.brand, slugs: new Set() });
-    }
-    slugsByKindBrand.get(key)!.slugs.add(req.slug);
+  const docs = await CollegeModel.find(
+    { name: { $in: names }, isActive: true },
+    { name: 1, state: 1 },
+  ).lean();
+  const byName = new Map<string, typeof docs>();
+  for (const doc of docs) {
+    byName.set(doc.name, [...(byName.get(doc.name) ?? []), doc]);
   }
-
-  await Promise.all(
-    [...slugsByKindBrand.values()].map(async ({ kind, brand, slugs }) => {
-      const Model = kind === "course" ? CourseModel : InternshipModel;
-      const docs = await (Model as typeof CourseModel)
-        .find({ brand, slug: { $in: [...slugs] } }, { slug: 1, title: 1 })
-        .lean();
-      for (const doc of docs as { _id: unknown; slug: string; title?: string }[]) {
-        found.set(programKey(kind, brand, doc.slug), {
-          refId: doc._id as mongoose.Types.ObjectId,
-          title: String(doc.title ?? ""),
-        });
-      }
-    }),
-  );
+  for (const [name, matches] of byName) {
+    if (matches.length !== 1) continue;
+    const doc = matches[0];
+    found.set(name, {
+      collegeId: new mongoose.Types.ObjectId(String(doc._id)),
+      collegeName: doc.name,
+      ...(doc.state ? { state: doc.state } : {}),
+    });
+  }
   return found;
 };
 
 /** Lookups shared by every batch of one file, so a job resolves them once, not per batch. */
 export interface ImportContext {
-  programs: Map<string, ProgramRef>;
+  colleges: Map<string, CollegeRef>;
   creators: Map<string, LeadAttribution>;
 }
 
 export const buildImportContext = async (rows: ImportRow[]): Promise<ImportContext> => {
-  const programRequests: { kind: LeadProgramKind; brand: Brand; slug: string }[] = [];
+  const collegeNames = new Set<string>();
   const creatorEmails = new Set<string>();
   for (const row of rows) {
     const fields = validateFields(row ?? {});
     if (!fields.ok) continue;
-    if (fields.program) programRequests.push({ ...fields.program, brand: fields.brand });
+    collegeNames.add(fields.collegeName);
     if (fields.creatorEmail) creatorEmails.add(fields.creatorEmail);
   }
-  const [programs, creators] = await Promise.all([
-    resolvePrograms(programRequests),
+  const [colleges, creators] = await Promise.all([
+    resolveColleges([...collegeNames]),
     resolveCreators([...creatorEmails]),
   ]);
-  return { programs, creators };
+  return { colleges, creators };
 };
 
 export const importLeads = async (
@@ -393,7 +371,6 @@ export const importLeads = async (
 ): Promise<ImportResponse> => {
   const context = sharedContext ?? (await buildImportContext(rows));
   const records: RowRecord[] = [];
-  const programRequests: { index: number; kind: LeadProgramKind; slug: string; brand: Brand }[] = [];
 
   // Pass 1: pure field validation, plus the pipeline pair (in-memory cache, no per-row query).
   for (let i = 0; i < rows.length; i += 1) {
@@ -420,36 +397,19 @@ export const importLeads = async (
         phone: fields.phone,
         brand: fields.brand,
         collegeName: fields.collegeName,
-        state: fields.state,
         answers: fields.answers,
         status: pair.status,
         subStatus: pair.subStatus,
       },
     });
-
-    if (fields.program) {
-      programRequests.push({
-        index: records.length - 1,
-        kind: fields.program.kind,
-        slug: fields.program.slug,
-        brand: fields.brand,
-      });
-    }
   }
 
-  // Pass 2: programs and creators, from lookups made once for the whole file.
-  for (const req of programRequests) {
-    const record = records[req.index];
-    if (record.outcome !== "ok" || !record.data) continue;
-    // Never rejects, as on the enquiry form: an unknown slug is kept as typed, without a title.
-    const found = context.programs.get(programKey(req.kind, req.brand, req.slug));
-    record.data.program = found
-      ? { kind: req.kind, refId: found.refId, title: found.title, slug: req.slug }
-      : { kind: req.kind, title: "", slug: req.slug };
-  }
-
+  // Pass 2: colleges and creators, from lookups made once for the whole file.
   const okRecords = records.filter((r) => r.outcome === "ok" && r.data);
   for (const record of okRecords) {
+    const college = context.colleges.get(record.data!.collegeName);
+    if (college) Object.assign(record.data!, college);
+
     if (!record.creatorEmail) continue;
     const attribution = context.creators.get(record.creatorEmail);
     if (attribution) record.attribution = attribution;
@@ -511,14 +471,14 @@ export const importLeads = async (
             fileName: options.fileName,
             importedBy: options.importedBy,
             ...(options.jobId ? { importJobId: options.jobId, importRow: r.row } : {}),
-            ...(d.program ? { program: d.program } : {}),
           },
           ...(r.attribution ?? {}),
           name: d.name,
           email: d.email,
           phone: d.phone,
           answers: d.answers,
-          ...(d.collegeName ? { collegeName: d.collegeName } : {}),
+          collegeName: d.collegeName,
+          ...(d.collegeId ? { collegeId: d.collegeId } : {}),
           ...(d.state ? { state: d.state } : {}),
         };
       });

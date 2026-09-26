@@ -79,7 +79,8 @@ export interface LeadCampaignOption {
 export interface Lead {
   _id: string;
   source: {
-    kind: "enquiry" | "scholarship" | "import";
+    /** Absent on a sales person's view of a non-scholarship lead, so no origin shows. */
+    kind?: "enquiry" | "scholarship" | "import";
     /** Which site it came from. Absent on rows predating two brands, which are all Airkrit. */
     brand?: "airkrit" | "edulyt";
     testId?: string | null;
