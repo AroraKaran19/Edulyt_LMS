@@ -189,6 +189,11 @@ const UserMenu = () => {
       href: "/profile",
     },
     {
+      label: "Settings",
+      icon: Settings,
+      href: "/settings",
+    },
+    {
       label: "Logout",
       icon: LogOut,
       href: "",
@@ -226,7 +231,7 @@ const UserMenu = () => {
     "User";
 
   const menuItemClass =
-    "w-full flex items-center gap-2.5 px-3 py-2 text-left rounded-lg transition-colors duration-150 cursor-pointer group";
+    "mx-2 w-[calc(100%-1rem)] flex items-center gap-2.5 px-3 py-2 text-left rounded-lg transition-colors duration-150 cursor-pointer group";
   const iconWrapperClass =
     "flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 transition-colors shrink-0";
   const iconClass = "size-4 text-gray-600 group-hover:text-orange-600";
@@ -332,7 +337,7 @@ const UserMenu = () => {
                     <Link
                       href={item.href}
                       key={item.label}
-                      className={`${menuItemClass} mx-2 hover:bg-orange-50`}
+                      className={`${menuItemClass} hover:bg-orange-50`}
                       onClick={() => setIsUserOpen(false)}
                       role="menuitem"
                     >
@@ -347,7 +352,7 @@ const UserMenu = () => {
                 <div className="my-1.5 border-t border-gray-100" />
                 <button
                   type="button"
-                  className={`${menuItemClass} mx-2 hover:bg-red-50 w-[calc(100%-1rem)]`}
+                  className={`${menuItemClass} hover:bg-red-50`}
                   onClick={() => {
                     setIsUserOpen(false);
                     handleSignOut();
@@ -461,7 +466,7 @@ const UserMenu = () => {
                   <Link
                     href={item.href}
                     key={item.label}
-                    className={`${menuItemClass} mx-2 hover:bg-orange-50`}
+                    className={`${menuItemClass} hover:bg-orange-50`}
                     onClick={() => setIsUserOpen(false)}
                     role="menuitem"
                   >
@@ -479,7 +484,7 @@ const UserMenu = () => {
               {(!user.userType || user.userType === "student") && (
                 <button
                   type="button"
-                  className={`${menuItemClass} mx-2 hover:bg-orange-50 w-[calc(100%-1rem)]`}
+                  className={`${menuItemClass} hover:bg-orange-50`}
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsUserOpen(false);
@@ -500,7 +505,7 @@ const UserMenu = () => {
               <div className="my-1.5 border-t border-gray-100" />
               <button
                 type="button"
-                className={`${menuItemClass} mx-2 hover:bg-red-50 w-[calc(100%-1rem)]`}
+                className={`${menuItemClass} hover:bg-red-50`}
                 onClick={() => {
                   setIsUserOpen(false);
                   handleSignOut();
